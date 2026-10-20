@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { kartBoyu } from '../oyun/kart'
-import { hamleYap, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Oyuncu } from '../oyun/motor'
+import { useEffect, useRef, useState, type PointerEvent } from 'react'
+import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
+import { hamleGecerliMi, hamleYap, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type Oyuncu } from '../oyun/motor'
 import { botHamlesi } from '../oyun/bot'
 import { Kart } from './Kart'
-import { SAHNE_BOY } from './Sahne'
+import { SAHNE_BOY, SAHNE_EN } from './Sahne'
 import { CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 
 const AVUC_KART_EN = 60
@@ -35,7 +35,7 @@ function yanYelpaze(sira: number, adet: number, taraf: 'sol' | 'sag') {
 const RAKIP_KART_BINME = 20
 
 // Masanın sol/sağ kenarına oturmuş oyuncu: kartlar ona dönük, dikey dizili, masanın ortası hizasında.
-function Rakip({ oyuncu, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu: Oyuncu; sirada: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean }) {
+function Rakip({ oyuncu, sirada, taraf, carpan, kapali, duz, kirpik, hedef }: { oyuncu: Oyuncu; hedef: string; sirada: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean }) {
   const avucBoyu = RAKIP_KART_EN + (oyuncu.avuc.length - 1) * (RAKIP_KART_EN - RAKIP_KART_BINME)
   return (
     <>
@@ -48,7 +48,7 @@ function Rakip({ oyuncu, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu:
         ))}
       </div>
       <div className={`rakip-ceza ${taraf}`}>
-        <CezaYigini kartlar={oyuncu.ceza} carpan={carpan} puanTarafi={taraf === 'sol' ? 'sag' : 'sol'} donuk={taraf} />
+        <CezaYigini kartlar={oyuncu.ceza} carpan={carpan} puanTarafi={taraf === 'sol' ? 'sag' : 'sol'} donuk={taraf} hedef={hedef} />
       </div>
     </>
   )
@@ -103,6 +103,58 @@ function TestSecenegi({ ad, acik, degistir }: { ad: string; acik: boolean; degis
   )
 }
 
+// Bırakılan yer ekranda data-hedef ile işaretli: "orta", "mut:<sayı>", "ceza:<oyuncu>".
+type Birakma = 'kabul' | 'red' | 'bekle'
+
+// Avucumdaki kart: dokununca kalkar, sürüklenip bir yere bırakılır. Geçersizse yerine döner.
+function AvucKart({ kart, sira, adet, kalkik, dokun, birak }: { kart: KartTipi; sira: number; adet: number; kalkik: boolean; dokun: () => void; birak: (hedef: string) => Birakma }) {
+  const [kayma, setKayma] = useState<{ x: number; y: number } | null>(null)
+  const baslangic = useRef<{ x: number; y: number; olcek: number; surukleniyor: boolean } | null>(null)
+
+  const bas = (e: PointerEvent<HTMLDivElement>) => {
+    const sahne = e.currentTarget.closest('.sahne')!
+    e.currentTarget.setPointerCapture(e.pointerId)
+    baslangic.current = { x: e.clientX, y: e.clientY, olcek: sahne.getBoundingClientRect().width / SAHNE_EN, surukleniyor: false }
+  }
+  const surukle = (e: PointerEvent<HTMLDivElement>) => {
+    const b = baslangic.current
+    if (!b) return
+    const dx = e.clientX - b.x
+    const dy = e.clientY - b.y
+    if (!b.surukleniyor && Math.hypot(dx, dy) < 6) return
+    b.surukleniyor = true
+    setKayma({ x: dx / b.olcek, y: dy / b.olcek })
+  }
+  const birakildi = (e: PointerEvent<HTMLDivElement>) => {
+    const b = baslangic.current
+    baslangic.current = null
+    if (!b) return
+    if (!b.surukleniyor) return dokun()
+    const hedef = document
+      .elementsFromPoint(e.clientX, e.clientY)
+      .map(el => el.closest<HTMLElement>('[data-hedef]'))
+      .find(el => el)?.dataset.hedef
+    if (hedef && birak(hedef) === 'kabul') return
+    setKayma(null)
+  }
+
+  const transform = kayma
+    ? `translate(${kayma.x}px, ${kayma.y}px)`
+    : yelpaze(sira, adet) + (kalkik ? ' translateY(-14px)' : '')
+  return (
+    <div
+      className={'avuc-kart' + (kayma ? ' surukleniyor' : '')}
+      style={{ transform }}
+      onPointerDown={bas}
+      onPointerMove={surukle}
+      onPointerUp={birakildi}
+      onPointerCancel={() => { baslangic.current = null; setKayma(null) }}
+    >
+      <Kart kart={kart} genislik={AVUC_KART_EN} />
+    </div>
+  )
+}
+
 function Kalkan() {
   return (
     <button className="kalkan" aria-label="Kalkan">
@@ -124,11 +176,13 @@ export function Masa() {
   const [botKartlariDuz, setBotKartlariDuz] = useState(true)
   const [botKartlariKirpik, setBotKartlariKirpik] = useState(false)
   const [botHizi, setBotHizi] = useState<BotHizi>('Orta')
+  const [kalkikKart, setKalkikKart] = useState<number | null>(null)
+  // Rakibin ceza yığınına bırakılan kart: "Üstüne yığ" mı "İlerlet" mi seçilecek.
+  const [cezaSecimi, setCezaSecimi] = useState<number | null>(null)
 
-  // Botlar sırası gelince biraz bekleyip rastgele geçerli bir hamle yapar.
-  // Geçici (3a): sürükle-bırak gelene kadar senin koltuğunu da bot oynuyor.
+  // Botlar sırası gelince biraz bekleyip rastgele geçerli bir hamle yapar. Benim kartlarımı hep ben oynarım.
   useEffect(() => {
-    if (d.asama !== 'oyun' || !botlarOtomatik) return
+    if (d.asama !== 'oyun' || d.sira === 0 || !botlarOtomatik) return
     const zamanlayici = setTimeout(() => setD(eski => hamleYap(eski, botHamlesi(eski))), BOT_HIZLARI[botHizi])
     return () => clearTimeout(zamanlayici)
   }, [d, botlarOtomatik, botHizi])
@@ -137,6 +191,32 @@ export function Masa() {
   useEffect(() => {
     if (d.asama !== 'oyun') setPuanlarAcik(true)
   }, [d.asama])
+
+  const oyna = (tip: Hamle['tip'], kart: number) => {
+    setD(hamleYap(d, { tip, kart }))
+    setKalkikKart(null)
+    setCezaSecimi(null)
+  }
+
+  // Bırakılan yere göre hamle; kurala aykırıysa kart sessizce avuca döner (9.2).
+  const kartBirak = (kart: number, hedef: string): Birakma => {
+    if (d.asama !== 'oyun' || d.sira !== 0) return 'red'
+    const [yer, deger] = hedef.split(':')
+    const dene = (tip: Hamle['tip']): Birakma => {
+      if (!hamleGecerliMi(d, { tip, kart })) return 'red'
+      oyna(tip, kart)
+      return 'kabul'
+    }
+    if (yer === 'orta') return dene('ortayaAt')
+    if (yer === 'mut') return Number(deger) === ben.avuc[kart].deger ? dene('mutEslestir') : 'red'
+    if (yer === 'ceza' && deger === '0') return dene('cezaBosalt')
+    if (yer === 'ceza' && deger === '1' && hamleGecerliMi(d, { tip: 'ustuneYig', kart })) {
+      setCezaSecimi(kart)
+      setKalkikKart(kart)
+      return 'bekle'
+    }
+    return 'red'
+  }
 
   const aktifKurallar = d.carpan > 1 ? [`×${d.carpan}`] : []
   const hizlar = Object.keys(BOT_HIZLARI) as BotHizi[]
@@ -165,27 +245,43 @@ export function Masa() {
       </div>
 
       <div className="mut-alani">
-        {d.mut.map((k, i) => <Kart key={i} kart={k} genislik={56} />)}
+        {d.mut.map((k, i) => <div key={i} data-hedef={`mut:${k.deger}`}><Kart kart={k} genislik={56} /></div>)}
       </div>
 
       <OrtaYigin kartlar={d.orta} />
 
-      <Rakip oyuncu={soldaki} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
-      <Rakip oyuncu={sagdaki} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
+      <Rakip oyuncu={soldaki} hedef="ceza:2" taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
+      <Rakip oyuncu={sagdaki} hedef="ceza:1" taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
 
       <div className="benim-ceza">
-        <CezaYigini kartlar={ben.ceza} carpan={d.carpan} puanTarafi="sol" />
+        <CezaYigini kartlar={ben.ceza} carpan={d.carpan} puanTarafi="sol" hedef="ceza:0" />
       </div>
 
       <div className="benim-avuc">
         {ben.avuc.map((k, i) => (
-          <div key={i} className="avuc-kart" style={{ transform: yelpaze(i, ben.avuc.length) }}>
-            <Kart kart={k} genislik={AVUC_KART_EN} />
-          </div>
+          <AvucKart
+            key={`${k.renk}-${k.deger}`}
+            kart={k}
+            sira={i}
+            adet={ben.avuc.length}
+            kalkik={kalkikKart === i}
+            dokun={() => setKalkikKart(kalkikKart === i ? null : i)}
+            birak={hedef => kartBirak(i, hedef)}
+          />
         ))}
         {elimdeIkiVar && <Kalkan />}
       </div>
       {d.asama === 'oyun' && d.sira === 0 && <div className="benim-sira" />}
+
+      {cezaSecimi !== null && (
+        <>
+          <div className="secim-arka" onClick={() => { setCezaSecimi(null); setKalkikKart(null) }} />
+          <div className="ceza-secimi">
+            <button onClick={() => oyna('ustuneYig', cezaSecimi)}>Üstüne yığ</button>
+            <button onClick={() => oyna('alIlerlet', cezaSecimi)}>İlerlet</button>
+          </div>
+        </>
+      )}
 
       <button className="yuvarlak-dugme konusma" aria-label="Konuşma">
         <svg viewBox="0 0 24 24" width="22" height="22">

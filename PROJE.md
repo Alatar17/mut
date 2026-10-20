@@ -5,10 +5,10 @@
 
 ## 0. Proje Durumu
 - **Aşama:** 2. adım (kural motoru, ekransız) bitti — 2026-10-20. Motorda: dağıtım, orta yığına atma/eşleşme, Mut eşleştirme (zorunluluk dahil), kendi ceza yığınını boşaltma, üstüne yığ, al ve ilerlet, hedef her zaman sıradaki, sıra kuralı (6.6), tur/el döngüsü, puan ve temiz ön. Özel kartların etkisi ve seri yok (4. adım); şimdilik hepsi sadece puanlı kart. Rastgele bot var; botlar 3 ve 4 kişilik 100'er oyun (10 el) birbirine karşı oynatılıp her hamlede kural denetleniyor.
-  - `/code-review` yapıldı, düzeltildi: oyuncu sayısı denetimi (sadece 3–4), Hamle tipi sadeleşti, testlerde 52 kart tutarlılığı, simülasyonda 6.6 eşitlik kuralı tam denetleniyor. Bilerek bırakılanlar: hız (geçerli hamleler her hamlede birkaç kez hesaplanıyor, her hamlede tüm durum kopyalanıyor; test ~12 sn, sorun olursa ele alınır) ve `ornekDurum.ts`'deki çift oyuncu tipi (3. adımda kalkacak).
+  - `/code-review` yapıldı, düzeltildi: oyuncu sayısı denetimi (sadece 3–4), Hamle tipi sadeleşti, testlerde 52 kart tutarlılığı, simülasyonda 6.6 eşitlik kuralı tam denetleniyor. Bilerek bırakılanlar: hız (geçerli hamleler her hamlede birkaç kez hesaplanıyor, her hamlede tüm durum kopyalanıyor; test ~12 sn, sorun olursa ele alınır) ve `ornekDurum.ts`'deki çift oyuncu tipi (3b'de dosya silindi).
 - **Sıradaki iş:** 3. adım, birleştirme → ilk oynanabilir sürüm. Parçalar (2026-10-20 kullanıcıyla kararlaştırıldı):
-  - **3a ✅** Ekran motora bağlandı; botlar oynuyor (şimdilik "Sen" koltuğunu da bot oynuyor), el sonu puan kağıdı + "Sonraki el", oyun sonu kazanan + "Yeni oyun". Test menüsünde "Bot hızı" (Hızlı 0,4 / Orta 1 / Yavaş 2 sn) ve "Yeni oyun".
-  - **3b** Sürükle-bırak (orta yığın, Mut kartı, kendi ceza yığını, sıradakinin ceza yığını); geçersizse kart sessizce döner; dokununca kart kalkar. Rakip ceza yığınına bırakınca yanında iki düğme: **"Üstüne yığ" / "İlerlet"**.
+  - **3a ✅** Ekran motora bağlandı; botlar (Bot B, Bot C) oynuyor, "Sen" koltuğunu hep kullanıcı oynar; el sonu puan kağıdı + "Sonraki el", oyun sonu kazanan + "Yeni oyun". Test menüsünde "Bot hızı" (Hızlı 0,4 / Orta 1 / Yavaş 2 sn) ve "Yeni oyun".
+  - **3b ✅** Sürükle-bırak (orta yığın, Mut kartı, kendi ceza yığını, sıradakinin ceza yığını); geçersizse kart sessizce döner; dokununca kart kalkar. Rakip ceza yığınına bırakınca yanında iki düğme: **"Üstüne yığ" / "İlerlet"**.
   - **3c** "Botlar kendi oynasın" kapalıyken bot avuçlarını kullanıcı oynar.
   - **3d** 4 kişilik masa (üst koltuk yerleşimi henüz tasarlanmadı; seçenekler Test menüsünde denenecek) + Test menüsünde "3 kişi / 4 kişi". El sayısı 10. Asıl başlangıç ekranı 5. adımda.
   - **3e** Kartların hedefe uçma animasyonları.
@@ -37,7 +37,6 @@
   - `src\oyun\motor.ts`: kural motoru. `yeniOyun`, `gecerliHamleler`, `hamleYap` (yeni durum döndürür, eskisi değişmez), `sonrakiEl`. Yığınlarda dizinin sonu = en üst kart. Hamle tipleri: ortayaAt, mutEslestir, cezaBosalt, ustuneYig, alIlerlet.
   - `src\oyunot.ts`: rastgele bot. `src\oyunastgele.ts`: tohumlu rastgele (aynı tohum → aynı oyun, hata tekrar üretilebilir).
   - `src\oyun\motor.test.ts` (kural testleri), `src\oyun\simulasyon.test.ts` (botlar birbirine karşı)
-  - `src\ornekDurum.ts`: masa taslağı için elle yazılmış sabit oyun anı (kural motoru gelince kalkacak)
   - `src\ekran\`: `Sahne` (844 × 390 sahneyi ekrana sığdırır), `Masa` (yerleşim, puan kağıdı penceresi, Test menüsü), `Kart`, `Yiginlar` (orta yığın, ceza yığını, deste)
   - `src\stil.css`: yerleşim; `src\tema\varsayilan.css`: renkler
 

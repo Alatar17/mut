@@ -20,7 +20,7 @@ export function OrtaYigin({ kartlar }: { kartlar: KartTipi[] }) {
   const ust = kartlar.slice(-3)
   const alttaKalan = kartlar.length - ust.length
   return (
-    <div className="orta-yigin">
+    <div className="orta-yigin" data-hedef="orta">
       <div className="yigin-govde" style={{ width: KART_EN + 28, height: kartBoyu(KART_EN) }}>
         {alttaKalan > 0 && <Kalinlik adet={alttaKalan} genislik={KART_EN} />}
         {ust.map((k, i) => (
@@ -40,9 +40,11 @@ interface CezaProps {
   puanTarafi: 'sag' | 'sol'
   // Yan oturan oyuncunun yığını ona dönük, yan durur.
   donuk?: 'sol' | 'sag'
+  // Kart bırakılabilen yer işareti (bkz. Masa).
+  hedef?: string
 }
 
-export function CezaYigini({ kartlar, carpan, puanTarafi, donuk }: CezaProps) {
+export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef }: CezaProps) {
   const ust = kartlar[kartlar.length - 1]
   const boy = kartBoyu(KART_EN)
   const govde = (
@@ -58,7 +60,7 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk }: CezaProps) {
     </div>
   )
   return (
-    <div className={'ceza-yigini puan-' + puanTarafi}>
+    <div className={'ceza-yigini puan-' + puanTarafi} data-hedef={hedef}>
       {donuk ? <div className={'yan-yigin ' + donuk} style={{ width: boy, height: KART_EN }}>{govde}</div> : govde}
       <span className="puan">{yiginPuani(kartlar) * carpan}</span>
     </div>

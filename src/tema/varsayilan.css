@@ -1,0 +1,30 @@
+/* Varsayılan tema: kahve masası, klasik iskambil. Görünümle ilgili renkler sadece burada. */
+:root {
+  --masa-dis: #0b2a1c;
+  --masa-orta: #1f6b45;
+  --masa-kenar: #12452c;
+  --masa-cizgi: rgba(255, 255, 255, 0.14);
+
+  --kart-yuz: #fbfaf6;
+  --kart-kenar: #c9c4b8;
+  --kart-kirmizi: #c8102e;
+  --kart-siyah: #1a1a1a;
+  --kart-arka-1: #8e1b24;
+  --kart-arka-2: #b3303a;
+  --kart-golge: rgba(0, 0, 0, 0.35);
+
+  --yazi: #f3f0e6;
+  --yazi-soluk: rgba(243, 240, 230, 0.65);
+  --panel: rgba(0, 0, 0, 0.28);
+  --vurgu: #f2c14e;
+  --rozet: #10241a;
+  --puan: #f2c14e;
+  --kalkan: #6fb7ff;
+}
+
+:root {
+  --kagit: #fdfbf3;
+  --kagit-yazi: #1d2a6b;
+  --kagit-soluk: #6a6f8a;
+  --kagit-cizgi: #b9c3e6;
+}

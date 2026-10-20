@@ -6,7 +6,7 @@ import { SAHNE_BOY } from './Sahne'
 import { CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 
 const AVUC_KART_EN = 60
-const RAKIP_KART_EN = 60
+const RAKIP_KART_EN = 56
 
 // Elde tutulan kartlar gibi hafif yelpaze: kenardaki kartlar biraz döner ve alçalır.
 function yelpaze(sira: number, adet: number) {

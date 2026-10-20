@@ -4,7 +4,7 @@
 > İşaretler: ❓ = henüz netleşmedi, 🔔 = sonra hatırlatılacak. Hepsi Bölüm 11'de toplu.
 
 ## 0. Proje Durumu
-- **Aşama:** Kurallar taslak halinde yazıldı. Kod başladı: 1. adım (masa taslağı).
+- **Aşama:** 1. adım (masa taslağı) bitti — 2026-10-20. Sıradaki: 2. adım (kural motoru).
 - **Klasör:** `C:\Users\PC\Desktop\Claude\Projeler\MUT`
 - **Teknoloji:** PWA; **React + TypeScript + Vite**. GitHub Pages'te yayın, kiralık sunucu yok (bkz. Bölüm 9).
 - **Araçlar:** Claude Code. Bu projede Google AI Studio uyumu **aranmıyor** (kullanıcı kararı: AI Studio bu projenin altından kalkamaz).

@@ -1,11 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { kartBoyu } from '../oyun/kart'
-import { ornekDurum, type OyuncuDurumu } from '../ornekDurum'
+import { hamleYap, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Oyuncu } from '../oyun/motor'
+import { botHamlesi } from '../oyun/bot'
 import { Kart } from './Kart'
 import { SAHNE_BOY } from './Sahne'
 import { CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 
 const AVUC_KART_EN = 60
+const TOPLAM_EL = 10
+
+// Botun her hamleden önce beklediği süre (ms). Kullanıcı Test menüsünde deneyip seçecek.
+const BOT_HIZLARI = { Hızlı: 400, Orta: 1000, Yavaş: 2000 }
+type BotHizi = keyof typeof BOT_HIZLARI
+
+// 0 = sen (alt), 1 = sağdaki (sıradaki), 2 = soldaki
+const yeniOyunKur = () => yeniOyun({ isimler: ['Sen', 'Bot B', 'Bot C'], toplamEl: TOPLAM_EL })
 const RAKIP_KART_EN = 56
 
 // Elde tutulan kartlar gibi hafif yelpaze: kenardaki kartlar biraz döner ve alçalır.
@@ -26,7 +35,7 @@ function yanYelpaze(sira: number, adet: number, taraf: 'sol' | 'sag') {
 const RAKIP_KART_BINME = 20
 
 // Masanın sol/sağ kenarına oturmuş oyuncu: kartlar ona dönük, dikey dizili, masanın ortası hizasında.
-function Rakip({ oyuncu, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu: OyuncuDurumu; sirada: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean }) {
+function Rakip({ oyuncu, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu: Oyuncu; sirada: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean }) {
   const avucBoyu = RAKIP_KART_EN + (oyuncu.avuc.length - 1) * (RAKIP_KART_EN - RAKIP_KART_BINME)
   return (
     <>
@@ -45,8 +54,15 @@ function Rakip({ oyuncu, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu:
   )
 }
 
-function PuanPenceresi({ kapat }: { kapat: () => void }) {
-  const d = ornekDurum
+// Toplamı en az olan kazanır; eşitlikte berabere (Bölüm 8).
+function kazananYazisi(d: Durum) {
+  const toplam = toplamPuanlar(d)
+  const enAz = Math.min(...toplam)
+  const kazananlar = d.oyuncular.filter((_, i) => toplam[i] === enAz)
+  return kazananlar.length > 1 ? 'Berabere' : `Kazanan: ${kazananlar[0].ad}`
+}
+
+function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun }: { d: Durum; kapat: () => void; sonrakiEl: () => void; yeniOyun: () => void }) {
   return (
     <div className="pencere-arka" onClick={kapat}>
       <div className="puan-kagidi" onClick={e => e.stopPropagation()}>
@@ -62,10 +78,17 @@ function PuanPenceresi({ kapat }: { kapat: () => void }) {
           <tfoot>
             <tr>
               <td>Toplam</td>
-              {d.oyuncular.map((_, j) => <td key={j}>{d.puanKagidi.reduce((t, s) => t + s[j], 0)}</td>)}
+              {toplamPuanlar(d).map((p, j) => <td key={j}>{p}</td>)}
             </tr>
           </tfoot>
         </table>
+        {d.asama === 'elSonu' && <button className="kagit-dugme" onClick={sonrakiEl}>Sonraki el</button>}
+        {d.asama === 'oyunSonu' && (
+          <>
+            <div className="kazanan">{kazananYazisi(d)}</div>
+            <button className="kagit-dugme" onClick={yeniOyun}>Yeni oyun</button>
+          </>
+        )}
       </div>
     </div>
   )
@@ -91,7 +114,7 @@ function Kalkan() {
 }
 
 export function Masa() {
-  const d = ornekDurum
+  const [d, setD] = useState(yeniOyunKur)
   const [ben, sagdaki, soldaki] = d.oyuncular
   const elimdeIkiVar = ben.avuc.some(k => k.deger === 2)
   const [puanlarAcik, setPuanlarAcik] = useState(false)
@@ -100,6 +123,28 @@ export function Masa() {
   const [botKartlariKapali, setBotKartlariKapali] = useState(false)
   const [botKartlariDuz, setBotKartlariDuz] = useState(true)
   const [botKartlariKirpik, setBotKartlariKirpik] = useState(false)
+  const [botHizi, setBotHizi] = useState<BotHizi>('Orta')
+
+  // Botlar sırası gelince biraz bekleyip rastgele geçerli bir hamle yapar.
+  // Geçici (3a): sürükle-bırak gelene kadar senin koltuğunu da bot oynuyor.
+  useEffect(() => {
+    if (d.asama !== 'oyun' || !botlarOtomatik) return
+    const zamanlayici = setTimeout(() => setD(eski => hamleYap(eski, botHamlesi(eski))), BOT_HIZLARI[botHizi])
+    return () => clearTimeout(zamanlayici)
+  }, [d, botlarOtomatik, botHizi])
+
+  // El bitince puan kağıdı kendiliğinden açılır.
+  useEffect(() => {
+    if (d.asama !== 'oyun') setPuanlarAcik(true)
+  }, [d.asama])
+
+  const aktifKurallar = d.carpan > 1 ? [`×${d.carpan}`] : []
+  const hizlar = Object.keys(BOT_HIZLARI) as BotHizi[]
+  const sonrakiHiz = () => setBotHizi(hizlar[(hizlar.indexOf(botHizi) + 1) % hizlar.length])
+  const yeniOyunBaslat = () => {
+    setD(yeniOyunKur())
+    setPuanlarAcik(false)
+  }
 
   return (
     <div className="masa">
@@ -111,7 +156,7 @@ export function Masa() {
       </button>
 
       <div className="kurallar">
-        {d.aktifKurallar.map(k => <span key={k} className="kural">{k}</span>)}
+        {aktifKurallar.map(k => <span key={k} className="kural">{k}</span>)}
       </div>
 
       <div className="el-tur">
@@ -125,8 +170,8 @@ export function Masa() {
 
       <OrtaYigin kartlar={d.orta} />
 
-      <Rakip oyuncu={soldaki} taraf="sol" sirada={d.siradaki === 2} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
-      <Rakip oyuncu={sagdaki} taraf="sag" sirada={d.siradaki === 1} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
+      <Rakip oyuncu={soldaki} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
+      <Rakip oyuncu={sagdaki} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
 
       <div className="benim-ceza">
         <CezaYigini kartlar={ben.ceza} carpan={d.carpan} puanTarafi="sol" />
@@ -140,7 +185,7 @@ export function Masa() {
         ))}
         {elimdeIkiVar && <Kalkan />}
       </div>
-      {d.siradaki === 0 && <div className="benim-sira" />}
+      {d.asama === 'oyun' && d.sira === 0 && <div className="benim-sira" />}
 
       <button className="yuvarlak-dugme konusma" aria-label="Konuşma">
         <svg viewBox="0 0 24 24" width="22" height="22">
@@ -154,14 +199,28 @@ export function Masa() {
       {testAcik && (
         <div className="test-panel">
           <TestSecenegi ad="Botlar kendi oynasın" acik={botlarOtomatik} degistir={setBotlarOtomatik} />
+          <button className="test-satir" onClick={sonrakiHiz}>
+            Bot hızı <span className="test-deger">{botHizi}</span>
+          </button>
+          <button className="test-satir" onClick={yeniOyunBaslat}>Yeni oyun</button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
         </div>
       )}
-      <Deste kalan={d.desteKalan} />
+      <Deste kalan={d.deste.length} />
 
-      {puanlarAcik && <PuanPenceresi kapat={() => setPuanlarAcik(false)} />}
+      {puanlarAcik && (
+        <PuanPenceresi
+          d={d}
+          kapat={() => setPuanlarAcik(false)}
+          sonrakiEl={() => {
+            setD(sonrakiEl(d))
+            setPuanlarAcik(false)
+          }}
+          yeniOyun={yeniOyunBaslat}
+        />
+      )}
     </div>
   )
 }

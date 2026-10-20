@@ -9,7 +9,7 @@
 - **Teknoloji:** PWA; **React + TypeScript + Vite**. GitHub Pages'te yayın, kiralık sunucu yok (bkz. Bölüm 9).
 - **Araçlar:** Claude Code. Bu projede Google AI Studio uyumu **aranmıyor** (kullanıcı kararı: AI Studio bu projenin altından kalkamaz).
 - **Ekran:** Telefon **yatay** tutulur.
-- **Görünüm:** Klasik iskambil kartları (kahvede bunlarla oynanıyor). Kart resimleri: Wikimedia Commons, "SVG English pattern playing cards", Dmitry Fomin, **CC0** (kamu malı). Dosyalar `src\tema\varsayilan\kartlar\` içinde, `kupa-13.svg` gibi adlarla; resmi olmayan kart kodla çizilir. Kart oranı 2:3. Bütün görseller tema klasöründe; kullanıcı ileride kendi kart/masa/VFX dosyalarını (Photoshop, Blender) aynı isimlerle koyarak değiştirebilir. Bunun için bir "görsel rehberi" hazırlanacak.
+- **Görünüm:** Kodla çizilen klasik iskambil kartları (kahvede bunlarla oynanıyor). Gerçek resimli bir set (Wikimedia, CC0) denendi; "fazla gerçek, sıkıcı" bulunup bırakıldı. Renkler `src\tema\varsayilan.css` içinde; geliştirme seçenekleri sağ alttaki "Test" menüsünde. Bütün görseller tema klasöründe; kullanıcı ileride kendi kart/masa/VFX dosyalarını (Photoshop, Blender) aynı isimlerle koyarak değiştirebilir. Bunun için bir "görsel rehberi" hazırlanacak.
 - **Yol haritası:**
   1. Masa taslağı (sadece görsel, oynanmaz)
   2. Kural motoru (ekransız) + botların birbirine karşı otomatik testi

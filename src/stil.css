@@ -100,7 +100,8 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .rakip-avuc.sag { right: 8px; }
 .rakip-avuc.sol.kirpik { left: -10px; }
 .rakip-avuc.sag.kirpik { right: -10px; }
-.yan-kart { position: relative; flex: none; }
+.yan-kart { position: relative; flex: none; touch-action: none; }
+.yan-kart.surukleniyor { z-index: 30; }
 .rakip-avuc.sol .yan-kart { transform-origin: 0 50%; }
 .rakip-avuc.sag .yan-kart { transform-origin: 100% 50%; }
 .yan-kart + .yan-kart { margin-top: -20px; }
@@ -130,9 +131,12 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 }
 .secim-arka { position: absolute; inset: 0; z-index: 15; }
 .ceza-secimi {
-  position: absolute; right: 84px; top: calc(50% + 44px); z-index: 16;
+  position: absolute; z-index: 16;
   display: flex; flex-direction: column; gap: 6px;
 }
+.ceza-secimi.yigin-1 { right: 84px; top: calc(50% + 44px); }
+.ceza-secimi.yigin-2 { left: 84px; top: calc(50% + 44px); }
+.ceza-secimi.yigin-0 { left: 194px; bottom: 104px; }
 .ceza-secimi button {
   padding: 6px 12px; border-radius: 14px; font-size: 13px; font-weight: 700;
   background: var(--vurgu); color: var(--rozet); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);

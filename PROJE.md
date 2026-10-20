@@ -9,9 +9,10 @@
 - **Sıradaki iş:** 3. adım, birleştirme → ilk oynanabilir sürüm. Parçalar (2026-10-20 kullanıcıyla kararlaştırıldı):
   - **3a ✅** Ekran motora bağlandı; botlar (Bot B, Bot C) oynuyor, "Sen" koltuğunu hep kullanıcı oynar; el sonu puan kağıdı + "Sonraki el", oyun sonu kazanan + "Yeni oyun". Test menüsünde "Bot hızı" (Hızlı 0,4 / Orta 1 / Yavaş 2 sn) ve "Yeni oyun".
   - **3b ✅** Sürükle-bırak (orta yığın, Mut kartı, kendi ceza yığını, sıradakinin ceza yığını); geçersizse kart sessizce döner; dokununca kart kalkar. Rakip ceza yığınına bırakınca yanında iki düğme: **"Üstüne yığ" / "İlerlet"**.
-  - **3c** "Botlar kendi oynasın" kapalıyken bot avuçlarını kullanıcı oynar.
+  - **3c ✅ (kullanıcı testi bekliyor)** "Botlar kendi oynasın" kapalıyken sırası gelen botun kartları sürüklenip oynanır; kurallar o botun gözünden (sıradakisi onun sağındaki). Sırası olmayanın kartı geri döner.
+  - **Akıllı bot ✅** (`src\oyunot.ts`, `akilliBotHamlesi`): her hamleyi dener, rakiplere giden puan − kendi ceza artışı en yüksek olanı seçer; yakalama yoksa en az puanlı kartı ortaya atar. Bilerek sade tutuldu (kullanıcı: "kodlara boğma, testlerde iş görsün, hamle kaçırmasın"). Rastgele botlara karşı 100 oyunda %60 kazanıyor (şans %33). Ekrandaki botlar bunu kullanır; ekransız simülasyon rastgele botla.
   - **3d — ertelendi (2026-10-20):** 4 kişilik masa ekranı yapılmıyor; oyun %95 3 kişi oynanacak. Motor 4 kişiyi destekliyor, gerekirse sadece ekran eklenir. Konuşulan düzen seçenekleri: A) Mut kartları orta yığının yanına iner, üst oyuncu üst kenara oturur (öneri); B) Mut üstte kalır, üst oyuncu üstünde ince şerit; C) Mut kartları köşeye küçülür. Seçenekler Test menüsünde denenip seçilecek. El sayısı 10. Asıl başlangıç ekranı 5. adımda.
-  - **Sıra:** 3c → 3. adım biter.
+  - **Sıra:** 3c kullanıcı testi → 3. adım biter → `/code-review` önerilecek → 4. adım.
   - **3e ✅ (2026-10-20 kullanıcı testinden geçti)** Animasyonlar (`src\ekran\animasyon.tsx`): her geçişte kartların eski/yeni yeri ölçülür, yer değiştirenler uçar. Bot önce kartını kaldırır; yakalamada kart eşleştiği yere iner, duraklar, eşleşenlerle birlikte uçar; tur başında dağıtım, el sonunda kartlar desteye toplanır. Ceza puanı değişince parlar (aç/kapa yok, gerekirse kaldırılır). Test menüsünde "Animasyon hızı" (Hızlı/Orta/Yavaş) ve "Yakalamada duraklama" (Kısa/Uzun): **şimdilik ikisi de kalıyor, karar sonra.** Cila sonraya: avuçtan kart gidince boşluğun yumuşak kapanması, orta yığın ve Mut kartlarının kayması.
   - 3b kullanıcı testinden geçti (2026-10-20).
   - **Sonra düzeltilecek:** Sıra bendeyken avucun altındaki sarı ışık çizgisini kullanıcı beğenmedi (yeni görünüm seçenekleri Test menüsünde denenecek).
@@ -38,7 +39,7 @@
 - **Kod yapısı:**
   - `src\oyun\kart.ts`: kart türleri, puanlar, kart oranı (1.4)
   - `src\oyun\motor.ts`: kural motoru. `yeniOyun`, `gecerliHamleler`, `hamleYap` (yeni durum döndürür, eskisi değişmez), `sonrakiEl`. Yığınlarda dizinin sonu = en üst kart. Hamle tipleri: ortayaAt, mutEslestir, cezaBosalt, ustuneYig, alIlerlet.
-  - `src\oyunot.ts`: rastgele bot. `src\oyunastgele.ts`: tohumlu rastgele (aynı tohum → aynı oyun, hata tekrar üretilebilir).
+  - `src\oyunot.ts`: rastgele bot (`botHamlesi`) ve akıllı bot (`akilliBotHamlesi`); `bot.test.ts` akıllıyı rastgelelere karşı oynatır. `src\oyunastgele.ts`: tohumlu rastgele (aynı tohum → aynı oyun, hata tekrar üretilebilir).
   - `src\oyun\motor.test.ts` (kural testleri), `src\oyun\simulasyon.test.ts` (botlar birbirine karşı)
   - `src\ekran\`: `Sahne` (844 × 390 sahneyi ekrana sığdırır), `Masa` (yerleşim, puan kağıdı penceresi, Test menüsü), `Kart`, `Yiginlar` (orta yığın, ceza yığını, deste)
   - `src\stil.css`: yerleşim; `src\tema\varsayilan.css`: renkler

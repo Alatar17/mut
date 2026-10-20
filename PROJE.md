@@ -5,7 +5,10 @@
 
 ## 0. Proje Durumu
 - **Aşama:** 2. adım (kural motoru, ekransız) bitti — 2026-10-20. Motorda: dağıtım, orta yığına atma/eşleşme, Mut eşleştirme (zorunluluk dahil), kendi ceza yığınını boşaltma, üstüne yığ, al ve ilerlet, hedef her zaman sıradaki, sıra kuralı (6.6), tur/el döngüsü, puan ve temiz ön. Özel kartların etkisi ve seri yok (4. adım); şimdilik hepsi sadece puanlı kart. Rastgele bot var; botlar 3 ve 4 kişilik 100'er oyun (10 el) birbirine karşı oynatılıp her hamlede kural denetleniyor.
-- **Sıradaki iş:** 3. adım, birleştirme: masa ekranını motora bağla (`ornekDurum.ts` kalkar), sürükle-bırak, botların oynaması, "Botlar kendi oynasın" anahtarı → ilk oynanabilir sürüm.
+  - `/code-review` yapıldı, düzeltildi: oyuncu sayısı denetimi (sadece 3–4), Hamle tipi sadeleşti, testlerde 52 kart tutarlılığı, simülasyonda 6.6 eşitlik kuralı tam denetleniyor. Bilerek bırakılanlar: hız (geçerli hamleler her hamlede birkaç kez hesaplanıyor, her hamlede tüm durum kopyalanıyor; test ~12 sn, sorun olursa ele alınır) ve `ornekDurum.ts`'deki çift oyuncu tipi (3. adımda kalkacak).
+- **Sıradaki iş:** 3. adım, birleştirme: masa ekranını motora bağla (`ornekDurum.ts` kalkar), sürükle-bırak, botların oynaması, "Botlar kendi oynasın" anahtarı → ilk oynanabilir sürüm. **Kodlamadan önce kullanıcıyla konuşulacak** (kullanıcı yeni sohbette 3. adımı konuşmak istedi).
+  - Görsel kararlar (sürüklenen kartın görünüşü, bot hızı/duraklama, el sonunda ne çıkacağı vb.) kafaya göre seçilmez: seçenekler Test menüsünde geçişli konur, kullanıcı seçer, sonra kalıcı yapılır. Kullanıcı yokken çalışılırsa varsayılan seçilip devam edilir, kararlar sonradan toplu verilir.
+  - **Dikkat:** Kullanıcı aynı anda başka bir sohbette de kod yazdırıyor ve o sohbet tarayıcı panelini/dev sunucusunu kullanıyor. O sohbet de bu klasörde çalışıyorsa aynı dosyalara yazma riski var: önce sor; gerekirse bekle ya da worktree (ayrı çalışma kopyası) kullan. Commit'te sadece kendi değiştirdiğin dosyaları ekle.
 - **Bekleyen:** `src\tema\varsayilan\` klasörü (kullanılmayan 52 kart resmi) silinecek; Windows yönetici izni penceresi çıktı, kullanıcı elle silebilir. Silinince commit atılmalı.
 - **Klasör:** `C:\Users\PC\Desktop\Claude\Projeler\MUT`
 - **Teknoloji:** PWA; **React + TypeScript + Vite**. GitHub Pages'te yayın, kiralık sunucu yok (bkz. Bölüm 9).

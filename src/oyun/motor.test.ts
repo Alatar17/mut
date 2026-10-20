@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { kart, type Deger, type Kart } from './kart'
-import { gecerliHamleler, hamleYap, siradakiOyuncu, yeniOyun, type Durum, type Hamle } from './motor'
+import { gecerliHamleler, hamleYap, siradakiOyuncu, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
 
 // Kartı kısaca yazmak için: k(5) = 5 maça. Renk sadece kartları ayırt etmek için.
 const k = (deger: number, renk: Kart['renk'] = 'maca') => kart(deger as Deger, renk)
 
-// Elle kurulmuş bir an. Deste boş değil ki hamleden sonra el bitmesin.
+const ad = (k: Kart) => `${k.renk}${k.deger}`
+
+// Elle kurulmuş bir an. Kullanılmayan kartlar destede durur (toplam hep 52);
+// desteBos ise orta yığının altına konur ki son hamleyle el bitsin.
 function durum(p: {
   avuclar: Kart[][]
   cezalar?: Kart[][]
@@ -13,6 +16,7 @@ function durum(p: {
   orta?: Kart[]
   sira?: number
   elBaslatani?: number
+  desteBos?: boolean
 }): Durum {
   const d = yeniOyun({ isimler: p.avuclar.map((_, i) => 'ABCD'[i]), toplamEl: 1, tohum: 1 })
   d.oyuncular.forEach((o, i) => {
@@ -23,6 +27,13 @@ function durum(p: {
   d.orta = p.orta ?? []
   d.elBaslatani = p.elBaslatani ?? 0
   d.sira = p.sira ?? 0
+  const kullanilan = [...p.avuclar.flat(), ...(p.cezalar?.flat() ?? []), ...d.mut, ...d.orta]
+  expect(new Set(kullanilan.map(ad)).size).toBe(kullanilan.length)
+  const kalan = yeniDeste().filter((k) => !kullanilan.some((u) => ad(u) === ad(k)))
+  if (p.desteBos) {
+    d.deste = []
+    d.orta = [...kalan, ...d.orta]
+  } else d.deste = kalan
   return d
 }
 
@@ -107,9 +118,10 @@ describe('ceza yığınları', () => {
 })
 
 describe('sıra (6.6)', () => {
-  const avuc = (n: number) => Array.from({ length: n }, () => k(4))
-  const sira = (sayilar: number[], baslatan = 0) =>
-    siradakiOyuncu(durum({ avuclar: sayilar.map(avuc), elBaslatani: baslatan }))
+  const sira = (sayilar: number[], baslatan = 0) => {
+    const havuz = yeniDeste()
+    return siradakiOyuncu(durum({ avuclar: sayilar.map((n) => havuz.splice(0, n)), elBaslatani: baslatan }))
+  }
   it('normal akış', () => {
     expect(sira([4, 4, 4])).toBe(0)
     expect(sira([3, 4, 4])).toBe(1)
@@ -127,8 +139,12 @@ describe('sıra (6.6)', () => {
 
 describe('el sonu ve puan', () => {
   it('son kart oynanınca puanlar yazılır, boş ceza yığını −100', () => {
-    const d0 = durum({ avuclar: [[k(6)], [], []], cezalar: [[], [k(3), k(11)], [k(5)]] })
-    d0.deste = []
+    const d0 = durum({
+      avuclar: [[k(6)], [], []],
+      cezalar: [[], [k(3), k(11)], [k(5)]],
+      orta: [k(13, 'kupa')],
+      desteBos: true,
+    })
     const d = hamleYap(d0, { tip: 'ortayaAt', kart: 0 })
     expect(d.puanKagidi).toEqual([[-100, 55, 5]])
     expect(d.asama).toBe('oyunSonu')
@@ -141,6 +157,11 @@ describe('el sonu ve puan', () => {
     expect(d.oyuncular.map((o) => o.avuc.length)).toEqual([4, 4, 4])
     expect(d.mut).toEqual(d0.mut)
   })
+})
+
+it('3 ya da 4 kişi dışında oyun kurulmaz', () => {
+  expect(() => yeniOyun({ isimler: ['A', 'B'], toplamEl: 1 })).toThrow()
+  expect(() => yeniOyun({ isimler: ['A', 'B', 'C', 'D', 'E'], toplamEl: 1 })).toThrow()
 })
 
 it('geçersiz hamle reddedilir, eski durum değişmez', () => {

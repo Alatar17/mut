@@ -30,8 +30,13 @@ function denetle(d: Durum, onceki: Durum, h: Hamle) {
   if (h.tip !== 'mutEslestir') expect(d.mut.length).toBe(onceki.mut.length)
 
   if (d.asama === 'oyun') {
+    // 6.6: en çok kartı olanlardan, elin başlatanından sağa doğru ilk olan.
+    const n = d.oyuncular.length
     const enCok = Math.max(...d.oyuncular.map((o) => o.avuc.length))
-    expect(d.oyuncular[d.sira].avuc.length).toBe(enCok)
+    const beklenen = Array.from({ length: n }, (_, j) => (d.elBaslatani + j) % n).find(
+      (i) => d.oyuncular[i].avuc.length === enCok,
+    )
+    expect(d.sira).toBe(beklenen)
     expect(enCok).toBeGreaterThan(0)
     expect(gecerliHamleler(d).length).toBeGreaterThan(0)
   }

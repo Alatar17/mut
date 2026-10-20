@@ -30,13 +30,18 @@ export interface Durum {
   tohum: number
 }
 
+export type HamleTipi =
+  | 'ortayaAt' // orta yığına at (üstteki eşleşirse yakalanır)
+  | 'mutEslestir' // Mut kartlarıyla eşleştir (aynı sayılı Mut kartlarının hepsi)
+  | 'cezaBosalt' // kendi ceza yığınının üstünü eşleştirip gönder
+  | 'ustuneYig' // sıradakinin ceza yığınının üstüne ekle
+  | 'alIlerlet' // sıradakinin ceza yığınının üstünü alıp onun sıradakine gönder
+
 // kart = avuçtaki sırası
-export type Hamle =
-  | { tip: 'ortayaAt'; kart: number } // orta yığına at (üstteki eşleşirse yakalanır)
-  | { tip: 'mutEslestir'; kart: number } // Mut kartlarıyla eşleştir (aynı sayılı Mut kartlarının hepsi)
-  | { tip: 'cezaBosalt'; kart: number } // kendi ceza yığınının üstünü eşleştirip gönder
-  | { tip: 'ustuneYig'; kart: number } // sıradakinin ceza yığınının üstüne ekle
-  | { tip: 'alIlerlet'; kart: number } // sıradakinin ceza yığınının üstünü alıp onun sıradakine gönder
+export interface Hamle {
+  tip: HamleTipi
+  kart: number
+}
 
 const RENKLER: Renk[] = ['maca', 'kupa', 'karo', 'sinek']
 
@@ -59,6 +64,8 @@ function ustGrubuAl(yigin: Kart[]): Kart[] {
 }
 
 export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?: number }): Durum {
+  const n = secenek.isimler.length
+  if (n !== 3 && n !== 4) throw new Error(`Mut 3 ya da 4 kişiyle oynanır (${n} verildi)`)
   const d: Durum = {
     oyuncular: secenek.isimler.map((ad) => ({ ad, avuc: [], ceza: [] })),
     mut: [],
@@ -67,7 +74,7 @@ export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?:
     el: 1,
     toplamEl: secenek.toplamEl,
     tur: 1,
-    toplamTur: 48 / (4 * secenek.isimler.length),
+    toplamTur: 48 / (4 * n),
     elBaslatani: 0,
     sira: 0,
     carpan: 1,

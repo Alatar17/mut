@@ -43,8 +43,6 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 1px; border-radius: 4px; font-size: 13px;
 }
-.kart-resimli { background: none; border: none; border-radius: 4px; }
-.kart-resimli img { display: block; width: 100%; height: 100%; }
 .kart-arka {
   background: repeating-linear-gradient(45deg, var(--kart-arka-1) 0 4px, var(--kart-arka-2) 4px 8px);
   border: 2px solid var(--kart-yuz);
@@ -67,7 +65,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .ceza-yigini.puan-sol { flex-direction: row-reverse; }
 .puan { min-width: 26px; text-align: center; color: var(--puan); font-size: 15px; font-weight: 800; }
 
-.orta-yigin { position: absolute; left: 50%; top: 153px; transform: translateX(-50%); }
+.orta-yigin { position: absolute; left: 50%; top: 156px; transform: translateX(-50%); }
 .deste { position: absolute; right: 22px; bottom: 18px; }
 
 /* ---- Mut kartları ve aktif kurallar ---- */
@@ -84,14 +82,14 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 
 /* ---- Rakipler (masanın sol/sağ kenarı) ---- */
 .rakip-ad {
-  position: absolute; top: 92px; padding: 3px 10px; border-radius: 12px;
+  position: absolute; padding: 3px 10px; border-radius: 12px;
   font-size: 12px; font-weight: 700; background: var(--panel);
 }
 .rakip-ad.sol { left: 10px; }
 .rakip-ad.sag { right: 10px; }
 .rakip-ad.sirada { background: var(--vurgu); color: var(--rozet); box-shadow: 0 0 12px var(--vurgu); }
 
-.rakip-avuc { position: absolute; top: 122px; display: flex; flex-direction: column; }
+.rakip-avuc { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; }
 .rakip-avuc.sol { left: 8px; }
 .rakip-avuc.sag { right: 8px; }
 .rakip-avuc.sol.kirpik { left: -10px; }
@@ -107,12 +105,12 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .yan-yigin > .yigin-govde { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(90deg); }
 .yan-yigin.sag > .yigin-govde { transform: translate(-50%, -50%) rotate(-90deg); }
 
-.rakip-ceza { position: absolute; top: 160px; }
+.rakip-ceza { position: absolute; top: 50%; transform: translateY(-50%); }
 .rakip-ceza.sol { left: 108px; }
 .rakip-ceza.sag { right: 108px; }
 
 /* ---- Ben ---- */
-.benim-ceza { position: absolute; top: 300px; left: 194px; }
+.benim-ceza { position: absolute; top: 302px; left: 194px; }
 .benim-avuc {
   position: absolute; bottom: -10px; left: calc(50% + 30px); transform: translateX(-50%);
   display: flex; align-items: flex-end;
@@ -148,10 +146,17 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   font-size: 13px; font-weight: 700; background: var(--panel); color: var(--yazi-soluk);
 }
 .test-dugme.acik { background: var(--vurgu); color: var(--rozet); }
-.botlar-dugme { right: 82px; }
-.kapat-dugme { right: 154px; }
-.bir-dugme { left: 66px; }
-.iki-dugme { left: 106px; }
+.test-dugme { right: 82px; }
+.test-panel {
+  position: absolute; right: 82px; bottom: 62px; z-index: 10; width: 250px; padding: 6px;
+  display: flex; flex-direction: column; gap: 2px; border-radius: 12px;
+  background: var(--masa-dis); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.test-satir {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px; border-radius: 8px; font-size: 13px; text-align: left;
+}
+.test-satir:hover { background: var(--panel); }
 
 /* ---- Puan kağıdı penceresi ---- */
 .pencere-arka {
@@ -169,3 +174,10 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .puan-kagidi th + th, .puan-kagidi td + td { border-left: 1px solid var(--kagit-cizgi); }
 .puan-kagidi td:first-child { text-align: left; color: var(--kagit-soluk); }
 .puan-kagidi tfoot td { font-weight: 800; border-top: 2px solid var(--kagit-yazi); border-bottom: none; }
+.anahtar { position: relative; flex: none; width: 30px; height: 16px; border-radius: 8px; background: var(--panel); }
+.anahtar::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--yazi-soluk); transition: left 0.15s;
+}
+.anahtar.acik { background: var(--vurgu); }
+.anahtar.acik::after { left: 16px; background: var(--rozet); }

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { kartBoyu } from '../oyun/kart'
 import { ornekDurum, type OyuncuDurumu } from '../ornekDurum'
 import { Kart } from './Kart'
+import { SAHNE_BOY } from './Sahne'
 import { CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 
 const AVUC_KART_EN = 60
@@ -22,11 +23,14 @@ function yanYelpaze(sira: number, adet: number, taraf: 'sol' | 'sag') {
     : `translateX(${kayma}px) rotate(${-fark * 4}deg)`
 }
 
-// Masanın sol/sağ kenarına oturmuş oyuncu: kartlar ona dönük, dikey dizili.
+const RAKIP_KART_BINME = 20
+
+// Masanın sol/sağ kenarına oturmuş oyuncu: kartlar ona dönük, dikey dizili, masanın ortası hizasında.
 function Rakip({ oyuncu, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu: OyuncuDurumu; sirada: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean }) {
+  const avucBoyu = RAKIP_KART_EN + (oyuncu.avuc.length - 1) * (RAKIP_KART_EN - RAKIP_KART_BINME)
   return (
     <>
-      <div className={`rakip-ad ${taraf}` + (sirada ? ' sirada' : '')}>{oyuncu.ad}</div>
+      <div className={`rakip-ad ${taraf}` + (sirada ? ' sirada' : '')} style={{ top: SAHNE_BOY / 2 - avucBoyu / 2 - 30 }}>{oyuncu.ad}</div>
       <div className={`rakip-avuc ${taraf}` + (kirpik ? ' kirpik' : '')}>
         {oyuncu.avuc.map((k, i) => (
           <div key={i} className="yan-kart" style={{ width: kartBoyu(RAKIP_KART_EN), height: RAKIP_KART_EN, transform: duz ? undefined : yanYelpaze(i, oyuncu.avuc.length, taraf) }}>
@@ -67,6 +71,15 @@ function PuanPenceresi({ kapat }: { kapat: () => void }) {
   )
 }
 
+// Geliştirme sırasında kullanılan ayarlar; oyun bitince Test menüsü kalkacak.
+function TestSecenegi({ ad, acik, degistir }: { ad: string; acik: boolean; degistir: (v: boolean) => void }) {
+  return (
+    <button className="test-satir" onClick={() => degistir(!acik)}>
+      {ad} <span className={'anahtar' + (acik ? ' acik' : '')} />
+    </button>
+  )
+}
+
 function Kalkan() {
   return (
     <button className="kalkan" aria-label="Kalkan">
@@ -82,11 +95,10 @@ export function Masa() {
   const [ben, sagdaki, soldaki] = d.oyuncular
   const elimdeIkiVar = ben.avuc.some(k => k.deger === 2)
   const [puanlarAcik, setPuanlarAcik] = useState(false)
+  const [testAcik, setTestAcik] = useState(false)
   const [botlarOtomatik, setBotlarOtomatik] = useState(true)
   const [botKartlariKapali, setBotKartlariKapali] = useState(false)
-  // Geçici karşılaştırma: açıkken bot kartları düz, kapalıyken yelpaze.
   const [botKartlariDuz, setBotKartlariDuz] = useState(true)
-  // Geçici karşılaştırma: açıkken bot kartları benimki gibi ekran kenarından kırpılır.
   const [botKartlariKirpik, setBotKartlariKirpik] = useState(false)
 
   return (
@@ -136,18 +148,17 @@ export function Masa() {
         </svg>
       </button>
 
-      <button className={'test-dugme bir-dugme' + (botKartlariDuz ? ' acik' : '')} onClick={() => setBotKartlariDuz(!botKartlariDuz)}>
-        1
+      <button className={'test-dugme' + (testAcik ? ' acik' : '')} onClick={() => setTestAcik(!testAcik)}>
+        Test
       </button>
-      <button className={'test-dugme iki-dugme' + (botKartlariKirpik ? ' acik' : '')} onClick={() => setBotKartlariKirpik(!botKartlariKirpik)}>
-        2
-      </button>
-      <button className={'test-dugme kapat-dugme' + (botKartlariKapali ? ' acik' : '')} onClick={() => setBotKartlariKapali(!botKartlariKapali)}>
-        Kapat
-      </button>
-      <button className={'test-dugme botlar-dugme' + (botlarOtomatik ? ' acik' : '')} onClick={() => setBotlarOtomatik(!botlarOtomatik)}>
-        Botlar
-      </button>
+      {testAcik && (
+        <div className="test-panel">
+          <TestSecenegi ad="Botlar kendi oynasın" acik={botlarOtomatik} degistir={setBotlarOtomatik} />
+          <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
+          <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
+          <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
+        </div>
+      )}
       <Deste kalan={d.desteKalan} />
 
       {puanlarAcik && <PuanPenceresi kapat={() => setPuanlarAcik(false)} />}

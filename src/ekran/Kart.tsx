@@ -1,27 +1,15 @@
 import { degerYazisi, kartBoyu, kirmiziMi, renkSembolu, resimliMi, type Kart as KartTipi } from '../oyun/kart'
 
-// Tema klasöründeki kart resimleri, "kupa-13.svg" gibi adlarla. Resmi olmayan kart kodla çizilir.
-const resimler = import.meta.glob('../tema/varsayilan/kartlar/*.svg', { eager: true, query: '?url', import: 'default' }) as Record<string, string>
-const resimAdresi = (k: KartTipi) => resimler[`../tema/varsayilan/kartlar/${k.renk}-${k.deger}.svg`]
-
 interface Props {
   kart?: KartTipi
   genislik: number
   kapali?: boolean
 }
 
+// Kodla çizilen klasik iskambil kartı. Tema resimleri gelince burası resim gösterecek.
 export function Kart({ kart, genislik, kapali }: Props) {
   const stil = { width: genislik, height: kartBoyu(genislik), fontSize: genislik * 0.27 }
   if (kapali || !kart) return <div className="kart kart-arka" style={stil} />
-
-  const resim = resimAdresi(kart)
-  if (resim) {
-    return (
-      <div className="kart kart-resimli" style={stil}>
-        <img src={resim} alt="" draggable={false} />
-      </div>
-    )
-  }
 
   const sembol = renkSembolu(kart.renk)
   const yazi = degerYazisi(kart.deger)

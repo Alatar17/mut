@@ -4,8 +4,8 @@
 > İşaretler: ❓ = henüz netleşmedi, 🔔 = sonra hatırlatılacak. Hepsi Bölüm 11'de toplu.
 
 ## 0. Proje Durumu
-- **Aşama:** 1. adım (masa taslağı) bitti — 2026-10-20.
-- **Sıradaki iş:** 2. adım, kural motoru (ekransız): dağıtım, orta yığına atma, eşleşme, Mut kartlarıyla eşleştirme, hedef kuralı (6.2), puan, el/tur döngüsü, eşit olmayan avuçlar (6.6). Özel kartlar yok (4. adım). Rastgele hamle yapan bot + botları birbirine karşı çok el oynatan otomatik test. Sonunda kullanıcıya kısa rapor.
+- **Aşama:** 2. adım (kural motoru, ekransız) bitti — 2026-10-20. Motorda: dağıtım, orta yığına atma/eşleşme, Mut eşleştirme (zorunluluk dahil), kendi ceza yığınını boşaltma, üstüne yığ, al ve ilerlet, hedef her zaman sıradaki, sıra kuralı (6.6), tur/el döngüsü, puan ve temiz ön. Özel kartların etkisi ve seri yok (4. adım); şimdilik hepsi sadece puanlı kart. Rastgele bot var; botlar 3 ve 4 kişilik 100'er oyun (10 el) birbirine karşı oynatılıp her hamlede kural denetleniyor.
+- **Sıradaki iş:** 3. adım, birleştirme: masa ekranını motora bağla (`ornekDurum.ts` kalkar), sürükle-bırak, botların oynaması, "Botlar kendi oynasın" anahtarı → ilk oynanabilir sürüm.
 - **Bekleyen:** `src\tema\varsayilan\` klasörü (kullanılmayan 52 kart resmi) silinecek; Windows yönetici izni penceresi çıktı, kullanıcı elle silebilir. Silinince commit atılmalı.
 - **Klasör:** `C:\Users\PC\Desktop\Claude\Projeler\MUT`
 - **Teknoloji:** PWA; **React + TypeScript + Vite**. GitHub Pages'te yayın, kiralık sunucu yok (bkz. Bölüm 9).
@@ -22,10 +22,13 @@
 
 ### 0.1 Çalışma bilgileri
 - **Çalıştırma:** `npm run dev` → http://localhost:5173. Claude Code'da tarayıcı paneli için `.claude\launch.json` içinde "mut" adlı ayar var. Telefon boyutunda bakmak için panel 844 × 390'a ayarlanır.
-- **Kontrol:** `npm run kontrol` (TypeScript hata denetimi). `npm run build` yayın dosyalarını `dist\`'e üretir (henüz kullanılmadı).
+- **Kontrol:** `npm run kontrol` (TypeScript hata denetimi). `npm test` kural testleri + bot simülasyonu (Vitest, ~12 sn). `npm run build` yayın dosyalarını `dist\`'e üretir (henüz kullanılmadı).
 - **Git:** Yerel depo var, GitHub'a gönderilmedi. Her test edilmiş adımda Türkçe mesajlı commit atılır. Kimlik sadece bu depoda ayarlı.
 - **Kod yapısı:**
   - `src\oyun\kart.ts`: kart türleri, puanlar, kart oranı (1.4)
+  - `src\oyun\motor.ts`: kural motoru. `yeniOyun`, `gecerliHamleler`, `hamleYap` (yeni durum döndürür, eskisi değişmez), `sonrakiEl`. Yığınlarda dizinin sonu = en üst kart. Hamle tipleri: ortayaAt, mutEslestir, cezaBosalt, ustuneYig, alIlerlet.
+  - `src\oyunot.ts`: rastgele bot. `src\oyunastgele.ts`: tohumlu rastgele (aynı tohum → aynı oyun, hata tekrar üretilebilir).
+  - `src\oyun\motor.test.ts` (kural testleri), `src\oyun\simulasyon.test.ts` (botlar birbirine karşı)
   - `src\ornekDurum.ts`: masa taslağı için elle yazılmış sabit oyun anı (kural motoru gelince kalkacak)
   - `src\ekran\`: `Sahne` (844 × 390 sahneyi ekrana sığdırır), `Masa` (yerleşim, puan kağıdı penceresi, Test menüsü), `Kart`, `Yiginlar` (orta yığın, ceza yığını, deste)
   - `src\stil.css`: yerleşim; `src\tema\varsayilan.css`: renkler
@@ -387,7 +390,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 ### Açık sorular
 1. 🔔 **Hatırlatma:** Kullanıcının aklındaki bir fikir var, sonra hatırlatılacak (geçersiz hamle uyarısı konuşulurken).
 2. 🔔 **Hatırlatma:** İlk sürümden sonra geçersiz hamle uyarı yazısını ekle (9.2).
-3. **El sonu:** Deste bitince orta yığında kalan kartlar kimsenin puanına sayılmadan atılıyor (bomba yoksa) — onaylanacak.
+3. **El sonu:** Deste bitince orta yığında kalan kartlar kimsenin puanına sayılmadan atılıyor (bomba yoksa) — geçici karar olarak motorda böyle (2026-10-20), kahve testinde onaylanacak.
 4. **Eksi el hedefi:** Şimdilik herkesin ceza yığınından alınabilir; emin değiliz (6.7).
 5. **Mut kartı çakışmaları:** 3↔As ve 10↔As dışındaki çakışmalar konuşulacak (5.1).
 6. **Tavşan deliği (6.10):** Kapatma ve ekleme sıra dışı da yapılabilir mi? Deliğe gönderim 2 ile bloklanabilir mi?

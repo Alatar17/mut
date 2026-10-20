@@ -4,7 +4,9 @@
 > İşaretler: ❓ = henüz netleşmedi, 🔔 = sonra hatırlatılacak. Hepsi Bölüm 11'de toplu.
 
 ## 0. Proje Durumu
-- **Aşama:** 1. adım (masa taslağı) bitti — 2026-10-20. Sıradaki: 2. adım (kural motoru).
+- **Aşama:** 1. adım (masa taslağı) bitti — 2026-10-20.
+- **Sıradaki iş:** 2. adım, kural motoru (ekransız): dağıtım, orta yığına atma, eşleşme, Mut kartlarıyla eşleştirme, hedef kuralı (6.2), puan, el/tur döngüsü, eşit olmayan avuçlar (6.6). Özel kartlar yok (4. adım). Rastgele hamle yapan bot + botları birbirine karşı çok el oynatan otomatik test. Sonunda kullanıcıya kısa rapor.
+- **Bekleyen:** `src\tema\varsayilan\` klasörü (kullanılmayan 52 kart resmi) silinecek; Windows yönetici izni penceresi çıktı, kullanıcı elle silebilir. Silinince commit atılmalı.
 - **Klasör:** `C:\Users\PC\Desktop\Claude\Projeler\MUT`
 - **Teknoloji:** PWA; **React + TypeScript + Vite**. GitHub Pages'te yayın, kiralık sunucu yok (bkz. Bölüm 9).
 - **Araçlar:** Claude Code. Bu projede Google AI Studio uyumu **aranmıyor** (kullanıcı kararı: AI Studio bu projenin altından kalkamaz).
@@ -17,6 +19,27 @@
   4. Özel kartlar teker teker: seri → 2 → 8 → Kız → Vale → As → 3 → 10 → Papaz → 7
   5. Tek telefonda sıra ile, yayın, herkes kendi telefonundan, kahve testi
 - **Doküman kuralı:** Her kavram için Bölüm 3'teki tek isim kullanılır.
+
+### 0.1 Çalışma bilgileri
+- **Çalıştırma:** `npm run dev` → http://localhost:5173. Claude Code'da tarayıcı paneli için `.claude\launch.json` içinde "mut" adlı ayar var. Telefon boyutunda bakmak için panel 844 × 390'a ayarlanır.
+- **Kontrol:** `npm run kontrol` (TypeScript hata denetimi). `npm run build` yayın dosyalarını `dist\`'e üretir (henüz kullanılmadı).
+- **Git:** Yerel depo var, GitHub'a gönderilmedi. Her test edilmiş adımda Türkçe mesajlı commit atılır. Kimlik sadece bu depoda ayarlı.
+- **Kod yapısı:**
+  - `src\oyun\kart.ts`: kart türleri, puanlar, kart oranı (1.4)
+  - `src\ornekDurum.ts`: masa taslağı için elle yazılmış sabit oyun anı (kural motoru gelince kalkacak)
+  - `src\ekran\`: `Sahne` (844 × 390 sahneyi ekrana sığdırır), `Masa` (yerleşim, puan kağıdı penceresi, Test menüsü), `Kart`, `Yiginlar` (orta yığın, ceza yığını, deste)
+  - `src\stil.css`: yerleşim; `src\tema\varsayilan.css`: renkler
+
+### 0.2 Masa düzeni (1. adımda kullanıcıyla birlikte belirlendi)
+- **Sahne:** 844 × 390, yatay. Telefon dik tutulursa "Telefonu yan çevir" yazısı çıkar.
+- **Ben (alt):** Avuç ortanın biraz sağında, hafif yelpaze, kartlar alttan biraz ekran dışında. Ceza yığınım avucun solunda, puanı yığının solunda. Sıra bendeyse avucun altında sarı ışık çizgisi. Elimde 2 varsa avucun sağında kalkan.
+- **Botlar (sol/sağ kenar):** Kartlar oyuncuya dönük, dikey sütun, masanın dikey ortasına hizalı. Ceza yığınları önlerinde, yan dönük. İsim etiketi avucun üstünde; sıra ondaysa sarı parlar.
+- **Orta:** Üstte Mut kartları (kutu içinde, yazısız), tam ortada orta yığın (üstteki 3 kart kaydırılmış + kart sayısı rozeti).
+- **Köşeler:** Sol üst: puan kağıdı ikonu ve yanında aktif kurallar (Serbest el, ×2). Sağ üst: "2/10  2. tur". Sol alt: konuşma butonu. Sağ alt: deste ve solunda "Test" butonu.
+- **Kart boyları (en × boy):** Avucum 60 × 84, botların avucu 56 × 78, orta yığın / ceza yığınları / Mut 56 × 78, deste 42 × 59.
+- **J, Q, K:** Ortada küçük, ince bir harf (figür yok).
+- **Puan kağıdı penceresi:** Beyaz kağıt, mavi tükenmez havası; şimdilik uydurma rakamlar.
+- Kullanıcının bu adımda beğenmediği şeyler: masa ortasında her şeyin alt alta sıkışması, avuç etrafında çerçeve, gerçekçi resimli kartlar, J/Q/K'nin büyük harfi.
 
 ## 1. Genel Bakış
 - **Oyunun adı:** Mut
@@ -306,7 +329,8 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 ### 9.1 Test modu ve botlar (karar: 2026-10-20)
 - Geliştirme sırasında oyun tek ekranda oynanır: kullanıcı bir oyuncudur, diğer koltuklarda **bot** (bilgisayar oyuncusu) oturur.
 - **Herkesin avucu açık görünür** (test için).
-- **"Botlar otomatik" butonu:**
+- **"Test" menüsü (sağ alt, deste yanında; oyun bitince kalkacak):** Anahtarlı seçenekler: "Botlar kendi oynasın", "Bot kartlarını kapat" (ters çevirir), "Bot kartları yelpaze", "Bot kartları kenardan taşsın". Son ikisi görünüm karşılaştırması için; kullanıcı karar verince kalıcı yapılıp kaldırılacak. Şimdilik sadece görünüm değiştiriyorlar, oyun yok.
+- **"Botlar kendi oynasın" anahtarı:**
   - **Açık:** Botlar kendi hamlelerini kendileri yapar.
   - **Kapalı:** Botların hamlelerini de kullanıcı yapar; sırası gelen avuç kullanıcı tarafından oynanır. Sıra dışı kararlar (blok vb.) da kullanıcıya bırakılır.
 - **Bot zekâsı:** İlk sürümde basit — kurallara uygun hamlelerden birini rastgele seçer. Sonra akıllandırılabilir (en az puanlıyı hedef alma, 2 ile blok yapma vb.).

@@ -1,0 +1,108 @@
+// Kart animasyonları: her geçişte kartların eski ve yeni yeri ölçülür, yer değiştirenler
+// masanın üstünde "uçan kart" olarak eski yerinden yenisine kayar. Uçuş bitene kadar
+// kartın asıl yeri görünmez tutulur (yerini korur, böylece hedef konumu ölçülebilir).
+import { createContext, useContext, useLayoutEffect, useRef } from 'react'
+import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
+import type { Durum } from '../oyun/motor'
+import { Kart } from './Kart'
+import { SAHNE_EN } from './Sahne'
+
+export const kartKimligi = (k: KartTipi) => `${k.renk}-${k.deger}`
+
+export const GizliKartlar = createContext<ReadonlySet<string>>(new Set())
+export const useGizliKartlar = () => useContext(GizliKartlar)
+
+// Her kartın yeri: "avuc:<oyuncu>", "ceza:<oyuncu>", "orta", "mut", "deste".
+// Sıra, yığınlarda alttan üste doğrudur (uçan kartlar da bu sırayla üst üste biner).
+export function kartYerleri(d: Durum): Map<string, string> {
+  const yerler = new Map<string, string>()
+  const ekle = (kartlar: KartTipi[], yer: string) => kartlar.forEach(k => yerler.set(kartKimligi(k), yer))
+  ekle(d.deste, 'deste')
+  ekle(d.mut, 'mut')
+  ekle(d.orta, 'orta')
+  d.oyuncular.forEach((o, i) => {
+    ekle(o.ceza, `ceza:${i}`)
+    ekle(o.avuc, `avuc:${i}`)
+  })
+  return yerler
+}
+
+// Kartın ekrandaki yeri, masa koordinatlarında: merkez, dönüş açısı ve kart eni.
+export interface Konum { x: number; y: number; aci: number; en: number }
+
+// 0 = ben (alt), 1 = sağdaki, 2 = soldaki. Yan oturanların kartları ve yığınları yan döner.
+const yerinAcisi = (yer: string) => (yer.endsWith(':1') ? -90 : yer.endsWith(':2') ? 90 : 0)
+const yerinKartEni = (yer: string) => (yer === 'avuc:0' ? 60 : yer === 'deste' ? 42 : 56)
+
+export function konumOlc(masa: HTMLElement, id: string, yer: string): Konum {
+  const el = masa.querySelector(`[data-kart="${id}"]`) ?? masa.querySelector(`[data-yer="${yer}"]`)
+  const masaKutusu = masa.getBoundingClientRect()
+  const olcek = masaKutusu.width / SAHNE_EN
+  const kutu = el?.getBoundingClientRect() ?? masaKutusu
+  return {
+    x: (kutu.left + kutu.width / 2 - masaKutusu.left) / olcek,
+    y: (kutu.top + kutu.height / 2 - masaKutusu.top) / olcek,
+    aci: yerinAcisi(yer),
+    en: yerinKartEni(yer),
+  }
+}
+
+export interface Ucus {
+  kart: KartTipi
+  kaynak: Konum
+  hedef: Konum
+  sure: number
+  gecikme: number
+  kapali: boolean
+}
+
+export function UcanKart({ ucus }: { ucus: Ucus }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const { kaynak, hedef } = ucus
+  useLayoutEffect(() => {
+    const animasyon = ref.current!.animate(
+      [
+        { transform: `translate(${kaynak.x - hedef.x}px, ${kaynak.y - hedef.y}px) rotate(${kaynak.aci}deg) scale(${kaynak.en / hedef.en})` },
+        { transform: `rotate(${hedef.aci}deg)` },
+      ],
+      { duration: ucus.sure, delay: ucus.gecikme, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)', fill: 'both' },
+    )
+    return () => animasyon.cancel()
+  }, [ucus])
+  return (
+    <div
+      ref={ref}
+      className="ucan-kart"
+      style={{ left: hedef.x - hedef.en / 2, top: hedef.y - kartBoyu(hedef.en) / 2 }}
+    >
+      <Kart kart={ucus.kart} genislik={hedef.en} kapali={ucus.kapali} ucan />
+    </div>
+  )
+}
+
+export const bekle = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+// Dağıtımdan hemen önceki görüntü: avuçtaki (ve istenirse Mut) kartlar destede.
+export function dagitimOncesi(d: Durum, mutDahil: boolean): Durum {
+  const o = structuredClone(d)
+  const toplanan = o.oyuncular.flatMap(x => x.avuc)
+  if (mutDahil) toplanan.push(...o.mut)
+  o.deste.push(...toplanan.reverse())
+  o.oyuncular.forEach(x => (x.avuc = []))
+  if (mutDahil) o.mut = []
+  return o
+}
+
+// Dağıtım sırası (PROJE.md 5): başlatandan itibaren herkese birer, ilk turda sonra Mut'a bir; 4 kez.
+export function dagitimSirasi(d: Durum, mutDahil: boolean): string[] {
+  const n = d.oyuncular.length
+  const sira: string[] = []
+  for (let tekrar = 0; tekrar < 4; tekrar++) {
+    for (let j = 0; j < n; j++) {
+      const k = d.oyuncular[(d.elBaslatani + j) % n].avuc[tekrar]
+      if (k) sira.push(kartKimligi(k))
+    }
+    if (mutDahil && d.mut[tekrar]) sira.push(kartKimligi(d.mut[tekrar]))
+  }
+  return sira
+}

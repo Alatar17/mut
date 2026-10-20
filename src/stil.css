@@ -64,6 +64,12 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .ceza-yigini { display: flex; align-items: center; gap: 8px; }
 .ceza-yigini.puan-sol { flex-direction: row-reverse; }
 .puan { min-width: 26px; text-align: center; color: var(--puan); font-size: 15px; font-weight: 800; }
+.puan.vurgu { animation: puan-vurgu 0.7s ease-out; }
+@keyframes puan-vurgu {
+  0% { transform: scale(1.8); color: var(--yazi); text-shadow: 0 0 10px var(--puan); }
+  100% { transform: scale(1); }
+}
+.ucan-kart { position: absolute; z-index: 18; pointer-events: none; }
 
 .orta-yigin { position: absolute; left: 50%; top: 156px; transform: translateX(-50%); }
 .deste { position: absolute; right: 22px; bottom: 18px; }

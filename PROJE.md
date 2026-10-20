@@ -10,8 +10,11 @@
   - **3a ✅** Ekran motora bağlandı; botlar (Bot B, Bot C) oynuyor, "Sen" koltuğunu hep kullanıcı oynar; el sonu puan kağıdı + "Sonraki el", oyun sonu kazanan + "Yeni oyun". Test menüsünde "Bot hızı" (Hızlı 0,4 / Orta 1 / Yavaş 2 sn) ve "Yeni oyun".
   - **3b ✅** Sürükle-bırak (orta yığın, Mut kartı, kendi ceza yığını, sıradakinin ceza yığını); geçersizse kart sessizce döner; dokununca kart kalkar. Rakip ceza yığınına bırakınca yanında iki düğme: **"Üstüne yığ" / "İlerlet"**.
   - **3c** "Botlar kendi oynasın" kapalıyken bot avuçlarını kullanıcı oynar.
-  - **3d** 4 kişilik masa (üst koltuk yerleşimi henüz tasarlanmadı; seçenekler Test menüsünde denenecek) + Test menüsünde "3 kişi / 4 kişi". El sayısı 10. Asıl başlangıç ekranı 5. adımda.
-  - **3e** Kartların hedefe uçma animasyonları.
+  - **3d — ertelendi (2026-10-20):** 4 kişilik masa ekranı yapılmıyor; oyun %95 3 kişi oynanacak. Motor 4 kişiyi destekliyor, gerekirse sadece ekran eklenir. Konuşulan düzen seçenekleri: A) Mut kartları orta yığının yanına iner, üst oyuncu üst kenara oturur (öneri); B) Mut üstte kalır, üst oyuncu üstünde ince şerit; C) Mut kartları köşeye küçülür. Seçenekler Test menüsünde denenip seçilecek. El sayısı 10. Asıl başlangıç ekranı 5. adımda.
+  - **Sıra:** 3e (animasyonlar) → 3c.
+  - **3e ✅ (kullanıcı testi bekliyor)** Animasyonlar (`src\ekrannimasyon.tsx`): her geçişte kartların eski/yeni yeri ölçülür, yer değiştirenler uçar. Bot önce kartını kaldırır; yakalamada kart eşleştiği yere iner, duraklar, eşleşenlerle birlikte uçar; tur başında dağıtım, el sonunda kartlar desteye toplanır. Ceza puanı değişince parlar (aç/kapa yok, gerekirse kaldırılır). Test menüsünde "Animasyon hızı" (Hızlı/Orta/Yavaş) ve "Yakalamada duraklama" (Kısa/Uzun) seçilecek.
+  - 3b kullanıcı testinden geçti (2026-10-20).
+  - **Sonra düzeltilecek:** Sıra bendeyken avucun altındaki sarı ışık çizgisini kullanıcı beğenmedi (yeni görünüm seçenekleri Test menüsünde denenecek).
   - Görsel kararlar (sürüklenen kartın görünüşü, bot hızı/duraklama, el sonunda ne çıkacağı vb.) kafaya göre seçilmez: seçenekler Test menüsünde geçişli konur, kullanıcı seçer, sonra kalıcı yapılır. Kullanıcı yokken çalışılırsa varsayılan seçilip devam edilir, kararlar sonradan toplu verilir.
   - **Dikkat:** Kullanıcı aynı anda başka bir sohbette de kod yazdırıyor ve o sohbet tarayıcı panelini/dev sunucusunu kullanıyor. O sohbet de bu klasörde çalışıyorsa aynı dosyalara yazma riski var: önce sor; gerekirse bekle ya da worktree (ayrı çalışma kopyası) kullan. Commit'te sadece kendi değiştirdiğin dosyaları ekle.
 - **Bekleyen:** `src\tema\varsayilan\` klasörü (kullanılmayan 52 kart resmi) silinecek; Windows yönetici izni penceresi çıktı, kullanıcı elle silebilir. Silinince commit atılmalı.

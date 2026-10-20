@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { kartBoyu } from '../oyun/kart'
 import { ornekDurum, type OyuncuDurumu } from '../ornekDurum'
 import { Kart } from './Kart'
 import { CezaYigini, Deste, OrtaYigin } from './Yiginlar'
@@ -28,7 +29,7 @@ function Rakip({ oyuncu, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu:
       <div className={`rakip-ad ${taraf}` + (sirada ? ' sirada' : '')}>{oyuncu.ad}</div>
       <div className={`rakip-avuc ${taraf}` + (kirpik ? ' kirpik' : '')}>
         {oyuncu.avuc.map((k, i) => (
-          <div key={i} className="yan-kart" style={{ width: Math.round(RAKIP_KART_EN * 1.4), height: RAKIP_KART_EN, transform: duz ? undefined : yanYelpaze(i, oyuncu.avuc.length, taraf) }}>
+          <div key={i} className="yan-kart" style={{ width: kartBoyu(RAKIP_KART_EN), height: RAKIP_KART_EN, transform: duz ? undefined : yanYelpaze(i, oyuncu.avuc.length, taraf) }}>
             <Kart kart={k} genislik={RAKIP_KART_EN} kapali={kapali} />
           </div>
         ))}

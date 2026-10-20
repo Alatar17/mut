@@ -1,4 +1,4 @@
-import { yiginPuani, type Kart as KartTipi } from '../oyun/kart'
+import { kartBoyu, yiginPuani, type Kart as KartTipi } from '../oyun/kart'
 import { Kart } from './Kart'
 
 const KART_EN = 56
@@ -10,7 +10,7 @@ function Kalinlik({ adet, genislik }: { adet: number; genislik: number }) {
   return (
     <>
       {Array.from({ length: kalinlik(adet) }, (_, i) => (
-        <div key={i} className="kalinlik" style={{ width: genislik, height: Math.round(genislik * 1.4), left: i + 1, top: i + 1 }} />
+        <div key={i} className="kalinlik" style={{ width: genislik, height: kartBoyu(genislik), left: i + 1, top: i + 1 }} />
       ))}
     </>
   )
@@ -21,7 +21,7 @@ export function OrtaYigin({ kartlar }: { kartlar: KartTipi[] }) {
   const alttaKalan = kartlar.length - ust.length
   return (
     <div className="orta-yigin">
-      <div className="yigin-govde" style={{ width: KART_EN + 28, height: Math.round(KART_EN * 1.4) }}>
+      <div className="yigin-govde" style={{ width: KART_EN + 28, height: kartBoyu(KART_EN) }}>
         {alttaKalan > 0 && <Kalinlik adet={alttaKalan} genislik={KART_EN} />}
         {ust.map((k, i) => (
           <div key={i} className="yigin-kart" style={{ left: i * 14 }}>
@@ -44,7 +44,7 @@ interface CezaProps {
 
 export function CezaYigini({ kartlar, carpan, puanTarafi, donuk }: CezaProps) {
   const ust = kartlar[kartlar.length - 1]
-  const boy = Math.round(KART_EN * 1.4)
+  const boy = kartBoyu(KART_EN)
   const govde = (
     <div className="yigin-govde" style={{ width: KART_EN, height: boy }}>
       {ust ? (
@@ -68,7 +68,7 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk }: CezaProps) {
 export function Deste({ kalan }: { kalan: number }) {
   return (
     <div className="deste">
-      <div className="yigin-govde" style={{ width: 42, height: Math.round(42 * 1.4) }}>
+      <div className="yigin-govde" style={{ width: 42, height: kartBoyu(42) }}>
         <Kalinlik adet={kalan} genislik={42} />
         <div className="yigin-kart"><Kart kapali genislik={42} /></div>
       </div>

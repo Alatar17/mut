@@ -10,6 +10,10 @@ export interface Kart {
 
 export const kart = (deger: Deger, renk: Renk): Kart => ({ deger, renk })
 
+// Kart boyu / eni. Tema resimleri 2:3 oranında (360 × 540).
+export const KART_ORANI = 1.5
+export const kartBoyu = (en: number) => Math.round(en * KART_ORANI)
+
 const SEMBOL: Record<Renk, string> = { maca: '♠', kupa: '♥', karo: '♦', sinek: '♣' }
 const YAZI: Partial<Record<Deger, string>> = { 1: 'A', 11: 'J', 12: 'Q', 13: 'K' }
 

@@ -96,6 +96,8 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .rakip-ad.sirada { background: var(--vurgu); color: var(--rozet); box-shadow: 0 0 12px var(--vurgu); }
 
 .rakip-avuc { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; }
+/* Avuç kendi katmanını oluşturduğu için sürüklenen kart ancak avuç öne alınınca diğer yığınların üstünden geçer. */
+.rakip-avuc:has(.surukleniyor), .benim-avuc:has(.surukleniyor) { z-index: 30; }
 .rakip-avuc.sol { left: 8px; }
 .rakip-avuc.sag { right: 8px; }
 .rakip-avuc.sol.kirpik { left: -10px; }

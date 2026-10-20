@@ -305,10 +305,26 @@ export function Masa() {
 
   // elle: kartı kullanıcı sürükledi (botun kart kaldırma adımı atlanır).
   const hamleOyna = async (h: Hamle, elle: boolean) => {
-    if (mesgulRef.current) return
-    basla()
+    if (mesgulRef.current || !hamleGecerliMi(d, h)) return
     const eski = d
     const yeni = hamleYap(eski, h)
+    basla()
+    try {
+      await hamleyiGoster(eski, h, yeni, elle)
+      bitir(yeni)
+    } catch (hata) {
+      // Animasyonda beklenmedik bir hata oyunu kilitlemesin: ekran gerçek duruma döner, oyun sürer.
+      console.error(hata)
+      gorunenRef.current = yeni
+      setGorunen(yeni)
+      setUcuslar([])
+      setGizli(new Set())
+      setBotKalkik(null)
+      bitir(yeni)
+    }
+  }
+
+  const hamleyiGoster = async (eski: Durum, h: Hamle, yeni: Durum, elle: boolean) => {
     const k = eski.oyuncular[eski.sira].avuc[h.kart]
     const id = kartKimligi(k)
     if (!elle) {
@@ -334,7 +350,6 @@ export function Masa() {
     }
     setBotKalkik(null)
     if (dagitildi) await gec(yeni, { sira: dagitimSirasi(yeni, false) })
-    bitir(yeni)
   }
 
   // Yeni el / yeni oyun: kartlar desteye toplanır, sonra dağıtılır.
@@ -359,6 +374,15 @@ export function Masa() {
     const zamanlayici = setTimeout(() => hamleOyna(akilliBotHamlesi(d), false), BOT_HIZLARI[botHizi])
     return () => clearTimeout(zamanlayici)
   }, [d, mesgul, botlarOtomatik, botHizi])
+
+  // Durum değişince (biri oynadı, botlar açıldı) açık kalan "Üstüne yığ / İlerlet" seçimi geçersizdir.
+  useEffect(() => {
+    setCezaSecimi(null)
+  }, [d, botlarOtomatik])
+  // Yeni tur/el dağıtılınca kaldırılmış kart, avuçtaki yeni karta geçmesin.
+  useEffect(() => {
+    setKalkikKart(null)
+  }, [d.tur, d.el])
 
   // El bitince puan kağıdı kendiliğinden açılır.
   useEffect(() => {

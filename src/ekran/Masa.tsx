@@ -379,6 +379,13 @@ export function Masa() {
   const kartiGoster = async (eski: Durum, sonuc: HamleSonucu, hamleSonrasi: Durum, elle: boolean) => {
     const k = sonuc.kart
     const id = kartKimligi(k)
+    // Oynanan kart avuçtan çıkmış, başka hiçbir şey değişmemiş ara durum.
+    const kartsiz = () => {
+      const ara = structuredClone(eski)
+      const avuc = ara.oyuncular[sonuc.oyuncu].avuc
+      avuc.splice(avuc.findIndex(x => kartKimligi(x) === id), 1)
+      return ara
+    }
     if (!elle) {
       setBotKalkik(id)
       await bekle(SURE.kalkma * carpan)
@@ -386,19 +393,14 @@ export function Masa() {
     const inis = inisYeri(sonuc)
     if (sonuc.takas !== undefined) {
       // Takas: önce 8 ortaya düşer, sonra iki avuç yer değiştirir.
-      const ara = structuredClone(eski)
-      const avuc = ara.oyuncular[sonuc.oyuncu].avuc
-      avuc.splice(avuc.findIndex(x => kartKimligi(x) === id), 1)
+      const ara = kartsiz()
       ara.orta.push(k)
       await gec(ara)
       await gec(hamleSonrasi)
     } else if (inis) {
       // Yakalama: kart önce eşleştiği yere iner, kısa duraklar, sonra eşleşenlerle birlikte uçar.
       const kaynak = konumOlc(masaRef.current!, id, `avuc:${sonuc.oyuncu}`)
-      const ara = structuredClone(eski)
-      const avuc = ara.oyuncular[sonuc.oyuncu].avuc
-      avuc.splice(avuc.findIndex(x => kartKimligi(x) === id), 1)
-      await gec(ara, { ekUcus: { kart: k, kaynak, hedef: inis, sure: ucusSuresi, gecikme: 0, kapali: false } })
+      await gec(kartsiz(), { ekUcus: { kart: k, kaynak, hedef: inis, sure: ucusSuresi, gecikme: 0, kapali: false } })
       await bekle(DURAKLAMALAR[duraklama])
       await gec(hamleSonrasi, { kaynak: new Map([[id, inis]]) })
     } else {

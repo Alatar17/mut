@@ -16,16 +16,15 @@ const TAKAS_ESIGI = 10
 // Yakalama yoksa ortaya en az puanlı kartı atar (yakalanırsa az zarar versin).
 // 8 varsa: rakiplerin avuçlarına bakar (test botu, hile serbest); belirgin daha iyi bir avuç varsa takas yapar.
 export function akilliBotHamlesi(d: Durum, rastgele: () => number = Math.random): Hamle {
-  const ben = d.sira
-  const adaylar = puanlanmis(d)
+  const hamleler = gecerliHamleler(d)
+  const adaylar = puanlanmis(d, hamleler)
   const enIyi = Math.max(...adaylar.map(x => x.puan))
-  const takas = gecerliHamleler(d)
+  const takas = hamleler
     .filter(h => h.tip === 'takas')
     .map(h => {
-      // Takastan sonra sıra yine bendeymiş gibi yeni avucu dene.
-      const t = structuredClone(hamleYap(d, h))
-      t.sira = ben
-      t.blok = undefined
+      // Takastan sonra sıra yine bendeymiş gibi yeni avucu dene (hamleYap yeni durum döndürür, takas blok açmaz).
+      const t = hamleYap(d, h)
+      t.sira = d.sira
       return { h, puan: Math.max(...puanlanmis(t).map(x => x.puan)) }
     })
     .sort((a, b) => b.puan - a.puan)[0]
@@ -35,11 +34,11 @@ export function akilliBotHamlesi(d: Durum, rastgele: () => number = Math.random)
 }
 
 // Takas dışındaki geçerli hamleler ve puanları (sıradaki oyuncunun gözünden).
-function puanlanmis(d: Durum) {
+function puanlanmis(d: Durum, hamleler = gecerliHamleler(d)) {
   const ben = d.sira
   const cezalar = (x: Durum) => x.oyuncular.map(o => yiginPuani(o.ceza))
   const once = cezalar(d)
-  return gecerliHamleler(d)
+  return hamleler
     .filter(h => h.tip !== 'takas')
     .map(h => {
       const fark = cezalar(hamleYap(d, h)).map((p, i) => p - once[i])

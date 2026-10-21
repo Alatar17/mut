@@ -395,6 +395,13 @@ describe('takas (8)', () => {
     expect(d.oyuncular[0].avuc).toEqual([])
     expect(d.oyuncular[2].avuc).toEqual([k(4)])
   })
+  it('blok penceresinde takas yok: hedef sadece blok ya da kabul yapar', () => {
+    // C ortadaki 9'u yakalayıp bana yollar; bende 2 ve 8 var.
+    const d0 = durum({ avuclar: [[k(2), k(8)], [k(4, 'kupa')], [k(9, 'kupa'), k(5, 'kupa')]], orta: [k(9)], sira: 2 })
+    const d = hamleYap(d0, { tip: 'ortayaAt', kart: 0 })
+    expect(d.blok?.hedef).toBe(0)
+    expect(gecerliHamleler(d).map((h) => h.tip).sort()).toEqual(['blok', 'kabul'])
+  })
   it('son kartı 8 olan takas yapar: karşısındaki boş kalır', () => {
     const d0 = kur()
     d0.oyuncular[0].avuc = [k(8)]

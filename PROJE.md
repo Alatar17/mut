@@ -5,6 +5,7 @@
 
 ## 0. Proje Durumu
 - **Aşama:** 3. adım (birleştirme) bitti — 2026-10-20. İlk oynanabilir sürüm: masa ekranı kural motoruna bağlı, sürükle-bırak, akıllı botlar, animasyonlar. Özel kartların etkisi ve seri hâlâ yok; hepsi sadece puanlı kart.
+- **Bir sonraki işle birlikte yapılacak (kullanıcı isteği, 2026-10-21):** "Üstüne yığ"ın adı **"Ekle"** olacak. Ekrandaki düğme "Ekle / İlerlet" yazacak, PROJE.md'de de terim "Ekle" diye değiştirilecek.
 - **Sıradaki iş:** 4. adım (özel kartlar), parça parça; her parçadan sonra kullanıcı test eder. Sıra: seri (önce orta yığın, sonra ceza yığını; kararlar 6.3'te) → 2 → 8 → Kız → Vale → As → 3 → 10 → Papaz → 7. Her özel kart eklenince akıllı bota da kullanması öğretilir.
 - **4b seri (orta yığın) yapıldı — 2026-10-21:** Orta yığının üstündeki sıralı kartlar + atılan kart (en az 3) sıradakinin ceza yığınına gider; yakalama gibi zorunlu. Mut kartıyla eşleşen kart, ortada seri oluşturuyorsa ortaya da atılabilir (oyuncu seçer). Papaz'dan As'a dönmez. Akıllı bot hamleleri deneyerek seçtiği için seriyi kendiliğinden kullanır. Kullanıcı testinden geçti.
 - **4c seri (ceza yığınları) yapıldı — 2026-10-21:** Kendi yığınını boşaltma, üstüne yığ (herkese) ve al-ilerlet (sıradakinden) eşleşmenin yanında seriyle de yapılır; sadece üstteki sıralı kartlar gider (4-4-5 üstüne 6 → üstteki 4-5-6). Test menüsünde **"Ceza serisi dene"**: herkesin yığınında 4-5-6, avucumda üç 7. Botlar seriyi kendiliğinden kullanıp zincirliyor. Otomatik testlerden geçti; **kullanıcı testi bekliyor.** Sıradaki: 2 (blok).

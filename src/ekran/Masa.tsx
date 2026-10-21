@@ -240,7 +240,8 @@ export function Masa() {
   const [ben, sagdaki, soldaki] = gorunen.oyuncular
   const elimdeIkiVar = ben.avuc.some(k => k.deger === 2)
   const [puanlarAcik, setPuanlarAcik] = useState(false)
-  const [testAcik, setTestAcik] = useState(false)
+  // Sağ alttaki geliştirme menüleri: Test (ayarlar) ve Dene (hazır kurulmuş eller); aynı anda biri açık.
+  const [menu, setMenu] = useState<'test' | 'dene' | null>(null)
   const [botlarOtomatik, setBotlarOtomatik] = useKayitli('botlarOtomatik', true)
   const [botKartlariKapali, setBotKartlariKapali] = useKayitli('botKartlariKapali', false)
   const [botKartlariDuz, setBotKartlariDuz] = useKayitli('botKartlariDuz', true)
@@ -558,11 +559,21 @@ export function Masa() {
         </svg>
       </button>
 
-      <button className={'test-dugme' + (testAcik ? ' acik' : '')} onClick={() => setTestAcik(!testAcik)}>
+      <button className={'test-dugme dene-dugme' + (menu === 'dene' ? ' acik' : '')} onClick={() => setMenu(menu === 'dene' ? null : 'dene')}>
+        Dene
+      </button>
+      <button className={'test-dugme' + (menu === 'test' ? ' acik' : '')} onClick={() => setMenu(menu === 'test' ? null : 'test')}>
         Test
       </button>
-      {testAcik && <div className="test-arka" onClick={() => setTestAcik(false)} />}
-      {testAcik && (
+      {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
+      {menu === 'dene' && (
+        <div className="test-panel dene-panel">
+          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi]] as const).map(([ad, deneme]) => (
+            <button key={ad} className="test-satir" onClick={() => { setMenu(null); yeniOyunBaslat(deneme) }}>{ad}</button>
+          ))}
+        </div>
+      )}
+      {menu === 'test' && (
         <div className="test-panel">
           <TestSecenegi ad="Botlar kendi oynasın" acik={botlarOtomatik} degistir={setBotlarOtomatik} />
           <button className="test-satir" onClick={() => sonrakiSecenek(BOT_HIZLARI, botHizi, setBotHizi)}>
@@ -574,10 +585,6 @@ export function Masa() {
           <button className="test-satir" onClick={() => sonrakiSecenek(DURAKLAMALAR, duraklama, setDuraklama)}>
             Yakalamada duraklama <span className="test-deger">{duraklama}</span>
           </button>
-          <button className="test-satir" onClick={() => yeniOyunBaslat()}>Yeni oyun</button>
-          <button className="test-satir" onClick={() => yeniOyunBaslat(seriDenemesi)}>Seri dene</button>
-          <button className="test-satir" onClick={() => yeniOyunBaslat(cezaSerisiDenemesi)}>Ceza serisi dene</button>
-          <button className="test-satir" onClick={() => yeniOyunBaslat(blokDenemesi)}>Blok dene</button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />

@@ -187,6 +187,8 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 }
 .test-dugme.acik { background: var(--vurgu); color: var(--rozet); }
 .test-dugme { right: 82px; }
+.dene-dugme { right: 140px; }
+.test-panel.dene-panel { right: 140px; width: 190px; grid-template-columns: 1fr; }
 .test-arka { position: absolute; inset: 0; z-index: 9; }
 .test-panel {
   position: absolute; right: 82px; bottom: 62px; z-index: 10; width: 480px; padding: 6px;

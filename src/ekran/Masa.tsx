@@ -402,8 +402,8 @@ export function Masa() {
     if (d.asama !== 'oyun') setPuanlarAcik(true)
   }, [d.asama])
 
-  const oyna = (tip: Hamle['tip'], kart: number) => {
-    hamleOyna({ tip, kart }, true)
+  const oyna = (h: Hamle) => {
+    hamleOyna(h, true)
     setKalkikKart(null)
     setCezaSecimi(null)
   }
@@ -414,19 +414,22 @@ export function Masa() {
     if (mesgul || d.asama !== 'oyun' || d.sira !== oyuncu || (oyuncu !== 0 && botlarOtomatik)) return 'red'
     const siradaki = sonraki(d, oyuncu)
     const [yer, deger] = hedef.split(':')
-    const dene = (tip: Hamle['tip']): Birakma => {
-      if (!hamleGecerliMi(d, { tip, kart })) return 'red'
-      oyna(tip, kart)
+    const dene = (tip: Hamle['tip'], hedef?: number): Birakma => {
+      const h = { tip, kart, hedef }
+      if (!hamleGecerliMi(d, h)) return 'red'
+      oyna(h)
       return 'kabul'
     }
     if (yer === 'orta') return dene('ortayaAt')
     if (yer === 'mut') return Number(deger) === d.oyuncular[oyuncu].avuc[kart].deger ? dene('mutEslestir') : 'red'
     if (yer === 'ceza' && Number(deger) === oyuncu) return dene('cezaBosalt')
-    if (yer === 'ceza' && Number(deger) === siradaki && hamleGecerliMi(d, { tip: 'ustuneYig', kart })) {
+    // Sıradakine iki seçenek var (üstüne yığ / ilerlet); diğer rakiplere sadece üstüne yığılır.
+    if (yer === 'ceza' && Number(deger) === siradaki && hamleGecerliMi(d, { tip: 'alIlerlet', kart })) {
       setCezaSecimi({ kart, yigin: siradaki })
       if (oyuncu === 0) setKalkikKart(kart)
       return 'bekle'
     }
+    if (yer === 'ceza') return dene('ustuneYig', Number(deger))
     return 'red'
   }
 
@@ -496,8 +499,8 @@ export function Masa() {
         <>
           <div className="secim-arka" onClick={() => { setCezaSecimi(null); setKalkikKart(null) }} />
           <div className={`ceza-secimi yigin-${cezaSecimi.yigin}`}>
-            <button onClick={() => oyna('ustuneYig', cezaSecimi.kart)}>Üstüne yığ</button>
-            <button onClick={() => oyna('alIlerlet', cezaSecimi.kart)}>İlerlet</button>
+            <button onClick={() => oyna({ tip: 'ustuneYig', kart: cezaSecimi.kart, hedef: cezaSecimi.yigin })}>Üstüne yığ</button>
+            <button onClick={() => oyna({ tip: 'alIlerlet', kart: cezaSecimi.kart })}>İlerlet</button>
           </div>
         </>
       )}

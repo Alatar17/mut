@@ -49,13 +49,14 @@ export type HamleTipi =
   | 'ortayaAt' // orta yığına at (üstteki eşleşirse yakalanır)
   | 'mutEslestir' // Mut kartlarıyla eşleştir (aynı sayılı Mut kartlarının hepsi)
   | 'cezaBosalt' // kendi ceza yığınının üstünü eşleştirip gönder
-  | 'ustuneYig' // sıradakinin ceza yığınının üstüne ekle
+  | 'ustuneYig' // bir rakibin ceza yığınının üstüne ekle (normal elde de herkese)
   | 'alIlerlet' // sıradakinin ceza yığınının üstünü alıp onun sıradakine gönder
 
-// kart = avuçtaki sırası
+// kart = avuçtaki sırası; hedef = üstüne yığılan oyuncu (sadece ustuneYig)
 export interface Hamle {
   tip: HamleTipi
   kart: number
+  hedef?: number
 }
 
 const RENKLER: Renk[] = ['maca', 'kupa', 'karo', 'sinek']
@@ -147,22 +148,22 @@ export function gecerliHamleler(d: Durum): Hamle[] {
   const ben = d.oyuncular[d.sira]
   const siradaki = d.oyuncular[sonraki(d, d.sira)]
   const hamleler: Hamle[] = []
+  const rakipler = d.oyuncular.map((_, i) => i).filter((i) => i !== d.sira)
   ben.avuc.forEach((k, kart) => {
     const mutVar = d.mut.some((m) => m.deger === k.deger)
     // Mut kartlarıyla eşleşen kart orta yığına boşa atılamaz; ortada eşleşme ya da seri varsa oyuncu seçer (5.2).
     if (!mutVar || eslesir(d.orta, k) || seriUzunlugu(d.orta, k) > 0) hamleler.push({ tip: 'ortayaAt', kart })
     if (mutVar) hamleler.push({ tip: 'mutEslestir', kart })
     if (eslesir(ben.ceza, k)) hamleler.push({ tip: 'cezaBosalt', kart })
-    if (eslesir(siradaki.ceza, k)) {
-      hamleler.push({ tip: 'ustuneYig', kart })
-      hamleler.push({ tip: 'alIlerlet', kart })
-    }
+    // Üstüne yığ herkese; al ve ilerlet normal elde sadece sıradakinden (6.3).
+    for (const i of rakipler) if (eslesir(d.oyuncular[i].ceza, k)) hamleler.push({ tip: 'ustuneYig', kart, hedef: i })
+    if (eslesir(siradaki.ceza, k)) hamleler.push({ tip: 'alIlerlet', kart })
   })
   return hamleler
 }
 
 export const hamleGecerliMi = (d: Durum, h: Hamle) =>
-  gecerliHamleler(d).some((g) => g.tip === h.tip && g.kart === h.kart)
+  gecerliHamleler(d).some((g) => g.tip === h.tip && g.kart === h.kart && g.hedef === h.hedef)
 
 // Hamleyi uygular, yeni durumu döndürür (eski durum değişmez).
 export function hamleYap(eski: Durum, h: Hamle): Durum {
@@ -196,6 +197,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       nereden = `ceza:${oyuncu}`
       break
     case 'ustuneYig':
+      nereye = `ceza:${h.hedef}`
       break
     case 'alIlerlet':
       eslesen = ustGrubuAl(d.oyuncular[s1].ceza)

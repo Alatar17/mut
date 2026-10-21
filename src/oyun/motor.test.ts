@@ -103,7 +103,7 @@ describe('ceza yığınları', () => {
     expect(d.oyuncular[1].ceza).toEqual([k(6), k(5, 'sinek'), k(5, 'kupa'), k(5, 'karo'), k(5)])
   })
   it('üstüne yığ', () => {
-    const d = hamleYap(kur(), { tip: 'ustuneYig', kart: 0 })
+    const d = hamleYap(kur(), { tip: 'ustuneYig', kart: 0, hedef: 1 })
     expect(d.oyuncular[1].ceza).toEqual([k(6), k(5, 'sinek'), k(5)])
   })
   it('al ve ilerlet: sıradakinin sıradakine gider', () => {
@@ -111,9 +111,16 @@ describe('ceza yığınları', () => {
     expect(d.oyuncular[1].ceza).toEqual([k(6)])
     expect(d.oyuncular[2].ceza).toEqual([k(5, 'sinek'), k(5)])
   })
-  it('normal elde sadece sıradakinin ceza yığınına saldırılır', () => {
+  it('normal elde başkasının (sıradaki olmayan) ceza yığınına sadece üstüne yığılır, alınmaz', () => {
     const d = durum({ avuclar: [[k(5)], [k(7)], [k(8)]], cezalar: [[], [], [k(5, 'kupa')]] })
-    expect(tipler(d, 0)).toEqual(['ortayaAt'])
+    expect(tipler(d, 0)).toEqual(['ortayaAt', 'ustuneYig'])
+    const sonra = hamleYap(d, { tip: 'ustuneYig', kart: 0, hedef: 2 })
+    expect(sonra.oyuncular[2].ceza).toEqual([k(5, 'kupa'), k(5)])
+    expect(sonra.sonHamle).toMatchObject({ eslesen: [], nereye: 'ceza:2' })
+  })
+  it('kendi ceza yığınına üstüne yığılmaz', () => {
+    const d = durum({ avuclar: [[k(5)], [k(7)], [k(8)]], cezalar: [[k(5, 'kupa')], [], []] })
+    expect(tipler(d, 0)).toEqual(['cezaBosalt', 'ortayaAt'])
   })
 })
 
@@ -190,7 +197,7 @@ describe('hamle sonucu (sonHamle) ve dağıtım sırası', () => {
   })
   it('üstüne yığ: eşleşen yok, kart sıradakinin ceza yığınına', () => {
     const d = durum({ avuclar: [[k(7)], [k(9)], [k(10)]], cezalar: [[], [k(7, 'kupa')], []] })
-    const s = hamleYap(d, { tip: 'ustuneYig', kart: 0 }).sonHamle!
+    const s = hamleYap(d, { tip: 'ustuneYig', kart: 0, hedef: 1 }).sonHamle!
     expect(s).toMatchObject({ eslesen: [], nereden: null, nereye: 'ceza:1' })
   })
   it('dağıtım sırası: başlatandan herkese birer, sonra Mut; 4 kez', () => {

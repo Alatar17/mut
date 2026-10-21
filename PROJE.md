@@ -176,8 +176,15 @@ Temel ilke: **Sadece eşleşen kartlar hareket eder** ve hedef her zaman **en ü
 - Örnek: Ceza yığınının üstünde 5 var, avucunda 5 var → iki 5 sıradakinin ceza yığınına.
 
 **Seçenek 3 — Rakibin ceza yığınına saldır**
-Normal elde sadece **sıradaki oyuncunun** ceza yığınına saldırılır. Serbest elde **herkesinkine** (kendin hariç) saldırılabilir — bu yüzden serbest elde kazanmakta olan (en az puanlı) oyuncu herkesin hedefidir. Rakibin ceza yığınındaki en üst kart avuçtaki kartla eşleşiyorsa iki yol var:
-- **3a. Üstüne yığ:** Kendi kartını rakibin ceza yığınına eklersin; rakibin puanı artar.
+Rakibin ceza yığınındaki en üst kart avuçtaki kartla eşleşiyorsa iki yol var:
+
+| | Üstüne yığ | Al ve ilerlet |
+|---|---|---|
+| **Normal el** | **Herkese** (kendin hariç) | Sadece **sıradakinden** alınır, **onun sıradakine** gider |
+| **Serbest el** | Herkese | **Herkesten** alınır, **istediğine** gider (kendin hariç) |
+
+(Karar 2026-10-21: kahvede normal elde de herkese "üstüne yığ" yapılıyor.) Serbest elde kazanmakta olan (en az puanlı) oyuncu herkesin hedefidir.
+- **3a. Üstüne yığ:** Kendi kartını rakibin ceza yığınına eklersin; rakibin puanı artar. Seri uzatma da (4-5-6'ya 7) aynı kurala uyar.
 - **3b. Al ve ilerlet:** Rakibin ceza yığınındaki eşleşen kartları + kendi kartını alıp **onun sıradakinin** ceza yığınına gönderirsin (serbest elde: istediğin oyuncuya, kendin hariç).
   - Strateji: Oyunu kazanan (en az puanlı) oyuncuyu hedef almak için kullanılır.
 

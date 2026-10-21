@@ -148,6 +148,24 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   display: grid; place-items: center; border-radius: 50%;
   background: var(--panel); color: var(--kalkan);
 }
+.kalkan.aktif { animation: kalkan-yanip-son 0.5s ease-in-out infinite alternate; }
+@keyframes kalkan-yanip-son {
+  to { background: var(--kalkan); color: var(--panel); transform: scale(1.15); }
+}
+/* Blok penceresi: süre çubuğu (soldan sağa erir) + Kabul düğmesi, avucun üstünde */
+.blok-penceresi {
+  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 16;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.blok-sure {
+  width: 160px; height: 6px; border-radius: 3px; background: var(--vurgu);
+  transform-origin: left; animation: blok-sure linear forwards;
+}
+@keyframes blok-sure { to { transform: scaleX(0); } }
+.blok-penceresi button {
+  padding: 6px 14px; border-radius: 14px; font-size: 13px; font-weight: 700;
+  background: var(--panel); color: var(--yazi); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
 
 /* ---- Köşeler ---- */
 .yuvarlak-dugme {

@@ -94,16 +94,16 @@ describe('ceza yığınları', () => {
       avuclar: [[k(5)], [k(7)], [k(8)]],
       cezalar: [[k(4), k(5, 'kupa'), k(5, 'karo')], [k(6), k(5, 'sinek')], []],
     })
-  it('seçenekler: orta, kendi cezasını boşalt, üstüne yığ, al ve ilerlet', () => {
-    expect(tipler(kur(), 0)).toEqual(['alIlerlet', 'cezaBosalt', 'ortayaAt', 'ustuneYig'])
+  it('seçenekler: orta, kendi cezasını boşalt, ekle, al ve ilerlet', () => {
+    expect(tipler(kur(), 0)).toEqual(['alIlerlet', 'cezaBosalt', 'ekle', 'ortayaAt'])
   })
   it('kendi ceza yığınını boşaltınca üstteki aynı kartlar sıradakine gider', () => {
     const d = hamleYap(kur(), { tip: 'cezaBosalt', kart: 0 })
     expect(d.oyuncular[0].ceza).toEqual([k(4)])
     expect(d.oyuncular[1].ceza).toEqual([k(6), k(5, 'sinek'), k(5, 'kupa'), k(5, 'karo'), k(5)])
   })
-  it('üstüne yığ', () => {
-    const d = hamleYap(kur(), { tip: 'ustuneYig', kart: 0, hedef: 1 })
+  it('ekle', () => {
+    const d = hamleYap(kur(), { tip: 'ekle', kart: 0, hedef: 1 })
     expect(d.oyuncular[1].ceza).toEqual([k(6), k(5, 'sinek'), k(5)])
   })
   it('al ve ilerlet: sıradakinin sıradakine gider', () => {
@@ -111,14 +111,14 @@ describe('ceza yığınları', () => {
     expect(d.oyuncular[1].ceza).toEqual([k(6)])
     expect(d.oyuncular[2].ceza).toEqual([k(5, 'sinek'), k(5)])
   })
-  it('normal elde başkasının (sıradaki olmayan) ceza yığınına sadece üstüne yığılır, alınmaz', () => {
+  it('normal elde başkasının (sıradaki olmayan) ceza yığınına sadece eklenir, alınmaz', () => {
     const d = durum({ avuclar: [[k(5)], [k(7)], [k(8)]], cezalar: [[], [], [k(5, 'kupa')]] })
-    expect(tipler(d, 0)).toEqual(['ortayaAt', 'ustuneYig'])
-    const sonra = hamleYap(d, { tip: 'ustuneYig', kart: 0, hedef: 2 })
+    expect(tipler(d, 0)).toEqual(['ekle', 'ortayaAt'])
+    const sonra = hamleYap(d, { tip: 'ekle', kart: 0, hedef: 2 })
     expect(sonra.oyuncular[2].ceza).toEqual([k(5, 'kupa'), k(5)])
     expect(sonra.sonHamle).toMatchObject({ eslesen: [], nereye: 'ceza:2' })
   })
-  it('kendi ceza yığınına üstüne yığılmaz', () => {
+  it('kendi ceza yığınına eklenmez', () => {
     const d = durum({ avuclar: [[k(5)], [k(7)], [k(8)]], cezalar: [[k(5, 'kupa')], [], []] })
     expect(tipler(d, 0)).toEqual(['cezaBosalt', 'ortayaAt'])
   })
@@ -195,9 +195,9 @@ describe('hamle sonucu (sonHamle) ve dağıtım sırası', () => {
     const s = hamleYap(d, { tip: 'alIlerlet', kart: 0 }).sonHamle!
     expect(s).toMatchObject({ eslesen: [k(7, 'kupa'), k(7, 'karo')], nereden: 'ceza:1', nereye: 'ceza:2' })
   })
-  it('üstüne yığ: eşleşen yok, kart sıradakinin ceza yığınına', () => {
+  it('ekle: eşleşen yok, kart sıradakinin ceza yığınına', () => {
     const d = durum({ avuclar: [[k(7)], [k(9)], [k(10)]], cezalar: [[], [k(7, 'kupa')], []] })
-    const s = hamleYap(d, { tip: 'ustuneYig', kart: 0, hedef: 1 }).sonHamle!
+    const s = hamleYap(d, { tip: 'ekle', kart: 0, hedef: 1 }).sonHamle!
     expect(s).toMatchObject({ eslesen: [], nereden: null, nereye: 'ceza:1' })
   })
   it('dağıtım sırası: başlatandan herkese birer, sonra Mut; 4 kez', () => {
@@ -212,6 +212,60 @@ describe('hamle sonucu (sonHamle) ve dağıtım sırası', () => {
   })
 })
 
+describe('blok (2)', () => {
+  // C (2) ortadaki 9'u yakalar, kartlar sıradakine, yani bana (0) gelir. Bende iki 2 var.
+  const kur = (cAvucu: Kart[] = [k(9, 'kupa'), k(5, 'kupa')]) =>
+    durum({ avuclar: [[k(2), k(2, 'sinek'), k(7)], [k(8, 'kupa'), k(6)], cAvucu], orta: [k(9)], sira: 2 })
+  const yakala = (d: Durum) => hamleYap(d, { tip: 'ortayaAt', kart: 0 })
+
+  it('ceza yığınına kart gelen oyuncunun 2si varsa pencere açılır, sıra ondadır', () => {
+    const d = yakala(kur())
+    expect(d.blok).toEqual({ hedef: 0, gonderen: 2, adet: 2 })
+    expect(d.sira).toBe(0)
+    expect(gecerliHamleler(d)).toEqual([{ tip: 'kabul', kart: -1 }, { tip: 'blok', kart: 0 }, { tip: 'blok', kart: 1 }])
+  })
+  it('2si olmayana pencere açılmaz', () => {
+    const d = hamleYap(durum({ avuclar: [[k(7)], [k(8, 'kupa')], [k(9, 'kupa')]], orta: [k(9)], sira: 2 }), { tip: 'ortayaAt', kart: 0 })
+    expect(d.blok).toBeUndefined()
+  })
+  it('kabul: kartlar kalır, normal sıra devam eder', () => {
+    const d = hamleYap(yakala(kur()), { tip: 'kabul', kart: -1 })
+    expect(d.blok).toBeUndefined()
+    expect(d.oyuncular[0].ceza).toEqual([k(9), k(9, 'kupa')])
+    expect(d.sonHamle).toBeUndefined()
+  })
+  it('blok: kartlar gönderene döner, 2 altlarına girer', () => {
+    const d = hamleYap(yakala(kur()), { tip: 'blok', kart: 0 })
+    expect(d.oyuncular[0].ceza).toEqual([])
+    expect(d.oyuncular[2].ceza).toEqual([k(2), k(9), k(9, 'kupa')])
+    expect(d.oyuncular[0].avuc).toEqual([k(2, 'sinek'), k(7)])
+    expect(d.sonHamle).toMatchObject({ oyuncu: 0, kart: k(2), nereden: 'ceza:0', nereye: 'ceza:2' })
+  })
+  it('zincir: gönderenin 2si varsa o da geri bloklar; kartlar 2lerle birlikte gider', () => {
+    let d = hamleYap(yakala(kur([k(9, 'kupa'), k(2, 'kupa')])), { tip: 'blok', kart: 0 })
+    expect(d.blok).toEqual({ hedef: 2, gonderen: 0, adet: 3 })
+    d = hamleYap(d, { tip: 'blok', kart: 0 })
+    expect(d.oyuncular[0].ceza).toEqual([k(2, 'kupa'), k(2), k(9), k(9, 'kupa')])
+    expect(d.blok).toEqual({ hedef: 0, gonderen: 2, adet: 4 })
+    d = hamleYap(d, { tip: 'blok', kart: 0 })
+    expect(d.oyuncular[2].ceza.length).toBe(5)
+    expect(d.blok).toBeUndefined()
+  })
+  it('pencere kapanınca sıra 6.6 ile: blok yapanın avucu azaldığı için sıra atlar', () => {
+    // Avuçlar 3-2-1 (C oynadıktan sonra); ben blok yapınca 2-2-1 → elin başlatanı (0) oynar.
+    const d = hamleYap(yakala(kur()), { tip: 'blok', kart: 0 })
+    expect(d.sira).toBe(0)
+  })
+  it('ekle de bloklanabilir: tek kart + 2 geri döner', () => {
+    const d0 = durum({ avuclar: [[k(2), k(7)], [k(8, 'kupa')], [k(5, 'kupa')]], cezalar: [[k(5)], [], []], sira: 2 })
+    let d = hamleYap(d0, { tip: 'ekle', kart: 0, hedef: 0 })
+    expect(d.blok).toEqual({ hedef: 0, gonderen: 2, adet: 1 })
+    d = hamleYap(d, { tip: 'blok', kart: 0 })
+    expect(d.oyuncular[0].ceza).toEqual([k(5)])
+    expect(d.oyuncular[2].ceza).toEqual([k(2), k(5, 'kupa')])
+  })
+})
+
 describe('seri (ceza yığınları)', () => {
   const kur = () =>
     durum({
@@ -222,12 +276,12 @@ describe('seri (ceza yığınları)', () => {
         [k(4, 'karo'), k(5, 'karo'), k(6, 'karo')],
       ],
     })
-  it('seçenekler: kendi yığınını boşalt, sağdakine üstüne yığ / ilerlet, soldakine üstüne yığ', () => {
+  it('seçenekler: kendi yığınını boşalt, sağdakine ekle / ilerlet, soldakine ekle', () => {
     expect(gecerliHamleler(kur())).toEqual([
       { tip: 'ortayaAt', kart: 0 },
       { tip: 'cezaBosalt', kart: 0 },
-      { tip: 'ustuneYig', kart: 0, hedef: 1 },
-      { tip: 'ustuneYig', kart: 0, hedef: 2 },
+      { tip: 'ekle', kart: 0, hedef: 1 },
+      { tip: 'ekle', kart: 0, hedef: 2 },
       { tip: 'alIlerlet', kart: 0 },
     ])
   })
@@ -242,8 +296,8 @@ describe('seri (ceza yığınları)', () => {
     expect(d.oyuncular[2].ceza.slice(-5).map((x) => x.deger)).toEqual([3, 4, 5, 6, 7])
     expect(d.sonHamle).toMatchObject({ nereden: 'ceza:1', nereye: 'ceza:2' })
   })
-  it('soldakinin serisine üstüne yığ: 7 orada kalır', () => {
-    const d = hamleYap(kur(), { tip: 'ustuneYig', kart: 0, hedef: 2 })
+  it('soldakinin serisine ekle: 7 orada kalır', () => {
+    const d = hamleYap(kur(), { tip: 'ekle', kart: 0, hedef: 2 })
     expect(d.oyuncular[2].ceza.map((x) => x.deger)).toEqual([4, 5, 6, 7])
   })
   it('sadece üstteki sıralı kartlar: 4-4-5 üstüne 6 → üstteki 4-5 ile seri, alttaki 4 kalır', () => {

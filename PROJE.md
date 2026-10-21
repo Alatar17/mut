@@ -5,10 +5,13 @@
 
 ## 0. Proje Durumu
 - **Aşama:** 3. adım (birleştirme) bitti — 2026-10-20. İlk oynanabilir sürüm: masa ekranı kural motoruna bağlı, sürükle-bırak, akıllı botlar, animasyonlar. Özel kartların etkisi ve seri hâlâ yok; hepsi sadece puanlı kart.
-- **Bir sonraki işle birlikte yapılacak (kullanıcı isteği, 2026-10-21):** "Üstüne yığ"ın adı **"Ekle"** olacak. Ekrandaki düğme "Ekle / İlerlet" yazacak, PROJE.md'de de terim "Ekle" diye değiştirilecek.
 - **Sıradaki iş:** 4. adım (özel kartlar), parça parça; her parçadan sonra kullanıcı test eder. Sıra: seri (önce orta yığın, sonra ceza yığını; kararlar 6.3'te) → 2 → 8 → Kız → Vale → As → 3 → 10 → Papaz → 7. Her özel kart eklenince akıllı bota da kullanması öğretilir.
 - **4b seri (orta yığın) yapıldı — 2026-10-21:** Orta yığının üstündeki sıralı kartlar + atılan kart (en az 3) sıradakinin ceza yığınına gider; yakalama gibi zorunlu. Mut kartıyla eşleşen kart, ortada seri oluşturuyorsa ortaya da atılabilir (oyuncu seçer). Papaz'dan As'a dönmez. Akıllı bot hamleleri deneyerek seçtiği için seriyi kendiliğinden kullanır. Kullanıcı testinden geçti.
-- **4c seri (ceza yığınları) yapıldı — 2026-10-21:** Kendi yığınını boşaltma, üstüne yığ (herkese) ve al-ilerlet (sıradakinden) eşleşmenin yanında seriyle de yapılır; sadece üstteki sıralı kartlar gider (4-4-5 üstüne 6 → üstteki 4-5-6). Test menüsünde **"Ceza serisi dene"**: herkesin yığınında 4-5-6, avucumda üç 7. Botlar seriyi kendiliğinden kullanıp zincirliyor. Otomatik testlerden geçti; **kullanıcı testi bekliyor.** Sıradaki: 2 (blok).
+- **4c seri (ceza yığınları) yapıldı — 2026-10-21:** Kendi yığınını boşaltma, üstüne yığ (herkese) ve al-ilerlet (sıradakinden) eşleşmenin yanında seriyle de yapılır; sadece üstteki sıralı kartlar gider (4-4-5 üstüne 6 → üstteki 4-5-6). Test menüsünde **"Ceza serisi dene"**: herkesin yığınında 4-5-6, avucumda üç 7. Botlar seriyi kendiliğinden kullanıp zincirliyor. Kullanıcı testinden geçti.
+- **"Üstüne yığ"ın adı "Ekle" oldu (kullanıcı kararı, 2026-10-21).** Ekranda "Ekle / İlerlet"; kodda hamle tipi `ekle`.
+- **4d blok (2a) yapıldı — 2026-10-21:** Ceza yığınına kart gelen oyuncunun avucunda 2 varsa **blok penceresi** açılır (`Durum.blok`; sıra pencere boyunca hedefte). Hedef 2 ile bloklar (kartlar hamleyi yapana döner, 2 altlarına girer) ya da kabul eder; zincir blok çalışıyor. Pencere kapanınca sıra 6.6 ile. Ekran: hedef bensem kalkan yanıp söner (dokununca blok), avucun üstünde 3 sn'lik süre çubuğu + "Kabul"; süre bitince kendiliğinden kabul. 2'yi kendi ceza yığınına sürüklemek de blok yapar. Bot hedefse ve botlar kendi oynuyorsa bot hemen karar verir (akıllı bot neredeyse her zaman bloklar); botlar kapalıyken botun yerine kullanıcı karar verir ("Kabul (Bot B)"). Test menüsünde **"Blok dene"**: C ortadaki 9'u yakalayıp bana yollar, bende iki 2, C'de bir 2 (zincir). Otomatik testlerden ve tarayıcıda zincir/süre denemesinden geçti; **kullanıcı testi bekliyor.**
+  - Şimdilik pencere sadece hedefin 2'si varsa açılıyor. PROJE.md 6.5.1'e göre her gönderimde açılmalı (kimde 2 olduğu belli olmasın); bu, herkesin kendi telefonundan oynadığı aşamada yapılacak.
+  - Sıradaki: **2b** kalkanı önceden kurmak (otomatik blok). Ek süre düğmesi herkes kendi telefonundan oynarken (Aşama 2) yapılacak.
 - **Test menüsü (2026-10-21):** Ayarlar tarayıcıda saklanır (F5'te kaybolmaz). **"Seri dene"** düğmesi: ortada 4-5, avucumda 6 ve 3 hazır yeni el (`src\oyun\deneme.ts`; masaya konan kartlar desteden eksilir, son tur eksik dağıtılır — motor kısa desteyi kaldırır). Her yeni özel kart için aynı yöntemle "… dene" düğmesi eklenecek.
 - **4a (altyapı) yapıldı — 2026-10-21:** Motor her hamlenin sonucunu `Durum.sonHamle` içine yazar (oyuncu, oynanan kart, eşleşen kartlar, nereden, nereye); dağıtılan kartların sırası `Durum.dagitim`. Ekran (`Masa.tsx`) eşleşmeyi ve dağıtım sırasını artık kendisi hesaplamıyor, bunları okuyor; sıradaki için motorun `sonraki()`'si; yakalamada kartın inişi `gec()`in `ekUcus` seçeneğiyle. Testler + tarayıcıda otomatik bir el oynatıldı, hata yok. **Kullanıcı elle denemedi (3c ile birlikte test bekliyor).**
 - **3. adımda yapılanlar (2026-10-20):**
@@ -44,7 +47,7 @@
 - **Git:** Yerel depo var, GitHub'a gönderilmedi. Her test edilmiş adımda Türkçe mesajlı commit atılır. Kimlik sadece bu depoda ayarlı.
 - **Kod yapısı:**
   - `src\oyun\kart.ts`: kart türleri, puanlar, kart oranı (1.4)
-  - `src\oyun\motor.ts`: kural motoru. `yeniOyun`, `gecerliHamleler`, `hamleYap` (yeni durum döndürür, eskisi değişmez), `sonrakiEl`. Yeni durumda `sonHamle` (hamlenin sonucu) ve `dagitim` (son dağıtım sırası) var; ekran animasyonu bunları okur. Yığınlarda dizinin sonu = en üst kart. Hamle tipleri: ortayaAt, mutEslestir, cezaBosalt, ustuneYig, alIlerlet.
+  - `src\oyun\motor.ts`: kural motoru. `yeniOyun`, `gecerliHamleler`, `hamleYap` (yeni durum döndürür, eskisi değişmez), `sonrakiEl`. Yeni durumda `sonHamle` (hamlenin sonucu) ve `dagitim` (son dağıtım sırası) var; ekran animasyonu bunları okur. Yığınlarda dizinin sonu = en üst kart. Hamle tipleri: ortayaAt, mutEslestir, cezaBosalt, ekle, alIlerlet, blok, kabul.
   - `src\oyun\bot.ts`: rastgele bot (`botHamlesi`) ve akıllı bot (`akilliBotHamlesi`); `bot.test.ts` akıllıyı rastgelelere karşı oynatır. `src\oyun\rastgele.ts`: tohumlu rastgele (aynı tohum → aynı oyun, hata tekrar üretilebilir).
   - `src\oyun\motor.test.ts` (kural testleri), `src\oyun\simulasyon.test.ts` (botlar birbirine karşı)
   - `src\ekran\`: `Sahne` (844 × 390 sahneyi ekrana sığdırır), `Masa` (yerleşim, puan kağıdı penceresi, Test menüsü), `Kart`, `Yiginlar` (orta yığın, ceza yığını, deste) `Masa` ayrıca oyunun akışını yönetir: `d` gerçek durum, `gorunen` ekranda çizilen (animasyon sürerken geride kalır); `hamleOyna` hamleyi animasyonla gösterir; sürükleme `useSurukle`. `animasyon.tsx`: kart yerleri, uçan kartlar, dağıtım.
@@ -168,7 +171,7 @@ Temel ilke: **Sadece eşleşen kartlar hareket eder** ve hedef her zaman **en ü
 - **Kararlar (2026-10-21):**
   - Seri sadece **yığının üstüne** bakılarak bulunur; kartları kimin attığı, hangi turda ya da hangi hamlede geldiği önemli değil (orta yığında da ceza yığınında da).
   - Önceki turdan orta yığında kalan kartlarla da seri olur.
-  - Seri uzatma her ceza yığını hamlesinde geçerli: kendi ceza yığınını boşaltırken (4-5-6'ya 7 ekleyip hepsini gönder), "üstüne yığ" (rakibin 4-5-6'sına 7 ekleyip orada bırak), "al ve ilerlet".
+  - Seri uzatma her ceza yığını hamlesinde geçerli: kendi ceza yığınını boşaltırken (4-5-6'ya 7 ekleyip hepsini gönder), "ekle" (rakibin 4-5-6'sına 7 ekleyip orada bırak), "al ve ilerlet".
   - Mut kartlarında 7 varken orta yığında 4-5-6 varsa avuçtaki 7 ile **oyuncu seçer**: seriyi mi alır, Mut 7'yi mi (iki durumda da yakalama olur).
   - Uygulama iki parça: önce orta yığında seri, sonra ceza yığınında seri.
 
@@ -180,13 +183,13 @@ Temel ilke: **Sadece eşleşen kartlar hareket eder** ve hedef her zaman **en ü
 **Seçenek 3 — Rakibin ceza yığınına saldır**
 Rakibin ceza yığınındaki en üst kart avuçtaki kartla eşleşiyorsa iki yol var:
 
-| | Üstüne yığ | Al ve ilerlet |
+| | Ekle | Al ve ilerlet |
 |---|---|---|
 | **Normal el** | **Herkese** (kendin hariç) | Sadece **sıradakinden** alınır, **onun sıradakine** gider |
 | **Serbest el** | Herkese | **Herkesten** alınır, **istediğine** gider (kendin hariç) |
 
-(Karar 2026-10-21: kahvede normal elde de herkese "üstüne yığ" yapılıyor.) Serbest elde kazanmakta olan (en az puanlı) oyuncu herkesin hedefidir.
-- **3a. Üstüne yığ:** Kendi kartını rakibin ceza yığınına eklersin; rakibin puanı artar. Seri uzatma da (4-5-6'ya 7) aynı kurala uyar.
+(Karar 2026-10-21: kahvede normal elde de herkese "ekle" yapılıyor.) Serbest elde kazanmakta olan (en az puanlı) oyuncu herkesin hedefidir.
+- **3a. Ekle** (eski adı: üstüne yığ)**:** Kendi kartını rakibin ceza yığınına eklersin; rakibin puanı artar. Seri uzatma da (4-5-6'ya 7) aynı kurala uyar.
 - **3b. Al ve ilerlet:** Rakibin ceza yığınındaki eşleşen kartları + kendi kartını alıp **onun sıradakinin** ceza yığınına gönderirsin (serbest elde: istediğin oyuncuya, kendin hariç).
   - Strateji: Oyunu kazanan (en az puanlı) oyuncuyu hedef almak için kullanılır.
 
@@ -207,7 +210,7 @@ Rakibin ceza yığınındaki en üst kart avuçtaki kartla eşleşiyorsa iki yol
 **Felsefe:** Saldırıyı geri püskürtür ve **saldıranı** cezalandırır. Blok yapmak isteğe bağlıdır.
 
 - **Ne zaman:** Oyuncuya zarar veren **her türlü** hamleye karşı, sırası olmasa bile:
-  - Ceza yığınına kart gönderilmesi (orta yığından eşleştirme, seri, kendi ceza yığınını boşaltma, saldırı, "üstüne yığ")
+  - Ceza yığınına kart gönderilmesi (orta yığından eşleştirme, seri, kendi ceza yığınını boşaltma, saldırı, "ekle")
   - Eksi elde, birinin senin ceza yığınından kart almaya kalkması
 - **Kime döner:** Kartlar her zaman **hamleyi yapan oyuncuya** döner, kartların asıl sahibine değil.
   - Örnek: A, B'nin ceza yığınındaki kartları alıp C'ye gönderdi. C blok yaptı → kartlar **A'ya** gider (B'ye değil).
@@ -227,7 +230,7 @@ Rakibin ceza yığınındaki en üst kart avuçtaki kartla eşleşiyorsa iki yol
 - **Kalkan butonu:** Avucunda 2 varsa avucunun sağında bir **kalkan ikonu** durur. Saldırı geldiğinde kalkan **yanıp söner**; tek dokunuşla blok yapılır, 2'yi avucun içinde arayıp sürüklemek gerekmez. Kalkanı sadece sahibi görür; avucunda 2 yoksa kalkan görünmez.
 - **Kalkanı kurmak (otomatik blok):** Oyuncu kalkana saldırı gelmeden de basabilir (sırası olmasa da, örn. rakip düşünürken). Kurulu kalkan, bir saldırı geldiğinde 2'yi kendiliğinden oynar. Kullanmak zorunlu değil; kurmayan oyuncu saldırı gelince kalkana basarak elle bloklar.
   - Kurulu kalkan **oyuncunun bir sonraki hamlesine kadar** kurulu kalır; hamleyi yapınca kapanır. 2 kullanılınca da kapanır. **8 ile takas olunca** da kapanır (yeni avuçta 2 varsa tekrar kurulabilir).
-  - Bloklanamayan hamlelerde (Kral, Kız, 8) devreye girmez, kurulu kalır. Bomba ve "üstüne yığ" bloklanabildiği için devreye girer.
+  - Bloklanamayan hamlelerde (Kral, Kız, 8) devreye girmez, kurulu kalır. Bomba ve "ekle" bloklanabildiği için devreye girer.
   - Rakipler kalkanın kurulu olduğunu görmez. Otomatik blok, pencerenin içinde rastgele bir anda devreye girer (hep anında gelirse kurulu olduğu belli olur).
   - Zincir blokta: Rakip otomatik bloğa karşı blok koyarsa yeni bir pencere açılır; oyuncu o sırada kalkanı tekrar kurmuşsa yine otomatik bloklar, kurmamışsa elle karar verir.
   - Puan sınırı gibi ek ayar yok (oyunu karıştırmamak için).
@@ -265,7 +268,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 - Mut kartları **sadece ilk turda** açılır; masanın üst ortasında, orta yığından ayrı durur.
 - Tur bitince ceza yığınları ve orta yığında kalan kartlar **olduğu gibi kalır**, yeni avuçlar dağıtılır.
 - El bitince **puanlar yazılır**, kartlar toplanır ve yeni el baştan başlar.
-- **Eksi elde:** Yakalanan bütün kartlar otomatik olarak yakalayanın ceza yığınına gelir; başkalarının ceza yığınından da (şimdilik herkesten ❓) eşleştirerek çekilebilir. "Kendi ceza yığınını boşalt" ve "üstüne yığ" eksi elde anlamsızdır.
+- **Eksi elde:** Yakalanan bütün kartlar otomatik olarak yakalayanın ceza yığınına gelir; başkalarının ceza yığınından da (şimdilik herkesten ❓) eşleştirerek çekilebilir. "Kendi ceza yığınını boşalt" ve "ekle" eksi elde anlamsızdır.
 
 ### 6.8 Bomba eli (Mut kartlarında 10 varsa)
 1. **Bombanın kurulması:** Mut kartlarındaki 10 ile avucundaki 10 eşleştirilir ve sıradakine (serbest elde: istediğine) gönderilir.

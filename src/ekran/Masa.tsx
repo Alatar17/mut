@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
-import { cezaSerisiDenemesi, seriDenemesi } from '../oyun/deneme'
+import { blokDenemesi, cezaSerisiDenemesi, seriDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
@@ -22,6 +22,8 @@ type AnimasyonHizi = keyof typeof ANIMASYON_HIZLARI
 const DURAKLAMALAR = { Kısa: 250, Uzun: 600 }
 type Duraklama = keyof typeof DURAKLAMALAR
 const SURE = { kalkma: 250, ucus: 380, dagitimAraligi: 70 }
+// Blok penceresi süresi (6.5.1); kahve testinde ayarlanacak.
+const BLOK_SURESI = 3000
 
 // 0 = sen (alt), 1 = sağdaki (sıradaki), 2 = soldaki
 const yeniOyunKur = () => yeniOyun({ isimler: ['Sen', 'Bot B', 'Bot C'], toplamEl: TOPLAM_EL })
@@ -220,9 +222,10 @@ function RakipKart({ kart, transform, kapali, birak }: { kart: KartTipi; transfo
   )
 }
 
-function Kalkan() {
+// Avucumda 2 varsa durur. Bana saldırı gelince (blok penceresi) yanıp söner, dokununca blok yapılır.
+function Kalkan({ aktif, blokla }: { aktif: boolean; blokla: () => void }) {
   return (
-    <button className="kalkan" aria-label="Kalkan">
+    <button className={'kalkan' + (aktif ? ' aktif' : '')} aria-label="Kalkan" onClick={() => aktif && blokla()}>
       <svg viewBox="0 0 24 24" width="26" height="26">
         <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor" />
       </svg>
@@ -246,7 +249,7 @@ export function Masa() {
   const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi', 'Orta')
   const [duraklama, setDuraklama] = useKayitli<Duraklama>('duraklama', 'Kısa')
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
-  // Rakibin ceza yığınına bırakılan kart: "Üstüne yığ" mı "İlerlet" mi seçilecek.
+  // Rakibin ceza yığınına bırakılan kart: "Ekle" mi "İlerlet" mi seçilecek.
   const [cezaSecimi, setCezaSecimi] = useState<{ kart: number; yigin: number } | null>(null)
 
   // ---- Animasyon ----
@@ -345,16 +348,22 @@ export function Masa() {
   }
 
   const hamleyiGoster = async (eski: Durum, yeni: Durum, elle: boolean) => {
-    const sonuc = yeni.sonHamle!
+    // Tur bitip yeni kartlar dağıtıldıysa önce hamle, sonra dağıtım gösterilir.
+    const dagitildi = yeni.asama === 'oyun' && yeni.tur !== eski.tur
+    const hamleSonrasi = dagitildi ? dagitimOncesi(yeni, false) : yeni
+    // Blokta kabul: kart oynanmaz (sonHamle yok).
+    if (yeni.sonHamle) await kartiGoster(eski, yeni.sonHamle, hamleSonrasi, elle)
+    else await gec(hamleSonrasi)
+    if (dagitildi) await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
+  }
+
+  const kartiGoster = async (eski: Durum, sonuc: HamleSonucu, hamleSonrasi: Durum, elle: boolean) => {
     const k = sonuc.kart
     const id = kartKimligi(k)
     if (!elle) {
       setBotKalkik(id)
       await bekle(SURE.kalkma * carpan)
     }
-    // Tur bitip yeni kartlar dağıtıldıysa önce hamle, sonra dağıtım gösterilir.
-    const dagitildi = yeni.asama === 'oyun' && yeni.tur !== eski.tur
-    const hamleSonrasi = dagitildi ? dagitimOncesi(yeni, false) : yeni
     const inis = inisYeri(sonuc)
     if (inis) {
       // Yakalama: kart önce eşleştiği yere iner, kısa duraklar, sonra eşleşenlerle birlikte uçar.
@@ -369,7 +378,6 @@ export function Masa() {
       await gec(hamleSonrasi)
     }
     setBotKalkik(null)
-    if (dagitildi) await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
   }
 
   // Yeni el / yeni oyun: kartlar desteye toplanır, sonra dağıtılır.
@@ -395,7 +403,16 @@ export function Masa() {
     return () => clearTimeout(zamanlayici)
   }, [d, mesgul, botlarOtomatik, botHizi])
 
-  // Durum değişince (biri oynadı, botlar açıldı) açık kalan "Üstüne yığ / İlerlet" seçimi geçersizdir.
+  // Blok penceresi: hedef ben isem (ya da botları ben oynuyorsam) süre bitince kendiliğinden kabul edilir.
+  // Bot hedefse ve botlar kendi oynuyorsa bot hemen karar verir (yukarıdaki bot hamlesi).
+  const blokBende = !!d.blok && !mesgul && (d.blok.hedef === 0 || !botlarOtomatik)
+  useEffect(() => {
+    if (!blokBende) return
+    const zamanlayici = setTimeout(() => hamleOyna({ tip: 'kabul', kart: -1 }, true), BLOK_SURESI)
+    return () => clearTimeout(zamanlayici)
+  }, [d, blokBende])
+
+  // Durum değişince (biri oynadı, botlar açıldı) açık kalan "Ekle / İlerlet" seçimi geçersizdir.
   useEffect(() => {
     setCezaSecimi(null)
   }, [d, botlarOtomatik])
@@ -437,14 +454,16 @@ export function Masa() {
       return dene('ortayaAt')
     }
     if (yer === 'mut') return Number(deger) === d.oyuncular[oyuncu].avuc[kart].deger ? dene('mutEslestir') : 'red'
+    // Blok penceresinde 2 kendi ceza yığınına bırakılınca blok yapılır (kalkana basmakla aynı).
+    if (d.blok) return yer === 'ceza' && Number(deger) === oyuncu ? dene('blok') : 'red'
     if (yer === 'ceza' && Number(deger) === oyuncu) return dene('cezaBosalt')
-    // Sıradakine iki seçenek var (üstüne yığ / ilerlet); diğer rakiplere sadece üstüne yığılır.
+    // Sıradakine iki seçenek var (ekle / ilerlet); diğer rakiplere sadece eklenir.
     if (yer === 'ceza' && Number(deger) === siradaki && hamleGecerliMi(d, { tip: 'alIlerlet', kart })) {
       setCezaSecimi({ kart, yigin: siradaki })
       if (oyuncu === 0) setKalkikKart(kart)
       return 'bekle'
     }
-    if (yer === 'ceza') return dene('ustuneYig', Number(deger))
+    if (yer === 'ceza') return dene('ekle', Number(deger))
     return 'red'
   }
 
@@ -506,15 +525,28 @@ export function Masa() {
             birak={hedef => kartBirak(0, i, hedef)}
           />
         ))}
-        {elimdeIkiVar && <Kalkan />}
+        {elimdeIkiVar && (
+          <Kalkan
+            aktif={blokBende && d.blok!.hedef === 0}
+            blokla={() => oyna({ tip: 'blok', kart: d.oyuncular[0].avuc.findIndex(k => k.deger === 2) })}
+          />
+        )}
       </div>
-      {d.asama === 'oyun' && d.sira === 0 && <div className="benim-sira" />}
+      {d.asama === 'oyun' && d.sira === 0 && !d.blok && <div className="benim-sira" />}
+      {blokBende && (
+        <div className="blok-penceresi" key={d.oyuncular[d.blok!.hedef].ceza.length + '-' + d.blok!.gonderen}>
+          <div className="blok-sure" style={{ animationDuration: `${BLOK_SURESI}ms` }} />
+          <button onClick={() => oyna({ tip: 'kabul', kart: -1 })}>
+            Kabul{d.blok!.hedef !== 0 && ` (${d.oyuncular[d.blok!.hedef].ad})`}
+          </button>
+        </div>
+      )}
 
       {cezaSecimi !== null && (
         <>
           <div className="secim-arka" onClick={() => { setCezaSecimi(null); setKalkikKart(null) }} />
           <div className={`ceza-secimi yigin-${cezaSecimi.yigin}`}>
-            <button onClick={() => oyna({ tip: 'ustuneYig', kart: cezaSecimi.kart, hedef: cezaSecimi.yigin })}>Üstüne yığ</button>
+            <button onClick={() => oyna({ tip: 'ekle', kart: cezaSecimi.kart, hedef: cezaSecimi.yigin })}>Ekle</button>
             <button onClick={() => oyna({ tip: 'alIlerlet', kart: cezaSecimi.kart })}>İlerlet</button>
           </div>
         </>
@@ -545,6 +577,7 @@ export function Masa() {
           <button className="test-satir" onClick={() => yeniOyunBaslat()}>Yeni oyun</button>
           <button className="test-satir" onClick={() => yeniOyunBaslat(seriDenemesi)}>Seri dene</button>
           <button className="test-satir" onClick={() => yeniOyunBaslat(cezaSerisiDenemesi)}>Ceza serisi dene</button>
+          <button className="test-satir" onClick={() => yeniOyunBaslat(blokDenemesi)}>Blok dene</button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />

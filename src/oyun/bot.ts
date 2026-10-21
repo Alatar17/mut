@@ -19,7 +19,8 @@ export function akilliBotHamlesi(d: Durum, rastgele: () => number = Math.random)
     const sonra = cezalar(hamleYap(d, h))
     const fark = sonra.map((p, i) => p - once[i])
     const rakiplere = fark.reduce((t, f, i) => (i === ben ? t : t + f), 0)
-    return rakiplere - fark[ben] - kartPuani(d.oyuncular[ben].avuc[h.kart]) / 100
+    const kart = d.oyuncular[ben].avuc[h.kart]
+    return rakiplere - fark[ben] - (kart ? kartPuani(kart) / 100 : 0)
   }
   const hamleler = gecerliHamleler(d).map(h => ({ h, puan: puanla(h) }))
   const enIyi = Math.max(...hamleler.map(x => x.puan))

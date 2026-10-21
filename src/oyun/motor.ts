@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// Kapsam: özel kartların etkisi yok (hepsi sadece puanlı kart), seri var, hedef her zaman sıradaki.
+// Kapsam: seri ve 2 (blok) var; diğer özel kartların etkisi yok (sadece puanlı kart), hedef her zaman sıradaki.
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -32,6 +32,9 @@ export interface Durum {
   sonHamle?: HamleSonucu
   // Son dağıtımda kartların dağıtılma sırası (ekran dağıtım animasyonu bundan okur).
   dagitim: Kart[]
+  // Blok penceresi (6.5.1): bir ceza yığınına kart gönderildi, hedef 2 ile blok yapabilir ya da kabul eder.
+  // Açıkken sıra hedeftedir; kapanınca normal sıra (6.6) devam eder. adet = gönderilen, yığının üstündeki kart sayısı.
+  blok?: { hedef: number; gonderen: number; adet: number }
 }
 
 // Yer: "orta", "mut", "ceza:<oyuncu>".
@@ -49,10 +52,12 @@ export type HamleTipi =
   | 'ortayaAt' // orta yığına at (üstteki eşleşirse yakalanır)
   | 'mutEslestir' // Mut kartlarıyla eşleştir (aynı sayılı Mut kartlarının hepsi)
   | 'cezaBosalt' // kendi ceza yığınının üstünü eşleştirip gönder
-  | 'ustuneYig' // bir rakibin ceza yığınının üstüne ekle (normal elde de herkese)
+  | 'ekle' // bir rakibin ceza yığınının üstüne ekle (normal elde de herkese)
   | 'alIlerlet' // sıradakinin ceza yığınının üstünü alıp onun sıradakine gönder
+  | 'blok' // blok penceresinde: 2 ile gelen kartları gönderene geri yolla (2 altlarına girer)
+  | 'kabul' // blok penceresinde: kartları kabul et (kart oynanmaz, kart = -1)
 
-// kart = avuçtaki sırası; hedef = üstüne yığılan oyuncu (sadece ustuneYig)
+// kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (sadece ekle)
 export interface Hamle {
   tip: HamleTipi
   kart: number
@@ -132,6 +137,7 @@ function elKur(d: Durum) {
   d.carpan = 1
   d.asama = 'oyun'
   d.sonHamle = undefined
+  d.blok = undefined
   avuclariDagit(d, true)
   d.sira = d.elBaslatani
 }
@@ -155,6 +161,12 @@ function avuclariDagit(d: Durum, mutDahil: boolean) {
 
 export function gecerliHamleler(d: Durum): Hamle[] {
   if (d.asama !== 'oyun') return []
+  if (d.blok) {
+    // Blok penceresinde sadece hedef karar verir: avucundaki bir 2 ile blok ya da kabul.
+    const hamleler: Hamle[] = [{ tip: 'kabul', kart: -1 }]
+    d.oyuncular[d.blok.hedef].avuc.forEach((k, kart) => k.deger === 2 && hamleler.push({ tip: 'blok', kart }))
+    return hamleler
+  }
   const ben = d.oyuncular[d.sira]
   const siradaki = d.oyuncular[sonraki(d, d.sira)]
   const hamleler: Hamle[] = []
@@ -165,8 +177,8 @@ export function gecerliHamleler(d: Durum): Hamle[] {
     if (!mutVar || yakalar(d.orta, k)) hamleler.push({ tip: 'ortayaAt', kart })
     if (mutVar) hamleler.push({ tip: 'mutEslestir', kart })
     if (yakalar(ben.ceza, k)) hamleler.push({ tip: 'cezaBosalt', kart })
-    // Üstüne yığ herkese; al ve ilerlet normal elde sadece sıradakinden (6.3). Seri uzatma da aynı kuralla.
-    for (const i of rakipler) if (yakalar(d.oyuncular[i].ceza, k)) hamleler.push({ tip: 'ustuneYig', kart, hedef: i })
+    // Ekle herkese; al ve ilerlet normal elde sadece sıradakinden (6.3). Seri uzatma da aynı kuralla.
+    for (const i of rakipler) if (yakalar(d.oyuncular[i].ceza, k)) hamleler.push({ tip: 'ekle', kart, hedef: i })
     if (yakalar(siradaki.ceza, k)) hamleler.push({ tip: 'alIlerlet', kart })
   })
   return hamleler
@@ -179,6 +191,12 @@ export const hamleGecerliMi = (d: Durum, h: Hamle) =>
 export function hamleYap(eski: Durum, h: Hamle): Durum {
   if (!hamleGecerliMi(eski, h)) throw new Error(`Geçersiz hamle: ${JSON.stringify(h)}`)
   const d = structuredClone(eski)
+  if (h.tip === 'kabul') {
+    d.blok = undefined
+    d.sonHamle = undefined
+    ilerle(d)
+    return d
+  }
   const oyuncu = d.sira
   const ben = d.oyuncular[oyuncu]
   const s1 = sonraki(d, oyuncu)
@@ -203,7 +221,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       eslesen = yakala(ben.ceza, k)
       nereden = `ceza:${oyuncu}`
       break
-    case 'ustuneYig':
+    case 'ekle':
       nereye = `ceza:${h.hedef}`
       break
     case 'alIlerlet':
@@ -211,12 +229,28 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       nereden = `ceza:${s1}`
       nereye = `ceza:${sonraki(d, s1)}`
       break
+    case 'blok':
+      // Kartlar asıl sahibine değil, hamleyi yapana döner (6.5).
+      eslesen = ben.ceza.splice(ben.ceza.length - d.blok!.adet)
+      nereden = `ceza:${oyuncu}`
+      nereye = `ceza:${d.blok!.gonderen}`
+      break
   }
-  if (nereye === 'orta') d.orta.push(k)
-  else d.oyuncular[Number(nereye.split(':')[1])].ceza.push(...eslesen, k)
+  const hedef = nereye === 'orta' ? null : Number(nereye.split(':')[1])
+  if (hedef === null) d.orta.push(k)
+  // Blokta 2 gönderilen kartların altına girer, en üstte asıl kartlar kalır.
+  else if (h.tip === 'blok') d.oyuncular[hedef].ceza.push(k, ...eslesen)
+  else d.oyuncular[hedef].ceza.push(...eslesen, k)
   d.sonHamle = { oyuncu, kart: k, eslesen, nereden, nereye }
 
-  ilerle(d)
+  // Ceza yığınına kart gelen oyuncunun 2'si varsa blok penceresi açılır (zincir blok da böyle).
+  // Not: PROJE.md'ye göre pencere 2 olmasa da açılır (kimde 2 olduğu belli olmasın); bu, herkesin kendi
+  // telefonundan oynadığı aşamada ekran tarafında yapılacak. Şimdilik sadece 2'si olana açılır.
+  d.blok = undefined
+  if (hedef !== null && d.oyuncular[hedef].avuc.some((x) => x.deger === 2)) {
+    d.blok = { hedef, gonderen: oyuncu, adet: eslesen.length + 1 }
+    d.sira = hedef
+  } else ilerle(d)
   return d
 }
 

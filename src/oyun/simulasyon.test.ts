@@ -36,7 +36,8 @@ function denetle(d: Durum, onceki: Durum, h: Hamle) {
     const beklenen = Array.from({ length: n }, (_, j) => (d.elBaslatani + j) % n).find(
       (i) => d.oyuncular[i].avuc.length === enCok,
     )
-    expect(d.sira).toBe(beklenen)
+    // Blok penceresi açıkken sıra hedeftedir.
+    expect(d.sira).toBe(d.blok ? d.blok.hedef : beklenen)
     expect(enCok).toBeGreaterThan(0)
     expect(gecerliHamleler(d).length).toBeGreaterThan(0)
   }
@@ -54,7 +55,8 @@ function oyunOyna(oyuncuSayisi: number, tohum: number, istatistik: Record<string
       denetle(yeni, d, h)
       istatistik[h.tip] = (istatistik[h.tip] ?? 0) + 1
       d = yeni
-      if (++hamleSayisi > 48) throw new Error('El 48 hamlede bitmedi')
+      // Kabulde kart oynanmaz; her elde tam 48 kart oynanır.
+      if (h.tip !== 'kabul' && ++hamleSayisi > 48) throw new Error('El 48 hamlede bitmedi')
     }
     expect(hamleSayisi).toBe(48)
     expect(d.tur).toBe(d.toplamTur)

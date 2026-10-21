@@ -252,6 +252,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       nereye = 'orta'
       const onun = d.oyuncular[h.hedef!].avuc
       const j = h.cekilen ?? Math.floor(rastgele(d) * onun.length)
+      if (!(j >= 0 && j < onun.length)) throw new Error(`Geçersiz çekilen kart: ${j}`)
       cekilen = onun.splice(j, 1)[0]
       ben.avuc.push(cekilen)
       break

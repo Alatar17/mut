@@ -473,3 +473,9 @@ describe('çekme (Kız)', () => {
     expect(d.oyuncular[2].avuc).toEqual([k(5, 'karo')])
   })
 })
+
+it('çekme: avuçta olmayan sıra verilirse hata (yanlış kart çekilmez)', () => {
+  const d = durum({ avuclar: [[k(12)], [k(9, 'kupa')], [k(5, 'karo')]] })
+  expect(() => hamleYap(d, { tip: 'cek', kart: 0, hedef: 1, cekilen: -1 })).toThrow()
+  expect(() => hamleYap(d, { tip: 'cek', kart: 0, hedef: 1, cekilen: 1 })).toThrow()
+})

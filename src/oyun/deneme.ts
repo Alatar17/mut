@@ -79,7 +79,7 @@ export const kizDenemesi = (d: Durum) =>
     eksik: true,
   })
 
-// Soldaki C (sırası onda) Kız ile benden çeker: avucumda üç 9 var, Mut kartlarında 9; çektiği büyük ihtimalle
+// Soldaki C (sırası onda) Kız ile benden çeker: avucumda üç 9 ve rastgele bir kart, Mut kartlarında 9; çektiği büyük ihtimalle
 // 9 olur ve Mut 9'u yakalar. Botun ters kartlarımdan birini kaldırıp düşünmesi, sonra alması görülür.
 export const kizBotDenemesi = (d: Durum) =>
   denemeKur(d, {

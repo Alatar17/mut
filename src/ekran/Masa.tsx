@@ -402,6 +402,8 @@ export function Masa() {
       setBotKalkik(null)
       setTers(null)
       secimRef.current = null
+      cekmeKaynak.current = undefined
+      setKalkikKart(null)
       bitir(yeni)
     }
   }

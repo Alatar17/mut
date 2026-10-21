@@ -12,7 +12,7 @@ const AVUC_KART_EN = 60
 const TOPLAM_EL = 10
 
 // Botun her hamleden önce beklediği süre (ms). Kullanıcı Test menüsünde deneyip seçecek.
-const BOT_HIZLARI = { Hızlı: 400, Orta: 1000, Yavaş: 2000 }
+const BOT_HIZLARI = { 'Çok hızlı': 100, Hızlı: 400, Orta: 1000, Yavaş: 2000 }
 type BotHizi = keyof typeof BOT_HIZLARI
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
@@ -514,6 +514,7 @@ export function Masa() {
       <button className={'test-dugme' + (testAcik ? ' acik' : '')} onClick={() => setTestAcik(!testAcik)}>
         Test
       </button>
+      {testAcik && <div className="test-arka" onClick={() => setTestAcik(false)} />}
       {testAcik && (
         <div className="test-panel">
           <TestSecenegi ad="Botlar kendi oynasın" acik={botlarOtomatik} degistir={setBotlarOtomatik} />

@@ -3,7 +3,7 @@ import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
 import { karistir } from '../oyun/rastgele'
-import { blokDenemesi, cezaSerisiDenemesi, kizDenemesi, seriDenemesi, takasDenemesi } from '../oyun/deneme'
+import { blokDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
@@ -284,6 +284,7 @@ export function Masa() {
   const [botKartlariKapali, setBotKartlariKapali] = useKayitli('botKartlariKapali', false)
   const [botKartlariDuz, setBotKartlariDuz] = useKayitli('botKartlariDuz', true)
   const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)
+  const [arkaYazi, setArkaYazi] = useKayitli('arkaYazi', true)
   const [botHizi, setBotHizi] = useKayitli<BotHizi>('botHizi', 'Orta')
   const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi', 'Orta')
   const [duraklama, setDuraklama] = useKayitli<Duraklama>('duraklama', 'Kısa')
@@ -635,7 +636,7 @@ export function Masa() {
 
   return (
     <GizliKartlar.Provider value={gizli}>
-    <div className="masa" ref={masaRef}>
+    <div className={'masa' + (arkaYazi ? ' arka-yazi' : '')} ref={masaRef}>
       <button className="yuvarlak-dugme puan-dugme" aria-label="Puanlar" onClick={() => setPuanlarAcik(true)}>
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path d="M6 3h12v18H6z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -726,7 +727,7 @@ export function Masa() {
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">
-          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Kız dene', kizDenemesi]] as const).map(([ad, deneme]) => (
+          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi]] as const).map(([ad, deneme]) => (
             <button key={ad} className="test-satir" onClick={() => { setMenu(null); yeniOyunBaslat(deneme) }}>{ad}</button>
           ))}
         </div>
@@ -746,6 +747,7 @@ export function Masa() {
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
+          <TestSecenegi ad="Kart arkasında Mut yazısı" acik={arkaYazi} degistir={setArkaYazi} />
         </div>
       )}
       <Deste kalan={gorunen.deste.length} />

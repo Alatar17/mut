@@ -47,6 +47,12 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   background: repeating-linear-gradient(45deg, var(--kart-arka-1) 0 4px, var(--kart-arka-2) 4px 8px);
   border: 2px solid var(--kart-yuz);
 }
+/* Kart arkasında hafif "MUT" yazısı (Test menüsünden açılıp kapanır, karar bekliyor). */
+.masa.arka-yazi .kart-arka { display: grid; place-items: center; }
+.masa.arka-yazi .kart-arka::after {
+  content: "MUT"; color: var(--kart-arka-yazi);
+  font-size: 0.75em; font-weight: 800; letter-spacing: 0.1em;
+}
 
 /* ---- Yığınlar ---- */
 .yigin-govde { position: relative; }

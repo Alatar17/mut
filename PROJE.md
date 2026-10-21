@@ -71,7 +71,7 @@
 
 ### 0.1 Çalışma bilgileri
 - **Çalıştırma:** `npm run dev` → http://localhost:5173. Claude Code'da tarayıcı paneli için `.claude\launch.json` içinde "mut" adlı ayar var. Telefon boyutunda bakmak için panel 844 × 390'a ayarlanır.
-- **Claude'un tarayıcı panelinde test:** panel 844 × 390'a ayarlandıktan sonra sayfa yenilenmeli; panel gizliyken açılırsa sahne 0 boyutta ölçülür ve sürükle-bırak çalışmaz gibi görünür (oyun hatası değil).
+- **Claude'un tarayıcı panelinde test:** panel 844 × 390'a ayarlandıktan sonra sayfa yenilenmeli; panel gizliyken açılırsa sahne 0 boyutta ölçülür ve sürükle-bırak çalışmaz gibi görünür (oyun hatası değil). 2026-10-21'de `left_click_drag` ile kart sürükleme yine tutmadı (sebebine bakılmadı); bot hamleleri ve ekran durumu sorunsuz denenebiliyor.
 - **Kontrol:** `npm run kontrol` (TypeScript hata denetimi). `npm test` kural testleri + bot simülasyonu (Vitest, ~12 sn). `npm run build` yayın dosyalarını `dist\`'e üretir (henüz kullanılmadı).
 - **Git:** Yerel depo var, GitHub'a gönderilmedi. Her test edilmiş adımda Türkçe mesajlı commit atılır. Kimlik sadece bu depoda ayarlı.
 - **Kod yapısı:**

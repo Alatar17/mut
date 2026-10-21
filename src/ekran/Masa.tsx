@@ -186,9 +186,10 @@ function TestSecenegi({ ad, acik, degistir }: { ad: string; acik: boolean; degis
 
 
 // Kart sürükleme: basılı tutup kaydırınca kart parmağı izler, bırakınca altındaki yer (data-hedef) bulunur.
-// Kabul edilmezse kart yerine döner. Kaydırmadan bırakmak dokunmadır.
+// Kabul edilmezse kart yerine döner. Kaydırmadan bırakmak dokunmadır. tut: sürükleme başlayınca (Kız seçiminde
+// tutulan kart seçilmiş olur).
 type Birak = (hedef: string) => Birakma
-function useSurukle(dokun: () => void, birak: Birak) {
+function useSurukle(dokun: () => void, birak: Birak, tut?: () => void) {
   const [kayma, setKayma] = useState<{ x: number; y: number } | null>(null)
   const baslangic = useRef<{ x: number; y: number; olcek: number; surukleniyor: boolean } | null>(null)
   const olaylar = {
@@ -203,6 +204,7 @@ function useSurukle(dokun: () => void, birak: Birak) {
       const dx = e.clientX - b.x
       const dy = e.clientY - b.y
       if (!b.surukleniyor && Math.hypot(dx, dy) < 6) return
+      if (!b.surukleniyor) tut?.()
       b.surukleniyor = true
       setKayma({ x: dx / b.olcek, y: dy / b.olcek })
     },
@@ -230,8 +232,8 @@ function useSurukle(dokun: () => void, birak: Birak) {
 }
 
 // Avucumdaki kart: dokununca kalkar, sürüklenip bir yere bırakılır.
-function AvucKart({ kart, sira, adet, kalkik, kapali, dokun, birak }: { kart: KartTipi; sira: number; adet: number; kalkik: boolean; kapali: boolean; dokun: () => void; birak: Birak }) {
-  const { kayma, olaylar } = useSurukle(dokun, birak)
+function AvucKart({ kart, sira, adet, kalkik, kapali, dokun, birak, tut }: { kart: KartTipi; sira: number; adet: number; kalkik: boolean; kapali: boolean; dokun: () => void; birak: Birak; tut?: () => void }) {
+  const { kayma, olaylar } = useSurukle(dokun, birak, tut)
   const transform = kayma
     ? `translate(${kayma.x}px, ${kayma.y}px)`
     : yelpaze(sira, adet) + (kalkik ? ' translateY(-14px)' : '')
@@ -243,8 +245,9 @@ function AvucKart({ kart, sira, adet, kalkik, kapali, dokun, birak }: { kart: Ka
 }
 
 // Botun avucundaki kart. "Botlar kendi oynasın" kapalıyken sürüklenip oynanabilir.
+// dokun: Kız seçiminde kartı kaldırır (seçim yokken bir şey yapmaz); sürüklemeye başlamak da kaldırır.
 function RakipKart({ kart, transform, kapali, birak, dokun }: { kart: KartTipi; transform?: string; kapali: boolean; birak: Birak; dokun: () => void }) {
-  const { kayma, olaylar } = useSurukle(dokun, birak)
+  const { kayma, olaylar } = useSurukle(dokun, birak, dokun)
   return (
     <div
       className={'yan-kart' + (kayma ? ' surukleniyor' : '')}
@@ -672,6 +675,7 @@ export function Masa() {
             kalkik={kalkikKart === i}
             kapali={ters === 0}
             dokun={() => (ters === 0 ? sec(0, i) : setKalkikKart(kalkikKart === i ? null : i))}
+            tut={() => sec(0, i)}
             birak={hedef => kartBirak(0, i, hedef)}
           />
         ))}

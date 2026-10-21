@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { kart, type Deger, type Kart } from './kart'
-import { gecerliHamleler, hamleYap, siradakiOyuncu, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
+import { gecerliHamleler, hamleYap, siradakiOyuncu, valeCarpani, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
 
 // Kartı kısaca yazmak için: k(5) = 5 maça. Renk sadece kartları ayırt etmek için.
 const k = (deger: number, renk: Kart['renk'] = 'maca') => kart(deger as Deger, renk)
@@ -156,6 +156,18 @@ describe('el sonu ve puan', () => {
     expect(d.puanKagidi).toEqual([[-100, 55, 5]])
     expect(d.asama).toBe('oyunSonu')
     expect(gecerliHamleler(d)).toEqual([])
+  })
+  it('Vale çarpanı: Mut kartlarındaki her Vale +2, boş ceza yığını da çarpılır', () => {
+    expect([0, 1, 2, 3, 4].map((n) => valeCarpani([...Array(n)].map(() => k(11)).concat(k(5))))).toEqual([1, 2, 4, 6, 8])
+    const d0 = durum({ avuclar: [[k(6)], [], []], cezalar: [[], [k(3), k(11)], [k(5)]], desteBos: true })
+    d0.carpan = 2
+    expect(hamleYap(d0, { tip: 'ortayaAt', kart: 0 }).puanKagidi).toEqual([[-200, 110, 10]])
+  })
+  it('yeni elde çarpan Mut kartlarından hesaplanır', () => {
+    for (let tohum = 1; tohum <= 40; tohum++) {
+      const d = yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum })
+      expect(d.carpan).toBe(valeCarpani(d.mut))
+    }
   })
   it('avuçlar bitince deste varsa yeni tur dağıtılır', () => {
     const d0 = durum({ avuclar: [[k(6)], [], []] })

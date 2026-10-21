@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// Kapsam: seri, 2 (blok), 8 (takas) ve Kız (çekme) var; diğer özel kartların etkisi yok (sadece puanlı kart), hedef her zaman sıradaki.
+// Kapsam: seri, 2 (blok), 8 (takas), Kız (çekme) ve Vale (çarpan) var; diğer özel kartların etkisi yok (sadece puanlı kart), hedef her zaman sıradaki.
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -143,12 +143,18 @@ function elKur(d: Durum) {
     o.ceza = []
   }
   d.tur = 1
-  d.carpan = 1
   d.asama = 'oyun'
   d.sonHamle = undefined
   d.blok = undefined
   avuclariDagit(d, true)
+  d.carpan = valeCarpani(d.mut)
   d.sira = d.elBaslatani
+}
+
+// Mut kartlarında Vale: puanlar ×2, her ek Vale +2 (×4, ×6, ×8). Mut Vale'si eşleştirilse de el boyunca sürer (5.1, 8).
+export function valeCarpani(mut: Kart[]): number {
+  const n = mut.filter((k) => k.deger === 11).length
+  return n > 0 ? 2 * n : 1
 }
 
 // Teker teker: başlatandan itibaren herkese birer, ilk turda sonra Mut kartlarına bir; 4 kez.

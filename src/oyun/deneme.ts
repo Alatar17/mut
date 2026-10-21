@@ -1,6 +1,6 @@
 // Test menüsündeki "… dene" düğmeleri: istenen kartlar hazır dizilmiş yeni bir el (oyun bitince kalkacak).
 import { kart, type Kart } from './kart'
-import type { Durum } from './motor'
+import { valeCarpani, type Durum } from './motor'
 
 const ayni = (a: Kart, b: Kart) => a.renk === b.renk && a.deger === b.deger
 
@@ -25,6 +25,7 @@ function denemeKur(d: Durum, p: { avucum: Kart[]; digerAvuclar?: Kart[][]; orta?
     while (o.avuc.length < 4) o.avuc.push(normal.pop()!)
   })
   d.mut = [...mut, ...normal.splice(normal.length - (4 - mut.length))]
+  d.carpan = valeCarpani(d.mut)
   d.orta = [...orta]
   d.deste = normal
   d.elBaslatani = 0
@@ -77,6 +78,29 @@ export const kizDenemesi = (d: Durum) =>
     digerAvuclar: [[kart(9, 'kupa'), kart(9, 'karo')]],
     mut: [kart(9, 'maca')],
     eksik: true,
+  })
+
+// Sağdaki B (sırası onda) 8 ile benimle takas yapar: avucumda 2 ve üç 9, Mut kartlarında 9 (bende kalkan kurulu
+// başlar). B'nin avucunda 8, 2 ve işe yaramaz kartlar; takastan sonra 2 bana geçer, kalkan görünür ama kurulu
+// değildir. B en çok kartı olduğu için tekrar oynar, 9'u Mut 9'la yakalar.
+export const takasBotDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(2, 'maca'), kart(9, 'kupa'), kart(9, 'karo'), kart(9, 'sinek')],
+    digerAvuclar: [
+      [kart(8, 'kupa'), kart(2, 'kupa'), kart(4, 'kupa'), kart(5, 'kupa')],
+      [kart(4, 'karo'), kart(5, 'karo'), kart(6, 'karo'), kart(3, 'karo')],
+    ],
+    mut: [kart(9, 'maca'), kart(7, 'kupa'), kart(7, 'karo'), kart(7, 'sinek')],
+    sira: 1,
+  })
+
+// Mut kartlarında Vale (puanlar ×2); avucumda Vale, sağdaki B'nin ceza yığınında 9 (18 görünür). Vale'yi Mut Vale'ye
+// bırakınca iki Vale B'ye gider: (9 + 25 + 25) × 2 = 118.
+export const valeDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(11, 'kupa'), kart(4, 'sinek'), kart(5, 'sinek'), kart(6, 'sinek')],
+    cezalar: [[], [kart(9, 'kupa')], [kart(9, 'karo')]],
+    mut: [kart(11, 'maca')],
   })
 
 // Soldaki C (sırası onda) Kız ile benden çeker: avucumda üç 9 ve rastgele bir kart, Mut kartlarında 9; çektiği büyük ihtimalle

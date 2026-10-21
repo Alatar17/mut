@@ -69,6 +69,8 @@ interface CezaProps {
   donuk?: 'sol' | 'sag'
   // Kart bırakılabilen yer işareti (bkz. Masa).
   hedef?: string
+  // Üstteki kartlar arası kaydırma (piksel); Test menüsünden seçiliyor.
+  aralik: number
 }
 
 // Puan değişince kısa bir an büyüyüp parlar; kimin puan yediği fark edilsin.
@@ -85,19 +87,29 @@ function Puan({ deger, bos }: { deger: number; bos: boolean }) {
 // Uçuş sırasında üstteki kartlar gizlenince alttakiler görünsün diye en üstteki birkaç kart çizilir.
 const CIZILEN_UST_KART = 5
 
-export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef }: CezaProps) {
+// Orta yığın gibi son 3 kart kaydırılmış görünür (daha dar); alttakilerin köşe sayısı görünsün diye sola kayar (stil.css).
+export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik }: CezaProps) {
   const gizliler = useGizliKartlar()
   // Puan, yerine varmış kartlardan hesaplanır (uçan kart inince artar).
   const varanlar = kartlar.filter(k => !gizliler.has(kartKimligi(k)))
   const boy = kartBoyu(KART_EN)
+  const en = KART_EN + 2 * aralik
+  const gorunen = Math.min(3, kartlar.length)
+  // Kilitli dörtlü (6.9.1): aynı sayıdan dört kart art arda gelince en üstteki ters çizilir.
+  const kilitli = (i: number) => i >= 3 && kartlar.slice(i - 3, i).every(k => k.deger === kartlar[i].deger)
   const govde = (
-    <div className="yigin-govde" style={{ width: KART_EN, height: boy }} data-yer={hedef}>
+    <div className="yigin-govde" style={{ width: en, height: boy }} data-yer={hedef}>
       {kartlar.length > 0 ? (
         <>
-          <Kalinlik adet={kartlar.length - 1} genislik={KART_EN} />
-          {kartlar.slice(-CIZILEN_UST_KART).map(k => (
-            <div key={kartKimligi(k)} className="yigin-kart"><Kart kart={k} genislik={KART_EN} /></div>
-          ))}
+          <Kalinlik adet={kartlar.length - gorunen} genislik={KART_EN} />
+          {kartlar.slice(-CIZILEN_UST_KART).map((k, i, ust) => {
+            const yukaridan = ust.length - 1 - i
+            return (
+              <div key={kartKimligi(k)} className={'yigin-kart' + (yukaridan > 0 ? ' alt' : '')} style={{ left: Math.max(0, gorunen - 1 - yukaridan) * aralik }}>
+                <Kart kart={k} genislik={KART_EN} kapali={kilitli(kartlar.length - 1 - yukaridan)} />
+              </div>
+            )
+          })}
         </>
       ) : (
         <div className="bos-yer" style={{ width: KART_EN, height: boy }} />
@@ -106,7 +118,7 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef }: CezaPr
   )
   return (
     <div className={'ceza-yigini puan-' + puanTarafi} data-hedef={hedef}>
-      {donuk ? <div className={'yan-yigin ' + donuk} style={{ width: boy, height: KART_EN }}>{govde}</div> : govde}
+      {donuk ? <div className={'yan-yigin ' + donuk} style={{ width: boy, height: en }}>{govde}</div> : govde}
       <Puan deger={yiginPuani(varanlar) * carpan} bos={varanlar.length === 0} />
     </div>
   )

@@ -62,6 +62,8 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   background: var(--rozet); color: var(--yazi); font-size: 12px; font-weight: 700;
 }
 .ceza-yigini { display: flex; align-items: center; gap: 8px; }
+/* Ceza yığınında alttaki kartların köşe sayısı sola kayar; üstteki kart kapatsa da görünsün. */
+.ceza-yigini .yigin-kart.alt .kose:not(.ters) { left: 1px; letter-spacing: -1px; }
 .ceza-yigini.puan-sol { flex-direction: row-reverse; }
 .puan { min-width: 26px; text-align: center; color: var(--puan); font-size: 15px; font-weight: 800; }
 .puan.vurgu { animation: puan-vurgu 0.7s ease-out; }

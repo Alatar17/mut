@@ -5,21 +5,26 @@ import type { Durum } from './motor'
 const ayni = (a: Kart, b: Kart) => a.renk === b.renk && a.deger === b.deger
 
 // El başındaki durumu yeniden dizer: benim avucumun başına `avucum`, orta yığına `orta`, ceza yığınlarına
-// `cezalar` konur, geri kalan kartlar rastgele yerlerine. Masaya konan kartlar desteden eksilir; son turda
-// avuçlar eksik dağıtılır (sadece deneme için). İlk oynayan ben olurum.
-function denemeKur(d: Durum, p: { avucum: Kart[]; digerAvuclar?: Kart[][]; orta?: Kart[]; cezalar?: Kart[][]; sira?: number }): Durum {
+// `cezalar`, Mut kartlarının başına `mut` konur, geri kalan kartlar rastgele yerlerine. Masaya konan kartlar
+// desteden eksilir; son turda avuçlar eksik dağıtılır (sadece deneme için). İlk oynayan ben olurum.
+// eksik: verilen diğer avuçlar 4'e tamamlanmaz.
+function denemeKur(d: Durum, p: { avucum: Kart[]; digerAvuclar?: Kart[][]; orta?: Kart[]; cezalar?: Kart[][]; mut?: Kart[]; sira?: number; eksik?: boolean }): Durum {
   const orta = p.orta ?? []
   const cezalar = p.cezalar ?? []
   const diger = p.digerAvuclar ?? []
-  const ozel = [...p.avucum, ...diger.flat(), ...orta, ...cezalar.flat()]
+  const mut = p.mut ?? []
+  const ozel = [...p.avucum, ...diger.flat(), ...orta, ...cezalar.flat(), ...mut]
   const tumu = [...d.oyuncular.flatMap(o => o.avuc), ...d.mut, ...d.deste]
   const normal = tumu.filter(k => !ozel.some(o => ayni(o, k)))
   d.oyuncular.forEach((o, i) => {
     o.avuc = i === 0 ? [...p.avucum] : [...(diger[i - 1] ?? [])]
     o.ceza = [...(cezalar[i] ?? [])]
   })
-  for (const o of d.oyuncular) while (o.avuc.length < 4) o.avuc.push(normal.pop()!)
-  d.mut = normal.splice(normal.length - 4)
+  d.oyuncular.forEach((o, i) => {
+    if (p.eksik && diger[i - 1]) return
+    while (o.avuc.length < 4) o.avuc.push(normal.pop()!)
+  })
+  d.mut = [...mut, ...normal.splice(normal.length - (4 - mut.length))]
   d.orta = [...orta]
   d.deste = normal
   d.elBaslatani = 0
@@ -27,7 +32,7 @@ function denemeKur(d: Durum, p: { avucum: Kart[]; digerAvuclar?: Kart[][]; orta?
   // Dağıtım animasyonu için sıra (orta yığındakiler zaten masada).
   d.dagitim = []
   for (let t = 0; t < 4; t++) {
-    for (const o of d.oyuncular) d.dagitim.push(o.avuc[t])
+    for (const o of d.oyuncular) if (o.avuc[t]) d.dagitim.push(o.avuc[t])
     if (d.mut[t]) d.dagitim.push(d.mut[t])
   }
   return d
@@ -61,4 +66,15 @@ export const takasDenemesi = (d: Durum) =>
     avucum: [kart(8, 'maca'), kart(4, 'kupa'), kart(5, 'sinek'), kart(6, 'karo')],
     digerAvuclar: [[kart(8, 'kupa'), kart(2, 'sinek')]],
     orta: [kart(9, 'maca')],
+  })
+
+// Avucumda Kız ve işe yaramaz kartlar, Mut kartlarında 9; sağdaki B'de sadece iki 9. Kız'ı B'nin avucuna bırak → çekme;
+// hangi ters karta dokunsan 9 gelir, sıra yine bende, 9'u Mut 9'a bırakınca yakalanır. (9 ortada olmaz: Kız
+// ortaya düşünce üstünü kapatır.) Soldaki C'nin dolu avucuyla da seçme denenir.
+export const kizDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(12, 'maca'), kart(4, 'kupa'), kart(5, 'sinek'), kart(6, 'karo')],
+    digerAvuclar: [[kart(9, 'kupa'), kart(9, 'karo')]],
+    mut: [kart(9, 'maca')],
+    eksik: true,
   })

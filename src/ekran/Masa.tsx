@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
-import { blokDenemesi, cezaSerisiDenemesi, seriDenemesi, takasDenemesi } from '../oyun/deneme'
+import { blokDenemesi, cezaSerisiDenemesi, kizDenemesi, seriDenemesi, takasDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
@@ -26,6 +26,9 @@ const SURE = { kalkma: 250, ucus: 380, dagitimAraligi: 70 }
 const BLOK_SURESI = 3000
 // Kurulu kalkan bloklamadan önce parladığı görülsün diye kısa bekleme (ms).
 const KALKAN_GECIKMESI = 300
+// Kız ile çekmede hedef avucun karılma süresi ve botun ters kartlardan seçmeden önce düşünme süresi (ms).
+const KARMA_SURESI = 700
+const BOT_SECIM_SURESI = 500
 
 // Blok penceresi açıkken normal bir hamle (kart atmak) kabul sayılır: önce kabul uygulanır, hamle ondan sonraki
 // durumda yapılır. Kabulden sonra sıra o oyuncuda değilse hamle geçersiz olur (6.6 bozulmasın).
@@ -53,7 +56,7 @@ function yanYelpaze(sira: number, adet: number, taraf: 'sol' | 'sag') {
 
 const RAKIP_KART_BINME = 20
 
-// Bırakılan yer ekranda data-hedef ile işaretli: "orta", "mut:<sayı>", "ceza:<oyuncu>", "avuc:<oyuncu>" (8 ile takas).
+// Bırakılan yer ekranda data-hedef ile işaretli: "orta", "mut:<sayı>", "ceza:<oyuncu>", "avuc:<oyuncu>" (8 ile takas, Kız ile çekme).
 // red: kart sessizce avuca döner (Mut kuralına takıldıysa eşleşen Mut kartı sallanır).
 type Birakma = 'kabul' | 'red' | 'bekle'
 
@@ -63,6 +66,23 @@ function salla(el: Element) {
   el.animate(x, { duration: 400 })
 }
 
+// Kız ile çekmede hedefin avucu karılır (9.2): kartlar iki kez ortada toplanıp yeniden açılır.
+function avucuKar(masa: HTMLElement, koltuk: number, sure: number) {
+  const avuc = masa.querySelector<HTMLElement>(`[data-yer="avuc:${koltuk}"]`)
+  if (!avuc) return Promise.resolve()
+  const kartlar = [...avuc.querySelectorAll<HTMLElement>(':scope > .avuc-kart, :scope > .yan-kart')]
+  return Promise.all(
+    kartlar.map((el, i) => {
+      const dx = avuc.offsetWidth / 2 - (el.offsetLeft + el.offsetWidth / 2)
+      const dy = avuc.offsetHeight / 2 - (el.offsetTop + el.offsetHeight / 2)
+      const acik = el.style.transform || 'translate(0px, 0px)'
+      const toplu = `translate(${dx}px, ${dy}px) rotate(${(i % 2 ? 1 : -1) * (4 + i * 2)}deg) ${acik}`
+      const x = [acik, toplu, acik, toplu, acik].map(transform => ({ transform }))
+      return el.animate(x, { duration: sure, easing: 'ease-in-out' }).finished.catch(() => {})
+    }),
+  )
+}
+
 // Bot oynayacağı kartı önce masaya doğru biraz kaldırır.
 function rakipKartDuzeni(sira: number, adet: number, taraf: 'sol' | 'sag', duz: boolean, kalkik: boolean) {
   const kalkma = kalkik ? `translateX(${taraf === 'sol' ? 16 : -16}px) ` : ''
@@ -70,7 +90,8 @@ function rakipKartDuzeni(sira: number, adet: number, taraf: 'sol' | 'sag', duz: 
 }
 
 // Masanın sol/sağ kenarına oturmuş oyuncu: kartlar ona dönük, dikey dizili, masanın ortası hizasında.
-function Rakip({ oyuncu, koltuk, kalkik, birak, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu: Oyuncu; koltuk: number; kalkik: string | null; birak: (kart: number, hedef: string) => Birakma; sirada: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean }) {
+// sec: Kız ile çekmede ters kartlardan birine dokunmak.
+function Rakip({ oyuncu, koltuk, kalkik, birak, sec, sirada, taraf, carpan, kapali, duz, kirpik }: { oyuncu: Oyuncu; koltuk: number; kalkik: string | null; birak: (kart: number, hedef: string) => Birakma; sec: (kart: number) => void; sirada: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean }) {
   const avucBoyu = RAKIP_KART_EN + (oyuncu.avuc.length - 1) * (RAKIP_KART_EN - RAKIP_KART_BINME)
   return (
     <>
@@ -84,6 +105,7 @@ function Rakip({ oyuncu, koltuk, kalkik, birak, sirada, taraf, carpan, kapali, d
             kapali={kapali}
             transform={rakipKartDuzeni(i, oyuncu.avuc.length, taraf, duz, kalkik === kartKimligi(k))}
             birak={hedef => birak(i, hedef)}
+            dokun={() => sec(i)}
           />
         ))}
       </div>
@@ -207,21 +229,21 @@ function useSurukle(dokun: () => void, birak: Birak) {
 }
 
 // Avucumdaki kart: dokununca kalkar, sürüklenip bir yere bırakılır.
-function AvucKart({ kart, sira, adet, kalkik, dokun, birak }: { kart: KartTipi; sira: number; adet: number; kalkik: boolean; dokun: () => void; birak: Birak }) {
+function AvucKart({ kart, sira, adet, kalkik, kapali, dokun, birak }: { kart: KartTipi; sira: number; adet: number; kalkik: boolean; kapali: boolean; dokun: () => void; birak: Birak }) {
   const { kayma, olaylar } = useSurukle(dokun, birak)
   const transform = kayma
     ? `translate(${kayma.x}px, ${kayma.y}px)`
     : yelpaze(sira, adet) + (kalkik ? ' translateY(-14px)' : '')
   return (
     <div className={'avuc-kart' + (kayma ? ' surukleniyor' : '')} style={{ transform }} {...olaylar}>
-      <Kart kart={kart} genislik={AVUC_KART_EN} />
+      <Kart kart={kart} genislik={AVUC_KART_EN} kapali={kapali} />
     </div>
   )
 }
 
 // Botun avucundaki kart. "Botlar kendi oynasın" kapalıyken sürüklenip oynanabilir.
-function RakipKart({ kart, transform, kapali, birak }: { kart: KartTipi; transform?: string; kapali: boolean; birak: Birak }) {
-  const { kayma, olaylar } = useSurukle(() => {}, birak)
+function RakipKart({ kart, transform, kapali, birak, dokun }: { kart: KartTipi; transform?: string; kapali: boolean; birak: Birak; dokun: () => void }) {
+  const { kayma, olaylar } = useSurukle(dokun, birak)
   return (
     <div
       className={'yan-kart' + (kayma ? ' surukleniyor' : '')}
@@ -266,6 +288,15 @@ export function Masa() {
   const [kalkanKurulu, setKalkanKurulu] = useState(false)
   // Rakibin ceza yığınına bırakılan kart: "Ekle" mi "İlerlet" mi seçilecek.
   const [cezaSecimi, setCezaSecimi] = useState<{ kart: number; yigin: number } | null>(null)
+  // Kız ile çekme: avucu ters dönmüş (karılmış) oyuncu ve dokunulacak kartı bekleyen seçim.
+  const [ters, setTers] = useState<number | null>(null)
+  const secimRef = useRef<((kart: number) => void) | null>(null)
+  const sec = (koltuk: number, kart: number) => {
+    const sonuc = secimRef.current
+    if (ters !== koltuk || !sonuc) return
+    secimRef.current = null
+    sonuc(kart)
+  }
 
   // ---- Animasyon ----
   const masaRef = useRef<HTMLDivElement>(null)
@@ -362,6 +393,8 @@ export function Masa() {
       setUcuslar([])
       setGizli(new Set())
       setBotKalkik(null)
+      setTers(null)
+      secimRef.current = null
       bitir(yeni)
     }
   }
@@ -397,6 +430,34 @@ export function Masa() {
       ara.orta.push(k)
       await gec(ara)
       await gec(hamleSonrasi)
+    } else if (sonuc.cekme) {
+      // Çekme (9.2): Kız ortaya düşer, hedefin avucu ters dönüp karılır, çeken bir karta dokunur, kart ona uçar.
+      const { hedef, kart: cekilen } = sonuc.cekme
+      const ara = kartsiz()
+      ara.orta.push(k)
+      await gec(ara)
+      setBotKalkik(null)
+      if (hedef === 0) setKalkikKart(null)
+      setTers(hedef)
+      await avucuKar(masaRef.current!, hedef, KARMA_SURESI * carpan)
+      const adet = ara.oyuncular[hedef].avuc.length
+      const sira =
+        sonuc.oyuncu === 0 || !botlarOtomatik
+          ? await new Promise<number>(r => (secimRef.current = r))
+          : (await bekle(BOT_SECIM_SURESI * carpan), Math.floor(Math.random() * adet))
+      // Kartlar ters ve karılmış olduğu için seçim zaten rastlantı: motorun çektiği kart dokunulan yere konur.
+      const secim = structuredClone(ara)
+      const avuc = secim.oyuncular[hedef].avuc
+      const j = avuc.findIndex(x => kartKimligi(x) === kartKimligi(cekilen))
+      ;[avuc[j], avuc[sira]] = [avuc[sira], avuc[j]]
+      await gec(secim)
+      if (hedef === 0) setKalkikKart(sira)
+      else setBotKalkik(kartKimligi(cekilen))
+      await bekle(SURE.kalkma * carpan)
+      // Kart çekene uçar; hedefin avucu eski sırasıyla yeniden açılır.
+      await gec(hamleSonrasi)
+      setTers(null)
+      if (hedef === 0) setKalkikKart(null)
     } else if (inis) {
       // Yakalama: kart önce eşleştiği yere iner, kısa duraklar, sonra eşleşenlerle birlikte uçar.
       const kaynak = konumOlc(masaRef.current!, id, `avuc:${sonuc.oyuncu}`)
@@ -500,8 +561,8 @@ export function Masa() {
       }
       return dene('ortayaAt')
     }
-    // 8'i bir avucun üstüne bırakmak takas (ortaya bırakmak normal oyun).
-    if (yer === 'avuc') return dene('takas', Number(deger))
+    // 8'i bir avucun üstüne bırakmak takas, Kız'ı bırakmak çekme (ortaya bırakmak normal oyun).
+    if (yer === 'avuc') return dene(t.oyuncular[oyuncu].avuc[kart].deger === 12 ? 'cek' : 'takas', Number(deger))
     if (yer === 'mut') return Number(deger) === t.oyuncular[oyuncu].avuc[kart].deger ? dene('mutEslestir') : 'red'
     if (yer === 'ceza' && Number(deger) === oyuncu) return dene('cezaBosalt')
     // Sıradakine iki seçenek var (ekle / ilerlet); diğer rakiplere sadece eklenir.
@@ -553,8 +614,8 @@ export function Masa() {
 
       <OrtaYigin kartlar={gorunen.orta} />
 
-      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
-      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} carpan={d.carpan} kapali={botKartlariKapali} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
+      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} carpan={d.carpan} kapali={botKartlariKapali || ters === 2} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
+      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} carpan={d.carpan} kapali={botKartlariKapali || ters === 1} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
 
       <div className="benim-ceza">
         <CezaYigini kartlar={ben.ceza} carpan={d.carpan} puanTarafi="sol" hedef="ceza:0" />
@@ -568,7 +629,8 @@ export function Masa() {
             sira={i}
             adet={ben.avuc.length}
             kalkik={kalkikKart === i}
-            dokun={() => setKalkikKart(kalkikKart === i ? null : i)}
+            kapali={ters === 0}
+            dokun={() => (ters === 0 ? sec(0, i) : setKalkikKart(kalkikKart === i ? null : i))}
             birak={hedef => kartBirak(0, i, hedef)}
           />
         ))}
@@ -619,7 +681,7 @@ export function Masa() {
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">
-          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi]] as const).map(([ad, deneme]) => (
+          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Kız dene', kizDenemesi]] as const).map(([ad, deneme]) => (
             <button key={ad} className="test-satir" onClick={() => { setMenu(null); yeniOyunBaslat(deneme) }}>{ad}</button>
           ))}
         </div>

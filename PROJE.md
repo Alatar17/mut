@@ -40,7 +40,7 @@
 - **Git:** Yerel depo var, GitHub'a gönderilmedi. Her test edilmiş adımda Türkçe mesajlı commit atılır. Kimlik sadece bu depoda ayarlı.
 - **Kod yapısı:**
   - `src\oyun\kart.ts`: kart türleri, puanlar, kart oranı (1.4)
-  - `src\oyun\motor.ts`: kural motoru. `yeniOyun`, `gecerliHamleler`, `hamleYap` (yeni durum döndürür, eskisi değişmez), `sonrakiEl`. Yığınlarda dizinin sonu = en üst kart. Hamle tipleri: ortayaAt, mutEslestir, cezaBosalt, ustuneYig, alIlerlet.
+  - `src\oyun\motor.ts`: kural motoru. `yeniOyun`, `gecerliHamleler`, `hamleYap` (yeni durum döndürür, eskisi değişmez), `sonrakiEl`. Yeni durumda `sonHamle` (hamlenin sonucu) ve `dagitim` (son dağıtım sırası) var; ekran animasyonu bunları okur. Yığınlarda dizinin sonu = en üst kart. Hamle tipleri: ortayaAt, mutEslestir, cezaBosalt, ustuneYig, alIlerlet.
   - `src\oyun\bot.ts`: rastgele bot (`botHamlesi`) ve akıllı bot (`akilliBotHamlesi`); `bot.test.ts` akıllıyı rastgelelere karşı oynatır. `src\oyun\rastgele.ts`: tohumlu rastgele (aynı tohum → aynı oyun, hata tekrar üretilebilir).
   - `src\oyun\motor.test.ts` (kural testleri), `src\oyun\simulasyon.test.ts` (botlar birbirine karşı)
   - `src\ekran\`: `Sahne` (844 × 390 sahneyi ekrana sığdırır), `Masa` (yerleşim, puan kağıdı penceresi, Test menüsü), `Kart`, `Yiginlar` (orta yığın, ceza yığını, deste) `Masa` ayrıca oyunun akışını yönetir: `d` gerçek durum, `gorunen` ekranda çizilen (animasyon sürerken geride kalır); `hamleOyna` hamleyi animasyonla gösterir; sürükleme `useSurukle`. `animasyon.tsx`: kart yerleri, uçan kartlar, dağıtım.

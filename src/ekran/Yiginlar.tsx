@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { kartBoyu, yiginPuani, type Kart as KartTipi } from '../oyun/kart'
-import { kartKimligi, useGizliKartlar } from './animasyon'
+import { BOMBA_KART_EN, kartKimligi, useGizliKartlar } from './animasyon'
 import { Kart } from './Kart'
 
 const KART_EN = 56
@@ -18,7 +18,27 @@ function Kalinlik({ adet, genislik }: { adet: number; genislik: number }) {
   )
 }
 
-export function OrtaYigin({ kartlar }: { kartlar: KartTipi[] }) {
+// Bomba yığını (6.8): sahibinin ceza yığınının yanında yanıp söner; tek kart görünür (tahta dar), rozette çıkan 10 sayısı.
+// Uçuş sırasında üstteki kart gizlenince alttaki görünsün diye en üstteki iki kart çizilir.
+export function BombaYigini({ kartlar, sahip, cikan }: { kartlar: KartTipi[]; sahip: number; cikan: number }) {
+  return (
+    <div className={`bomba bomba-${sahip}`} data-hedef={`bomba:${sahip}`} data-yer={`bomba:${sahip}`}>
+      <div className="yigin-govde" style={{ width: BOMBA_KART_EN, height: kartBoyu(BOMBA_KART_EN) }}>
+        {kartlar.slice(-2).map(k => (
+          <div key={kartKimligi(k)} className="yigin-kart">
+            <Kart kart={k} genislik={BOMBA_KART_EN} />
+          </div>
+        ))}
+      </div>
+      <span className="rozet">{cikan}</span>
+    </div>
+  )
+}
+
+// carpan: bomba elinde orta yığının puanı da görünür (6.8); yerine varmış kartlardan hesaplanır, değişince yanıp söner.
+export function OrtaYigin({ kartlar, carpan }: { kartlar: KartTipi[]; carpan?: number }) {
+  const gizliler = useGizliKartlar()
+  const varanlar = kartlar.filter(k => !gizliler.has(kartKimligi(k)))
   const ust = kartlar.slice(-3)
   const alttaKalan = kartlar.length - ust.length
   return (
@@ -32,6 +52,11 @@ export function OrtaYigin({ kartlar }: { kartlar: KartTipi[] }) {
         ))}
       </div>
       <span className="rozet">{kartlar.length}</span>
+      {carpan !== undefined && (
+        <span className="orta-puan">
+          <Puan deger={yiginPuani(varanlar) * carpan} bos={varanlar.length === 0} />
+        </span>
+      )}
     </div>
   )
 }

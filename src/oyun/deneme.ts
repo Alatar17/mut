@@ -155,3 +155,51 @@ export const ucBotDenemesi = (d: Durum) =>
     mut: [kart(3, 'maca'), kart(7, 'kupa'), kart(7, 'karo'), kart(7, 'sinek')],
     sira: 1,
   })
+
+// Bomba eli (Mut kartlarında 10). Avucumda 10 ve 2: 10'u Mut 10'una bırakınca bomba sağdaki B'ye gider. B 10'uyla
+// soldaki C'ye, C 10'uyla bana devreder (bomba 4 on); 2 ile bloklarsam C'ye geri döner. Ortada 9: orta puanı görünür.
+export const bombaDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(10, 'kupa'), kart(2, 'maca'), kart(4, 'sinek'), kart(5, 'sinek')],
+    digerAvuclar: [
+      [kart(10, 'karo'), kart(4, 'kupa'), kart(6, 'kupa'), kart(7, 'kupa')],
+      [kart(10, 'sinek'), kart(4, 'karo'), kart(6, 'karo'), kart(7, 'karo')],
+    ],
+    orta: [kart(9, 'maca')],
+    mut: [kart(10, 'maca'), kart(13, 'kupa'), kart(13, 'karo'), kart(13, 'sinek')],
+  })
+
+// Bomba eli; soldaki C (sırası onda) Mut 10'unu kendi 10'uyla alıp bombayı bana kurar. Avucumda 2 ve 10: bloklayıp C'ye
+// geri yollayabilir ya da kabul edip 10'umla sağdaki B'ye devredebilirim.
+export const bombaBotDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(10, 'kupa'), kart(2, 'maca'), kart(4, 'sinek'), kart(5, 'sinek')],
+    digerAvuclar: [
+      [kart(4, 'kupa'), kart(6, 'kupa'), kart(7, 'kupa'), kart(5, 'karo')],
+      [kart(10, 'sinek'), kart(4, 'karo'), kart(6, 'karo'), kart(7, 'karo')],
+    ],
+    orta: [kart(9, 'maca')],
+    mut: [kart(10, 'maca'), kart(13, 'kupa'), kart(13, 'karo'), kart(13, 'sinek')],
+    sira: 2,
+  })
+
+// Bomba elinin son hamleleri: bomba soldaki C'de (iki 10), herkesin avucunda tek kart, deste bitmiş (kalan kartlar orta
+// yığının altında). 4'ümü ortaya atınca B ve C de oynar, el biter: orta yığın, Mut'ta kalanlar ve bomba C'ye patlar.
+export const patlamaDenemesi = (d: Durum) => {
+  denemeKur(d, {
+    avucum: [kart(4, 'sinek')],
+    digerAvuclar: [[kart(5, 'kupa')], [kart(7, 'karo')]],
+    orta: [kart(9, 'maca')],
+    cezalar: [[], [], [kart(10, 'maca'), kart(10, 'sinek')]],
+    mut: [kart(13, 'kupa'), kart(13, 'karo'), kart(13, 'sinek'), kart(12, 'kupa')],
+    eksik: true,
+  })
+  const fazla = d.oyuncular[0].avuc.splice(1)
+  d.bombaEli = true
+  d.bomba = { sahip: 2, kartlar: d.oyuncular[2].ceza.splice(0) }
+  d.orta = [...d.deste, ...fazla, ...d.orta]
+  d.deste = []
+  d.tur = d.toplamTur
+  d.dagitim = d.dagitim.filter(k => !fazla.includes(k))
+  return d
+}

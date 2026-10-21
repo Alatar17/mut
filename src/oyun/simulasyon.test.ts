@@ -14,6 +14,7 @@ const tumKartlar = (d: Durum): Kart[] => [
   ...d.mut,
   ...d.orta,
   ...d.oyuncular.flatMap((o) => [...o.avuc, ...o.ceza]),
+  ...(d.bomba?.kartlar ?? []),
 ]
 
 function denetle(d: Durum, onceki: Durum, h: Hamle) {
@@ -27,7 +28,8 @@ function denetle(d: Durum, onceki: Durum, h: Hamle) {
     expect(onceki.mut.some((m) => m.deger === atilan.deger)).toBe(false)
   }
   // Mut kartları sadece Mut eşleştirmesiyle azalır.
-  if (h.tip !== 'mutEslestir') expect(d.mut.length).toBe(onceki.mut.length)
+  // (El sonunda bomba patlarsa Mut'ta kalanlar da gider.)
+  if (h.tip !== 'mutEslestir' && !d.patlama) expect(d.mut.length).toBe(onceki.mut.length)
 
   if (d.asama === 'oyun') {
     // 6.6: en çok kartı olanlardan, elin başlatanından sağa doğru ilk olan.

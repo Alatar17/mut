@@ -1,13 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react'
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
-import { gecerliHamleler, hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
+import { cikanOnlar, gecerliHamleler, hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
 import { karistir } from '../oyun/rastgele'
-import { asBotDenemesi, asDenemesi, blokDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
+import { asBotDenemesi, asDenemesi, blokDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
-import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
+import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, patlamaOncesi, patlamaOrtada, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
-import { CezaYigini, Deste, OrtaYigin } from './Yiginlar'
+import { BombaYigini, CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 
 const AVUC_KART_EN = 60
 const TOPLAM_EL = 10
@@ -34,6 +34,10 @@ const KALKAN_GECIKMESI = 300
 // Kız ile çekmede hedef avucun karılma süresi ve botun ters kartlardan seçmeden önce düşünme süresi (ms).
 const KARMA_SURESI = 700
 const BOT_SECIM_SURESI = 500
+// Patlama: son kart indikten sonra bekleme, sonra kartlar ortaya toplanır; orta puanı yanıp söndükten sonra
+// hepsi ceza yığınına gider (ms).
+const PATLAMA_BEKLEMESI = 500
+const ORTADA_BEKLEME = 900
 
 // Blok penceresi açıkken normal bir hamle (kart atmak) kabul sayılır: önce kabul uygulanır, hamle ondan sonraki
 // durumda yapılır. Kabulden sonra sıra o oyuncuda değilse hamle geçersiz olur (6.6 bozulmasın).
@@ -71,7 +75,8 @@ function yanYelpaze(sira: number, adet: number, taraf: 'sol' | 'sag') {
 
 const RAKIP_KART_BINME = 20
 
-// Bırakılan yer ekranda data-hedef ile işaretli: "orta", "mut:<sayı>", "ceza:<oyuncu>", "avuc:<oyuncu>" (8 ile takas, Kız ile çekme).
+// Bırakılan yer ekranda data-hedef ile işaretli: "orta", "mut:<sayı>", "ceza:<oyuncu>", "avuc:<oyuncu>" (8 ile takas, Kız ile çekme),
+// "bomba:<oyuncu>" (bomba elinde 10).
 // red: kart sessizce avuca döner (Mut kuralına takıldıysa eşleşen Mut kartı sallanır).
 type Birakma = 'kabul' | 'red' | 'bekle'
 
@@ -373,7 +378,7 @@ export function Masa() {
     const b = bekleyenGecis.current
     if (!b) return
     bekleyenGecis.current = null
-    const kartlar = new Map([...gorunen.oyuncular.flatMap(o => [...o.avuc, ...o.ceza]), ...gorunen.orta, ...gorunen.mut, ...gorunen.deste].map(k => [kartKimligi(k), k]))
+    const kartlar = new Map([...gorunen.oyuncular.flatMap(o => [...o.avuc, ...o.ceza]), ...gorunen.orta, ...gorunen.mut, ...gorunen.deste, ...(gorunen.bomba?.kartlar ?? [])].map(k => [kartKimligi(k), k]))
     const yeniUcuslar = b.tasinan.map(([id, yer]) => ({
       kart: kartlar.get(id)!,
       kaynak: b.kaynak.get(id)!,
@@ -540,11 +545,18 @@ export function Masa() {
   const hamleyiGoster = async (eski: Durum, yeni: Durum, elle: boolean) => {
     // Tur bitip yeni kartlar dağıtıldıysa önce hamle, sonra dağıtım gösterilir.
     const dagitildi = yeni.asama === 'oyun' && yeni.tur !== eski.tur
-    const hamleSonrasi = dagitildi ? dagitimOncesi(yeni, false) : yeni
+    // El bomba patlamasıyla bittiyse önce son hamle, sonra patlama gösterilir.
+    const hamleSonrasi = dagitildi ? dagitimOncesi(yeni, false) : yeni.patlama ? patlamaOncesi(yeni) : yeni
     // Blokta kabul: kart oynanmaz (sonHamle yok).
     if (yeni.sonHamle) await kartiGoster(eski, yeni.sonHamle, hamleSonrasi, elle)
     else await gec(hamleSonrasi)
     if (dagitildi) await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
+    if (yeni.patlama) {
+      await bekle(PATLAMA_BEKLEMESI * carpan)
+      await gec(patlamaOrtada(yeni))
+      await bekle(ORTADA_BEKLEME * carpan)
+      await gec(yeni)
+    }
   }
 
   const kartiGoster = async (eski: Durum, sonuc: HamleSonucu, hamleSonrasi: Durum, elle: boolean) => {
@@ -670,8 +682,8 @@ export function Masa() {
       oyna(h)
       return 'kabul'
     }
-    // Blok penceresinde 2 kendi ceza yığınına bırakılınca blok yapılır (kalkana basmakla aynı).
-    if (d.blok?.hedef === oyuncu && yer === 'ceza' && Number(deger) === oyuncu && d.oyuncular[oyuncu].avuc[kart].deger === 2)
+    // Blok penceresinde 2 kendi ceza (ya da bomba) yığınına bırakılınca blok yapılır (kalkana basmakla aynı).
+    if (d.blok?.hedef === oyuncu && (yer === 'ceza' || yer === 'bomba') && Number(deger) === oyuncu && d.oyuncular[oyuncu].avuc[kart].deger === 2)
       return dene('blok')
     // Pencerede başka kart atmak kabul sayılır; kurallara kabulden sonraki durumdan bakılır.
     const t = kabulSonrasi(d, { tip: 'ortayaAt', kart })
@@ -680,6 +692,8 @@ export function Masa() {
     if (yer === 'orta') {
       // Mut kartlarıyla eşleşen kart ortaya atılamaz: neden olmadığını eşleşen Mut kartı sallanarak gösterir.
       const deger = t.oyuncular[oyuncu].avuc[kart].deger
+      // Bomba kurulduysa ortaya bırakılan 10 (seri yoksa) bombaya gider.
+      if (ayniHamleler(t, { tip: 'ortayaAt', kart }).length === 0 && t.bomba && deger === 10) return dene('bomba')
       if (ayniHamleler(t, { tip: 'ortayaAt', kart }).length === 0 && t.mut.some(m => m.deger === deger)) {
         masaRef.current!.querySelectorAll(`[data-hedef="mut:${deger}"]`).forEach(salla)
         return 'red'
@@ -688,6 +702,7 @@ export function Masa() {
     }
     // 8'i bir avucun üstüne bırakmak takas, Kız'ı bırakmak çekme (ortaya bırakmak normal oyun).
     if (yer === 'avuc') return dene(t.oyuncular[oyuncu].avuc[kart].deger === 12 ? 'cek' : 'takas', Number(deger))
+    if (yer === 'bomba') return dene('bomba')
     if (yer === 'mut') return Number(deger) === t.oyuncular[oyuncu].avuc[kart].deger ? dene('mutEslestir') : 'red'
     // Eksi elde kendi yığınına bırakmak eklemek, rakibin yığınına bırakmak oradan almak (kartlar hep kendine).
     if (t.eksi && yer === 'ceza') return Number(deger) === oyuncu ? dene('ekle', oyuncu) : dene('alIlerlet', Number(deger))
@@ -703,7 +718,7 @@ export function Masa() {
     return 'red'
   }
 
-  const aktifKurallar = [...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
+  const aktifKurallar = [...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.bombaEli ? ['Bomba'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
   // Ceza yığınlarında görünen puan çarpanı: eksi elde puanlar eksi görünür.
   const puanCarpani = d.eksi ? -d.carpan : d.carpan
   // Test menüsünde bir seçeneğe her basışta sıradaki değere geçer.
@@ -742,7 +757,8 @@ export function Masa() {
         {gorunen.mut.map(k => <div key={kartKimligi(k)} data-hedef={`mut:${k.deger}`}><Kart kart={k} genislik={56} /></div>)}
       </div>
 
-      <OrtaYigin kartlar={gorunen.orta} />
+      <OrtaYigin kartlar={gorunen.orta} carpan={d.bombaEli ? puanCarpani : undefined} />
+      {gorunen.bomba && <BombaYigini kartlar={gorunen.bomba.kartlar} sahip={gorunen.bomba.sahip} cikan={cikanOnlar(gorunen)} />}
 
       <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} carpan={puanCarpani} kapali={botKartlariKapali || ters === 2} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
       <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} carpan={puanCarpani} kapali={botKartlariKapali || ters === 1} duz={botKartlariDuz} kirpik={botKartlariKirpik} />
@@ -828,7 +844,7 @@ export function Masa() {
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">
-          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi]] as const).map(([ad, deneme]) => (
+          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi]] as const).map(([ad, deneme]) => (
             // "Bot 8 dene" kalkan kurulu başlar: takas gelince sökülmesi görülsün.
             <button key={ad} className="test-satir" onClick={() => { setMenu(null); yeniOyunBaslat(deneme); setKalkanKurulu(ad === 'Bot 8 dene') }}>{ad}</button>
           ))}

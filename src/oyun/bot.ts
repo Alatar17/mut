@@ -42,7 +42,9 @@ export function akilliBotHamlesi(d: Durum, rastgele: () => number = Math.random)
 // Takas ve çekme dışındaki geçerli hamleler ve puanları (sıradaki oyuncunun gözünden).
 function puanlanmis(d: Durum, hamleler = gecerliHamleler(d)) {
   const ben = d.sira
-  const cezalar = (x: Durum) => x.oyuncular.map(o => yiginPuani(o.ceza))
+  // Bomba sahibine el sonunda patlayacak kartlar (bomba, orta yığın, Mut'ta kalanlar) şimdiden ceza sayılır.
+  const cezalar = (x: Durum) =>
+    x.oyuncular.map((o, i) => yiginPuani(o.ceza) + (x.bomba?.sahip === i ? yiginPuani([...x.bomba.kartlar, ...x.orta, ...x.mut]) : 0))
   const once = cezalar(d)
   // Serbest elde rakiplere giden puan aynıysa kartlar kazanmakta olana (oyun toplamı + bu el en az olan) gider.
   const toplam = toplamPuanlar(d).map((t, i) => t + elPuanlari(d)[i])

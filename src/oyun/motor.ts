@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// Kapsam: seri, 2 (blok), 8 (takas), Kız (çekme), Vale (çarpan), As (eksi el) ve 3 (serbest el) var; diğer özel kartların etkisi yok (sadece puanlı kart).
+// Kapsam: seri, 2 (blok), 8 (takas), Kız (çekme), Vale (çarpan), As (eksi el), 3 (serbest el) ve 10 (bomba) var; diğer özel kartların etkisi yok (sadece puanlı kart).
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -28,6 +28,11 @@ export interface Durum {
   eksi: boolean
   // Serbest el (Mut kartlarında 3): yakalanan kartlar istenen rakibe gider (hamledeki gonder).
   serbest: boolean
+  // Bomba eli (Mut kartlarında 10, 6.8): Mut 10'u ile kurulan bomba sahibinin yanında ayrı durur (kartlar: 10'lar,
+  // blokta 2'ler altta). El sonunda sahibinde patlar; patlayan kartlar ekran animasyonu için patlama'da.
+  bombaEli: boolean
+  bomba?: { sahip: number; kartlar: Kart[] }
+  patlama?: { sahip: number; orta: Kart[]; mut: Kart[]; bomba: Kart[] }
   asama: Asama
   // Her satır bir el; sütunlar oyuncular sırasıyla.
   puanKagidi: number[][]
@@ -39,10 +44,11 @@ export interface Durum {
   // Blok penceresi (6.5.1): bir ceza yığınına kart gönderildi, hedef 2 ile blok yapabilir ya da kabul eder.
   // Açıkken sıra hedeftedir; kapanınca normal sıra (6.6) devam eder. adet = gönderilen, yığının üstündeki kart sayısı.
   // Eksi elde ters: gonderen hedefin yığınından kart almıştır, kartlar gonderenin yığınının üstündedir.
-  blok?: { hedef: number; gonderen: number; adet: number }
+  // bomba: gönderilen bombadır (blokta bomba geri gider).
+  blok?: { hedef: number; gonderen: number; adet: number; bomba?: true }
 }
 
-// Yer: "orta", "mut", "ceza:<oyuncu>".
+// Yer: "orta", "mut", "ceza:<oyuncu>", "bomba:<oyuncu>".
 export interface HamleSonucu {
   oyuncu: number
   kart: Kart
@@ -67,6 +73,7 @@ export type HamleTipi =
   | 'kabul' // blok penceresinde: kartları kabul et (kart oynanmaz, kart = -1)
   | 'takas' // 8 ortaya düşer (eşleşme/seri yok), avucunu hedefle değiştirirsin (7)
   | 'cek' // Kız ortaya düşer (eşleşme/seri yok), hedefin avucundan rastgele bir kart çekersin (7)
+  | 'bomba' // bomba elinde 10: bomba sendeyse 10'unu ekleyip sıradakine gönderirsin, değilse 10 sahibindeki bombaya eklenir
 
 // kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (ekle), avucu alınan oyuncu (takas, cek) ya da eksi/serbest elde yığını alınan oyuncu (alIlerlet)
 export interface Hamle {
@@ -76,7 +83,7 @@ export interface Hamle {
   // Sadece cek: hedefin avucundan çekilecek kartın sırası. Yoksa rastgele (ters dönmüş karılmış karttan seçmek gibi).
   // Testler ve botun hesabı için; geçerlilik kontrolünde bakılmaz.
   cekilen?: number
-  // Serbest elde yakalanan kartların gideceği oyuncu (ortayaAt yakalaması, mutEslestir, cezaBosalt, alIlerlet).
+  // Serbest elde yakalanan kartların gideceği oyuncu (ortayaAt yakalaması, mutEslestir, cezaBosalt, alIlerlet, bomba).
   gonder?: number
 }
 
@@ -133,6 +140,7 @@ export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?:
     carpan: 1,
     eksi: false,
     serbest: false,
+    bombaEli: false,
     asama: 'oyun',
     puanKagidi: [],
     dagitim: [],
@@ -155,6 +163,8 @@ function elKur(d: Durum) {
   d.asama = 'oyun'
   d.sonHamle = undefined
   d.blok = undefined
+  d.bomba = undefined
+  d.patlama = undefined
   avuclariDagit(d, true)
   d.carpan = valeCarpani(d.mut)
   Object.assign(d, acilisKurallari(d.mut))
@@ -167,12 +177,23 @@ export function valeCarpani(mut: Kart[]): number {
   return n > 0 ? 2 * n : 1
 }
 
-// Mut kartlarında As: eksi el, 3: serbest el; birden fazlası ek etki yapmaz (7). İkisi birlikteyse önce açılan
-// geçerli (5.1); Mut kartları açılma sırasıyla dizili.
+// Mut kartlarında As: eksi el, 3: serbest el, 10: bomba eli; birden fazlası ek etki yapmaz (7). As, 3 ve 10 ile
+// çakışır: önce açılan geçerli (5.1); 3 ile 10 birlikte olur. Mut kartları açılma sırasıyla dizili.
 export function acilisKurallari(mut: Kart[]) {
-  const ilk = mut.find((k) => k.deger === 1 || k.deger === 3)
-  return { eksi: ilk?.deger === 1, serbest: ilk?.deger === 3 }
+  let eksi = false
+  let serbest = false
+  let bombaEli = false
+  for (const k of mut) {
+    if (k.deger === 1 && !serbest && !bombaEli) eksi = true
+    if (k.deger === 3 && !eksi) serbest = true
+    if (k.deger === 10 && !eksi) bombaEli = true
+  }
+  return { eksi, serbest, bombaEli }
 }
+
+// Bomba elinde oynanmış (avuçlarda, destede ve Mut'ta olmayan) 10'lar; bomba yığınının üstünde yazar.
+export const cikanOnlar = (d: Durum) =>
+  4 - [...d.oyuncular.flatMap((o) => o.avuc), ...d.deste, ...d.mut].filter((k) => k.deger === 10).length
 
 // Teker teker: başlatandan itibaren herkese birer, ilk turda sonra Mut kartlarına bir; 4 kez.
 function avuclariDagit(d: Durum, mutDahil: boolean) {
@@ -208,10 +229,16 @@ export function gecerliHamleler(d: Durum): Hamle[] {
     d.serbest ? rakipler.filter((g) => g !== haric).forEach((gonder) => hamleler.push({ ...h, gonder })) : hamleler.push(h)
   ben.avuc.forEach((k, kart) => {
     const mutVar = d.mut.some((m) => m.deger === k.deger)
+    // Bomba kurulduysa 10 ortaya boşa atılamaz, bombaya gider (6.8); seri tamamlıyorsa oyuncu seçer (kullanıcı kararı).
+    const bombaVar = !!d.bomba && k.deger === 10
     // Mut kartlarıyla eşleşen kart orta yığına boşa atılamaz; ortada eşleşme ya da seri varsa oyuncu seçer (5.2).
     if (yakalar(d.orta, k)) yakalama({ tip: 'ortayaAt', kart })
-    else if (!mutVar) hamleler.push({ tip: 'ortayaAt', kart })
+    else if (!mutVar && !bombaVar) hamleler.push({ tip: 'ortayaAt', kart })
     if (mutVar) yakalama({ tip: 'mutEslestir', kart })
+    if (bombaVar) {
+      if (d.bomba!.sahip === d.sira) yakalama({ tip: 'bomba', kart })
+      else hamleler.push({ tip: 'bomba', kart })
+    }
     if (d.eksi) {
       // Eksi elde kart hep kendine: kendi yığınına ekle (zorunlu değil), herkesin yığınından al. Seri uzatma da öyle.
       if (yakalar(ben.ceza, k)) hamleler.push({ tip: 'ekle', kart, hedef: d.sira })
@@ -256,6 +283,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
   // Eksi elde yakalanan kartlar yakalayanın kendi yığınına, serbest elde istenen rakibe gider.
   let nereye = `ceza:${d.eksi ? oyuncu : h.gonder ?? s1}`
   let cekilen: Kart | undefined
+  const eskiSahip = d.bomba?.sahip
 
   switch (h.tip) {
     case 'ortayaAt':
@@ -268,6 +296,16 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       eslesen = d.mut.filter((m) => m.deger === k.deger)
       d.mut = d.mut.filter((m) => m.deger !== k.deger)
       nereden = 'mut'
+      // Bomba elinde Mut 10'u bombayı kurar: kartlar ceza yığınına değil, alanın yanına (6.8).
+      if (d.bombaEli && k.deger === 10) nereye = nereye.replace('ceza', 'bomba')
+      break
+    case 'bomba':
+      // Bomba sendeyse 10'unla birlikte gönderirsin; değilse 10 sahibindeki bombaya eklenir, bomba yerinde kalır.
+      if (d.bomba!.sahip === oyuncu) {
+        eslesen = d.bomba!.kartlar.splice(0)
+        nereden = `bomba:${oyuncu}`
+        nereye = nereye.replace('ceza', 'bomba')
+      } else nereye = `bomba:${d.bomba!.sahip}`
       break
     case 'cezaBosalt':
       eslesen = yakala(ben.ceza, k)
@@ -297,6 +335,13 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       break
     }
     case 'blok': {
+      if (d.blok!.bomba) {
+        // Bomba gönderene döner, 2 bomba kartlarının altına girer (6.8).
+        eslesen = d.bomba!.kartlar.splice(0)
+        nereden = `bomba:${oyuncu}`
+        nereye = `bomba:${d.blok!.gonderen}`
+        break
+      }
       // Kartlar asıl sahibine değil, hamleyi yapana döner (6.5). Eksi elde alınan kartlar bloklayanın yığınına geri gelir.
       const kaynak = d.eksi ? d.blok!.gonderen : oyuncu
       const yigin = d.oyuncular[kaynak].ceza
@@ -306,11 +351,17 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       break
     }
   }
-  const hedef = nereye === 'orta' ? null : Number(nereye.split(':')[1])
-  if (hedef === null) d.orta.push(k)
+  const [yer, no] = nereye.split(':')
+  const hedef = yer === 'orta' ? null : Number(no)
+  let yigin = d.orta
+  if (yer === 'bomba') {
+    d.bomba ??= { sahip: hedef!, kartlar: [] }
+    d.bomba.sahip = hedef!
+    yigin = d.bomba.kartlar
+  } else if (hedef !== null) yigin = d.oyuncular[hedef].ceza
   // Blokta 2 gönderilen kartların altına girer, en üstte asıl kartlar kalır.
-  else if (h.tip === 'blok') d.oyuncular[hedef].ceza.push(k, ...eslesen)
-  else d.oyuncular[hedef].ceza.push(...eslesen, k)
+  if (h.tip === 'blok') yigin.push(k, ...eslesen)
+  else yigin.push(...eslesen, k)
   d.sonHamle = { oyuncu, kart: k, eslesen, nereden, nereye }
   if (h.tip === 'takas') d.sonHamle.takas = h.hedef
   if (cekilen) d.sonHamle.cekme = { hedef: h.hedef!, kart: cekilen }
@@ -319,11 +370,14 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
   // Not: PROJE.md'ye göre pencere 2 olmasa da açılır (kimde 2 olduğu belli olmasın); bu, herkesin kendi
   // telefonundan oynadığı aşamada ekran tarafında yapılacak. Şimdilik sadece 2'si olana açılır.
   // Zarar gören: normal elde kartların gittiği yığının sahibi, eksi elde yığınından kart alınan (kendine almak zarar değil).
+  // Bomba elinde bomba yeni sahibine gönderildiyse o; sahibindeki bombaya 10 eklemek blok açmaz (kullanıcı kararı).
   const kaynakOyuncu = nereden?.startsWith('ceza:') ? Number(nereden.split(':')[1]) : null
-  const magdur = d.eksi ? (kaynakOyuncu !== oyuncu ? kaynakOyuncu : null) : hedef
+  const magdur =
+    yer === 'bomba' ? (hedef !== eskiSahip ? hedef : null) : d.eksi ? (kaynakOyuncu !== oyuncu ? kaynakOyuncu : null) : hedef
   d.blok = undefined
   if (magdur !== null && d.oyuncular[magdur].avuc.some((x) => x.deger === 2)) {
     d.blok = { hedef: magdur, gonderen: oyuncu, adet: eslesen.length + 1 }
+    if (yer === 'bomba') d.blok.bomba = true
     d.sira = magdur
   } else ilerle(d)
   return d
@@ -349,13 +403,21 @@ function ilerle(d: Durum) {
   d.sira = siradakiOyuncu(d)
 }
 
-// Bölüm 8. Eksi elde puan eksi, boş yığın +100. Orta yığında ve Mut kartlarında kalanlar kimsenin puanına sayılmaz (kesin karar, Bölüm 11).
+// Bölüm 8. Eksi elde puan eksi, boş yığın +100. Orta yığında ve Mut kartlarında kalanlar kimsenin puanına sayılmaz (kesin karar, Bölüm 11);
+// bomba elinde bunlar patlamayla bomba sahibine gider (elBitir).
 export function elPuanlari(d: Durum): number[] {
   const isaret = d.eksi ? -1 : 1
   return d.oyuncular.map((o) => (o.ceza.length === 0 ? -100 : yiginPuani(o.ceza)) * isaret * d.carpan)
 }
 
 function elBitir(d: Durum) {
+  // Patlama (6.8): orta yığın, Mut'ta kalanlar ve bomba, bomba kimdeyse onun ceza yığınına.
+  if (d.bomba) {
+    const p = { sahip: d.bomba.sahip, orta: d.orta.splice(0), mut: d.mut.splice(0), bomba: d.bomba.kartlar }
+    d.oyuncular[p.sahip].ceza.push(...p.orta, ...p.mut, ...p.bomba)
+    d.patlama = p
+    d.bomba = undefined
+  }
   d.puanKagidi.push(elPuanlari(d))
   d.asama = d.el >= d.toplamEl ? 'oyunSonu' : 'elSonu'
 }

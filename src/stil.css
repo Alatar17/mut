@@ -72,6 +72,14 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .ucan-kart { position: absolute; z-index: 18; pointer-events: none; }
 
 .orta-yigin { position: absolute; left: 50%; top: 156px; transform: translateX(-50%); }
+.orta-puan { position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
+
+/* ---- Bomba yığını: sahibinin ceza yığınının yanında, yanıp söner ---- */
+.bomba { position: absolute; border-radius: 8px; animation: bomba-yanip-son 0.9s ease-in-out infinite alternate; }
+@keyframes bomba-yanip-son { from { box-shadow: 0 0 4px 1px var(--puan); } to { box-shadow: 0 0 16px 5px var(--puan); } }
+.bomba-0 { left: 588px; top: 326px; }
+.bomba-1 { right: 108px; top: calc(50% + 44px); }
+.bomba-2 { left: 108px; top: calc(50% + 44px); }
 .deste { position: absolute; right: 22px; bottom: 18px; }
 
 /* ---- Mut kartları ve aktif kurallar ---- */

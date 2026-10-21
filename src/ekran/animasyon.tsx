@@ -24,15 +24,37 @@ export function kartYerleri(d: Durum): Map<string, string> {
     ekle(o.ceza, `ceza:${i}`)
     ekle(o.avuc, `avuc:${i}`)
   })
+  if (d.bomba) ekle(d.bomba.kartlar, `bomba:${d.bomba.sahip}`)
   return yerler
+}
+
+// Bomba patlamadan hemen önceki görüntü: patlayan kartlar ceza yığınından çıkıp orta, Mut ve bomba yerlerine döner.
+export function patlamaOncesi(d: Durum): Durum {
+  const p = d.patlama!
+  const o = structuredClone(d)
+  const ceza = o.oyuncular[p.sahip].ceza
+  ceza.splice(ceza.length - p.orta.length - p.mut.length - p.bomba.length)
+  o.orta = [...p.orta]
+  o.mut = [...p.mut]
+  o.bomba = { sahip: p.sahip, kartlar: [...p.bomba] }
+  return o
+}
+
+// Patlamanın ilk adımı: Mut'ta kalanlar ve bomba orta yığına toplanmış (sonra hepsi birlikte ceza yığınına gider).
+export function patlamaOrtada(d: Durum): Durum {
+  const o = patlamaOncesi(d)
+  o.orta.push(...o.mut.splice(0), ...o.bomba!.kartlar)
+  o.bomba = undefined
+  return o
 }
 
 // Kartın ekrandaki yeri, masa koordinatlarında: merkez, dönüş açısı ve kart eni.
 export interface Konum { x: number; y: number; aci: number; en: number }
 
-// 0 = ben (alt), 1 = sağdaki, 2 = soldaki. Yan oturanların kartları ve yığınları yan döner.
-const yerinAcisi = (yer: string) => (yer.endsWith(':1') ? -90 : yer.endsWith(':2') ? 90 : 0)
-const yerinKartEni = (yer: string) => (yer === 'avuc:0' ? 60 : yer === 'deste' ? 42 : 56)
+// 0 = ben (alt), 1 = sağdaki, 2 = soldaki. Yan oturanların kartları ve yığınları yan döner (bomba yığını dönmez).
+const yerinAcisi = (yer: string) => (yer.startsWith('bomba') ? 0 : yer.endsWith(':1') ? -90 : yer.endsWith(':2') ? 90 : 0)
+const yerinKartEni = (yer: string) => (yer === 'avuc:0' ? 60 : yer === 'deste' ? 42 : yer.startsWith('bomba') ? BOMBA_KART_EN : 56)
+export const BOMBA_KART_EN = 44
 
 export function konumOlc(masa: HTMLElement, id: string, yer: string): Konum {
   const el = masa.querySelector(`[data-kart="${id}"]`) ?? masa.querySelector(`[data-yer="${yer}"]`)

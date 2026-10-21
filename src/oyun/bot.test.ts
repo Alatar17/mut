@@ -4,7 +4,7 @@ import { kart, type Deger, type Kart } from './kart'
 import { akilliBotHamlesi, botHamlesi } from './bot'
 import { hamleYap, sonrakiEl, toplamPuanlar, yeniOyun } from './motor'
 import { rastgele } from './rastgele'
-import { asBotDenemesi, ucBotDenemesi } from './deneme'
+import { asBotDenemesi, bombaBotDenemesi, bombaDenemesi, ucBotDenemesi } from './deneme'
 
 it('akıllı bot rastgele botları çoğunlukla yener', () => {
   const OYUN = 100
@@ -70,4 +70,16 @@ it('akıllı bot serbest elde yakaladığını kazanmakta olana gönderir', () =
   d.oyuncular[0].ceza = d.oyuncular[2].ceza
   d.oyuncular[2].ceza = []
   expect(akilliBotHamlesi(d, () => 0)).toEqual({ tip: 'ortayaAt', kart: 0, gonder: 2 })
+})
+
+it('akıllı bot bombayı kurar, gelen bombayı 2 ile bloklar, 10 gelince devreder', () => {
+  const yeni = () => yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum: 1 })
+  const d = bombaBotDenemesi(yeni())
+  expect(akilliBotHamlesi(d, () => 0)).toEqual({ tip: 'mutEslestir', kart: 0 })
+  const geldi = hamleYap(d, { tip: 'mutEslestir', kart: 0 })
+  expect(geldi.blok?.hedef).toBe(0)
+  expect(akilliBotHamlesi(geldi, () => 0).tip).toBe('blok')
+  const b = hamleYap(bombaDenemesi(yeni()), { tip: 'mutEslestir', kart: 0 })
+  expect(b.sira).toBe(1)
+  expect(akilliBotHamlesi(b, () => 0)).toEqual({ tip: 'bomba', kart: 0 })
 })

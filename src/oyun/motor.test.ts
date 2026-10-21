@@ -347,3 +347,60 @@ describe('seri (orta yığın)', () => {
     expect(ortayaAt([k(4), k(5)], k(6)).sonHamle).toMatchObject({ eslesen: [k(4), k(5)], nereden: 'orta', nereye: 'ceza:1' })
   })
 })
+
+describe('takas (8)', () => {
+  // Bende 8 ve 4; B'de üç kart, C'de iki kart. Ortada 6-7 (8 ortaya bırakılırsa seri olur).
+  const kur = (p: { mut?: Kart[]; cAvucu?: Kart[] } = {}) =>
+    durum({
+      avuclar: [[k(8), k(4)], [k(9, 'kupa'), k(10, 'kupa'), k(11, 'kupa')], p.cAvucu ?? [k(5, 'kupa'), k(5, 'karo')]],
+      orta: [k(6), k(7)],
+      mut: p.mut,
+    })
+
+  it('8 ile herkesle takas seçeneği var, diğer kartlarla yok', () => {
+    const d = kur()
+    expect(gecerliHamleler(d).filter((h) => h.tip === 'takas')).toEqual([
+      { tip: 'takas', kart: 0, hedef: 1 },
+      { tip: 'takas', kart: 0, hedef: 2 },
+    ])
+  })
+  it('takas: avuçlar yer değiştirir, 8 ortaya düşer, seri olmaz', () => {
+    const d = hamleYap(kur(), { tip: 'takas', kart: 0, hedef: 1 })
+    expect(d.oyuncular[0].avuc).toEqual([k(9, 'kupa'), k(10, 'kupa'), k(11, 'kupa')])
+    expect(d.oyuncular[1].avuc).toEqual([k(4)])
+    expect(d.orta).toEqual([k(6), k(7), k(8)])
+    expect(d.oyuncular.every((o) => o.ceza.length === 0)).toBe(true)
+    expect(d.sonHamle).toEqual({ oyuncu: 0, kart: k(8), eslesen: [], nereden: null, nereye: 'orta', takas: 1 })
+  })
+  it('aynı 8 ortaya bırakılırsa seri yakalanır (seçim oyuncunun)', () => {
+    const d = hamleYap(kur(), { tip: 'ortayaAt', kart: 0 })
+    expect(d.oyuncular[1].ceza).toEqual([k(6), k(7), k(8)])
+  })
+  it('bloklanamaz: hedefte 2 olsa da pencere açılmaz; sıra 6.6 ile', () => {
+    // Takastan sonra avuçlar: ben 2 (C'nin), B 3, C 1 → en çok kart B'de.
+    const d = hamleYap(kur({ cAvucu: [k(2, 'kupa'), k(5, 'kupa')] }), { tip: 'takas', kart: 0, hedef: 2 })
+    expect(d.blok).toBeUndefined()
+    expect(d.sira).toBe(1)
+  })
+  it('Mut kartlarında 8 varken: ortaya atılamaz ama takas serbest, Mut 8 yerinde kalır', () => {
+    const d0 = kur({ mut: [k(8, 'kupa')] })
+    d0.orta = [k(3)]
+    expect(tipler(d0, 0)).toEqual(['mutEslestir', 'takas', 'takas'])
+    const d = hamleYap(d0, { tip: 'takas', kart: 0, hedef: 2 })
+    expect(d.mut).toEqual([k(8, 'kupa')])
+    expect(d.orta).toEqual([k(3), k(8)])
+  })
+  it('avucu boş olanla takas: kartlarım ona gider, ben boş kalırım', () => {
+    const d = hamleYap(kur({ cAvucu: [] }), { tip: 'takas', kart: 0, hedef: 2 })
+    expect(d.oyuncular[0].avuc).toEqual([])
+    expect(d.oyuncular[2].avuc).toEqual([k(4)])
+  })
+  it('son kartı 8 olan takas yapar: karşısındaki boş kalır', () => {
+    const d0 = kur()
+    d0.oyuncular[0].avuc = [k(8)]
+    d0.deste.push(k(4))
+    const d = hamleYap(d0, { tip: 'takas', kart: 0, hedef: 2 })
+    expect(d.oyuncular[0].avuc).toEqual([k(5, 'kupa'), k(5, 'karo')])
+    expect(d.oyuncular[2].avuc).toEqual([])
+  })
+})

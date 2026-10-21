@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// Kapsam: seri ve 2 (blok) var; diğer özel kartların etkisi yok (sadece puanlı kart), hedef her zaman sıradaki.
+// Kapsam: seri, 2 (blok) ve 8 (takas) var; diğer özel kartların etkisi yok (sadece puanlı kart), hedef her zaman sıradaki.
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -46,6 +46,8 @@ export interface HamleSonucu {
   nereden: string | null
   // Oynanan kartın (ve eşleşenlerin) gittiği yer.
   nereye: string
+  // 8 ile takas: avucu değiştirilen oyuncu (8 ortaya gider, iki avuç yer değiştirir).
+  takas?: number
 }
 
 export type HamleTipi =
@@ -56,8 +58,9 @@ export type HamleTipi =
   | 'alIlerlet' // sıradakinin ceza yığınının üstünü alıp onun sıradakine gönder
   | 'blok' // blok penceresinde: 2 ile gelen kartları gönderene geri yolla (2 altlarına girer)
   | 'kabul' // blok penceresinde: kartları kabul et (kart oynanmaz, kart = -1)
+  | 'takas' // 8 ortaya düşer (eşleşme/seri yok), avucunu hedefle değiştirirsin (7)
 
-// kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (sadece ekle)
+// kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (ekle) ya da avucu alınan oyuncu (takas)
 export interface Hamle {
   tip: HamleTipi
   kart: number
@@ -180,6 +183,8 @@ export function gecerliHamleler(d: Durum): Hamle[] {
     // Ekle herkese; al ve ilerlet normal elde sadece sıradakinden (6.3). Seri uzatma da aynı kuralla.
     for (const i of rakipler) if (yakalar(d.oyuncular[i].ceza, k)) hamleler.push({ tip: 'ekle', kart, hedef: i })
     if (yakalar(siradaki.ceza, k)) hamleler.push({ tip: 'alIlerlet', kart })
+    // 8 ile herkesle takas, avucu boş olanla da; Mut kartlarında 8 olsa da serbest (5.2 istisnası).
+    if (k.deger === 8) for (const i of rakipler) hamleler.push({ tip: 'takas', kart, hedef: i })
   })
   return hamleler
 }
@@ -229,6 +234,10 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       nereden = `ceza:${s1}`
       nereye = `ceza:${sonraki(d, s1)}`
       break
+    case 'takas':
+      nereye = 'orta'
+      ;[ben.avuc, d.oyuncular[h.hedef!].avuc] = [d.oyuncular[h.hedef!].avuc, ben.avuc]
+      break
     case 'blok':
       // Kartlar asıl sahibine değil, hamleyi yapana döner (6.5).
       eslesen = ben.ceza.splice(ben.ceza.length - d.blok!.adet)
@@ -242,6 +251,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
   else if (h.tip === 'blok') d.oyuncular[hedef].ceza.push(k, ...eslesen)
   else d.oyuncular[hedef].ceza.push(...eslesen, k)
   d.sonHamle = { oyuncu, kart: k, eslesen, nereden, nereye }
+  if (h.tip === 'takas') d.sonHamle.takas = h.hedef
 
   // Ceza yığınına kart gelen oyuncunun 2'si varsa blok penceresi açılır (zincir blok da böyle).
   // Not: PROJE.md'ye göre pencere 2 olmasa da açılır (kimde 2 olduğu belli olmasın); bu, herkesin kendi
@@ -274,7 +284,7 @@ function ilerle(d: Durum) {
   d.sira = siradakiOyuncu(d)
 }
 
-// Bölüm 8. Orta yığında kalanlar kimsenin puanına sayılmaz (Açık soru 3, geçici karar).
+// Bölüm 8. Orta yığında ve Mut kartlarında kalanlar kimsenin puanına sayılmaz (kesin karar, Bölüm 11).
 export function elPuanlari(d: Durum): number[] {
   return d.oyuncular.map((o) => (o.ceza.length === 0 ? -100 : yiginPuani(o.ceza)) * d.carpan)
 }

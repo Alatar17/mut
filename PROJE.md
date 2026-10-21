@@ -12,6 +12,7 @@
   - Bloklanamaz (blok penceresi açılmaz). Sıra 6.6 ile. Takasa giren iki avuçtan birinde benim kalkanım kuruluysa sökülür.
   - Akıllı bot: avucuyla şu an yapabileceği en iyi hamlenin puanını, rakiplerin avuçlarıyla karşılaştırır; belirgin daha iyi bir avuç varsa takas yapar, yoksa 8'i normal oynar.
   - "8 dene": avucumda 8 ve işe yaramaz kartlar; bir botun avucunda ortadaki kartla eşleşen kart ve bir 2.
+  - **8a yapıldı (2026-10-21):** Motorda `takas` hamlesi (`hedef` = avucu alınan oyuncu; `sonHamle.takas` ekrana bildirir). Akıllı bot takastan sonraki en iyi hamlesi şimdikinden 10 puan iyiyse takas yapar (`TAKAS_ESIGI`). Kural testleri + bot testi geçti; akıllı bot hâlâ rastgelelere karşı %50'nin üstünde. Ekranda botlar artık takas yapabilir ama animasyonu ve kalkan sökme 8b'de; kullanıcı henüz 8'i avuca bırakamaz.
   - Parçalar: **8a** motor + bot + testler; **8b** ekran (avuca bırakma, iki avucun yer değiştirme animasyonu, kalkan sökme, "8 dene").
   - Sonra Kız → Vale → As → 3 → 10 → Papaz → 7. Çalışma biçimi: parça parça, her parçadan sonra kullanıcı test eder; her özel kart için Dene menüsüne "… dene" eli; akıllı bot hamleleri deneyerek seçtiği için yeni kartları çoğunlukla kendiliğinden kullanır.
 - **Seri bittiğinde önerilmişti, yapılmadı:** `/code-review` (büyük bir parça bitince iyi olur).
@@ -437,7 +438,6 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 ## 11. Açık Sorular ve Kararlar
 
 ### Açık sorular
-3. **El sonu:** Deste bitince orta yığında kalan kartlar kimsenin puanına sayılmadan atılıyor (bomba yoksa) — geçici karar olarak motorda böyle (2026-10-20), kahve testinde onaylanacak. **Mut kartlarında kalanlar da** aynı şekilde kimseye sayılmıyor (motorda böyle). Bu zaten olabiliyordu (Mut kartıyla eşleşen kartlar ceza yığınlarına "ekle" ile de gidebilir); 8 ve Kız'ın Mut zorunluluğunu aşması bunu daha sık yapar. Bomba elinde Mut'ta kalanlar orta yığınla birlikte bombacıya gider (karar 2026-10-21, bkz. 6.8).
 4. **Eksi el hedefi:** Şimdilik herkesin ceza yığınından alınabilir; emin değiliz (6.7).
 5. **Mut kartı çakışmaları:** 3↔As ve 10↔As dışındaki çakışmalar konuşulacak (5.1).
 6. **Tavşan deliği (6.10):** Kapatma ve ekleme sıra dışı da yapılabilir mi? Deliğe gönderim 2 ile bloklanabilir mi?
@@ -455,6 +455,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 - Bomba devri, bombanın her bomba elinde kurulması, patlamanın el sonunda olması (6.8).
 - Kral: hangi yığınlar, ne seçilir; iki Papaz aynı hamlede art arda (6.9).
 - 8 / Kız orta yığındaki aynı kartla: ya eşleştir ya güç kullan.
+- **El sonunda masada kalanlar (kesin, 2026-10-21; kahvede de böyle):** Orta yığında ve Mut kartlarında kalan kartlar kimsenin puanına yazılmaz, atılır. Bomba elinde ise hepsi bombacının ceza yığınına gider (6.8). 8 ve Kız Mut zorunluluğunu aşabildiği için Mut'ta kart kalması daha sık olur; bu sorun değil.
 - 8 takası (2026-10-21): avuca bırakınca takas, boş avuçla da serbest, Mut 8 takası engellemez (Kız'da da aynı). Ayrıntı Bölüm 0 "Sıradaki iş".
 - Pas kuralı: en çok kartı olan oynar (6.6).
 - Blok penceresi her gönderimde açılır; kalkan uyarısı "yardım yok" kuralının tek istisnası (6.5.1) — 2026-10-20.

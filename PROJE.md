@@ -20,7 +20,6 @@
   - Sıra bendeyken avucun altındaki sarı ışık çizgisini kullanıcı beğenmedi; yeni görünüm seçenekleri denenecek.
   - Animasyon cilası: avuçtan kart gidince boşluğun yumuşak kapanması, orta yığın ve Mut kartlarının birden kayması.
 - Görsel kararlar kafaya göre seçilmez: seçenekler Test menüsünde geçişli konur, kullanıcı seçer, sonra kalıcı yapılır. Kullanıcı yokken çalışılırsa varsayılan seçilip devam edilir, kararlar sonradan toplu verilir.
-- **Bekleyen:** `src\tema\varsayilan\` klasörü (kullanılmayan 52 kart resmi, git'te kayıtlı) silinecek. Silinemiyordu çünkü açık `npm run dev` (Vite) klasörü izliyor; Claude'un silme/sunucu kapatma izni otomatik engellendi. Kullanıcı en sonda kendisi silecek (önce dev sunucusunu kapatıp). Silinince commit atılmalı.
 - **Klasör:** `C:\Users\PC\Desktop\Claude\Projeler\MUT`
 - **Teknoloji:** PWA; **React + TypeScript + Vite**. GitHub Pages'te yayın, kiralık sunucu yok (bkz. Bölüm 9).
 - **Araçlar:** Claude Code. Bu projede Google AI Studio uyumu **aranmıyor** (kullanıcı kararı: AI Studio bu projenin altından kalkamaz).

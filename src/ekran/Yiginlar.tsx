@@ -44,6 +44,7 @@ export function OrtaYigin({ kartlar, carpan }: { kartlar: KartTipi[]; carpan?: n
   return (
     <div className="orta-yigin" data-hedef="orta" data-yer="orta">
       <div className="yigin-govde" style={{ width: KART_EN + 28, height: kartBoyu(KART_EN) }}>
+        {kartlar.length === 0 && <div className="bos-yer" style={{ width: KART_EN, height: kartBoyu(KART_EN) }} />}
         {alttaKalan > 0 && <Kalinlik adet={alttaKalan} genislik={KART_EN} />}
         {ust.map((k, i) => (
           <div key={i} className="yigin-kart" style={{ left: i * 14 }}>

@@ -74,6 +74,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .ucan-kart { position: absolute; z-index: 18; pointer-events: none; }
 
 .orta-yigin { position: absolute; left: 50%; top: 156px; transform: translateX(-50%); }
+.orta-yigin .rozet { right: -30px; bottom: 0; }
 .orta-puan { position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
 
 /* ---- Bomba yığını: sahibinin ceza yığınının yanında, yanıp söner ---- */
@@ -89,6 +90,8 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 6px; padding: 6px; border-radius: 10px;
   background: var(--panel);
+  /* 4 kartlık sabit yer: kartlar alınınca kutu daralmaz. */
+  min-width: calc(4 * 56px + 3 * 6px + 12px); min-height: calc(78px + 12px);
 }
 .kurallar { position: absolute; left: 64px; top: 22px; display: flex; gap: 6px; }
 .kural {

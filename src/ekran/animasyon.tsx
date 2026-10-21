@@ -59,7 +59,8 @@ export const BOMBA_KART_EN = 44
 export function konumOlc(masa: HTMLElement, id: string, yer: string): Konum {
   const el = masa.querySelector(`[data-kart="${id}"]`) ?? masa.querySelector(`[data-yer="${yer}"]`)
   const masaKutusu = masa.getBoundingClientRect()
-  const olcek = masaKutusu.width / SAHNE_EN
+  // Sayfa görünmezken masa 0 ölçülür; 0'a bölünüp NaN çıkmasın.
+  const olcek = masaKutusu.width / SAHNE_EN || 1
   const kutu = el?.getBoundingClientRect() ?? masaKutusu
   return {
     x: (kutu.left + kutu.width / 2 - masaKutusu.left) / olcek,

@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// Kapsam: özel kartların etkisi yok (hepsi sadece puanlı kart), seri yok, hedef her zaman sıradaki.
+// Kapsam: özel kartların etkisi yok (hepsi sadece puanlı kart), seri sadece orta yığında, hedef her zaman sıradaki.
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -69,6 +69,14 @@ export function yeniDeste(): Kart[] {
 export const sonraki = (d: Durum, i: number) => (i + 1) % d.oyuncular.length
 const ust = (yigin: Kart[]) => yigin[yigin.length - 1] as Kart | undefined
 const eslesir = (yigin: Kart[], k: Kart) => ust(yigin)?.deger === k.deger
+
+// Seri (6.3): yığının üstündeki kartlar k'ya doğru birer artarak geliyorsa (4-5 üstüne 6) o kartların sayısı.
+// Kimin attığı önemli değil, sadece yığına bakılır. k ile birlikte en az 3 kart olmalı; değilse 0.
+function seriUzunlugu(yigin: Kart[], k: Kart): number {
+  let n = 0
+  while (n < yigin.length && yigin[yigin.length - 1 - n].deger === k.deger - 1 - n) n++
+  return n >= 2 ? n : 0
+}
 
 // Yığının üstündeki aynı sayılı kartları çıkarıp döndürür.
 function ustGrubuAl(yigin: Kart[]): Kart[] {
@@ -141,8 +149,8 @@ export function gecerliHamleler(d: Durum): Hamle[] {
   const hamleler: Hamle[] = []
   ben.avuc.forEach((k, kart) => {
     const mutVar = d.mut.some((m) => m.deger === k.deger)
-    // Mut kartlarıyla eşleşen kart orta yığına boşa atılamaz; orta da eşleşiyorsa oyuncu seçer (5.2).
-    if (!mutVar || eslesir(d.orta, k)) hamleler.push({ tip: 'ortayaAt', kart })
+    // Mut kartlarıyla eşleşen kart orta yığına boşa atılamaz; ortada eşleşme ya da seri varsa oyuncu seçer (5.2).
+    if (!mutVar || eslesir(d.orta, k) || seriUzunlugu(d.orta, k) > 0) hamleler.push({ tip: 'ortayaAt', kart })
     if (mutVar) hamleler.push({ tip: 'mutEslestir', kart })
     if (eslesir(ben.ceza, k)) hamleler.push({ tip: 'cezaBosalt', kart })
     if (eslesir(siradaki.ceza, k)) {
@@ -172,6 +180,9 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
     case 'ortayaAt':
       if (eslesir(d.orta, k)) {
         eslesen = ustGrubuAl(d.orta)
+        nereden = 'orta'
+      } else if (seriUzunlugu(d.orta, k) > 0) {
+        eslesen = d.orta.splice(d.orta.length - seriUzunlugu(d.orta, k))
         nereden = 'orta'
       } else nereye = 'orta'
       break

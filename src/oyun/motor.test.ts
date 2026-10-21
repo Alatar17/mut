@@ -204,3 +204,41 @@ describe('hamle sonucu (sonHamle) ve dağıtım sırası', () => {
     expect(d.dagitim).toEqual(beklenen)
   })
 })
+
+describe('seri (orta yığın)', () => {
+  const ortayaAt = (orta: Kart[], kartim: Kart, mut: Kart[] = []) =>
+    hamleYap(durum({ avuclar: [[kartim], [k(9, 'kupa')], [k(9, 'karo')]], orta, mut }), { tip: 'ortayaAt', kart: 0 })
+  it('4-5 üstüne 6: üçü sıradakinin ceza yığınına gider', () => {
+    const d = ortayaAt([k(4), k(5)], k(6))
+    expect(d.orta).toEqual([])
+    expect(d.oyuncular[1].ceza).toEqual([k(4), k(5), k(6)])
+  })
+  it('sadece üstteki sıralı kartlar alınır: 2-4-5 üstüne 6 → 2 kalır', () => {
+    const d = ortayaAt([k(2), k(4), k(5)], k(6))
+    expect(d.orta).toEqual([k(2)])
+    expect(d.oyuncular[1].ceza).toEqual([k(4), k(5), k(6)])
+  })
+  it('uzun seri: 3-4-5-6 üstüne 7 → beşi birden', () => {
+    expect(ortayaAt([k(3), k(4), k(5), k(6)], k(7)).oyuncular[1].ceza.length).toBe(5)
+  })
+  it('Vale-Kız üstüne Papaz seri; Papaz üstüne As seri değil (başa dönmez)', () => {
+    expect(ortayaAt([k(11), k(12)], k(13)).oyuncular[1].ceza.length).toBe(3)
+    expect(ortayaAt([k(12), k(13)], k(1)).orta.length).toBe(3)
+  })
+  it('seri olmayanlar: azalan, atlamalı, iki kart', () => {
+    expect(ortayaAt([k(6), k(5)], k(4)).orta.length).toBe(3)
+    expect(ortayaAt([k(4), k(5)], k(7)).orta.length).toBe(3)
+    expect(ortayaAt([k(5)], k(6)).orta.length).toBe(2)
+  })
+  it('Mut kartlarında 6 varken ortada 4-5: oyuncu seriyi de Mut 6yı da seçebilir', () => {
+    const d = durum({ avuclar: [[k(6)], [k(9, 'kupa')], [k(9, 'karo')]], orta: [k(4), k(5)], mut: [k(6, 'kupa')] })
+    expect(tipler(d, 0)).toEqual(['mutEslestir', 'ortayaAt'])
+  })
+  it('Mut kartlarında 6 varken seri yoksa 6 ortaya atılamaz', () => {
+    const d = durum({ avuclar: [[k(6)], [k(9, 'kupa')], [k(9, 'karo')]], orta: [k(4)], mut: [k(6, 'kupa')] })
+    expect(tipler(d, 0)).toEqual(['mutEslestir'])
+  })
+  it('hamle sonucu seriyi bildirir', () => {
+    expect(ortayaAt([k(4), k(5)], k(6)).sonHamle).toMatchObject({ eslesen: [k(4), k(5)], nereden: 'orta', nereye: 'ceza:1' })
+  })
+})

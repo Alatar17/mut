@@ -9,37 +9,43 @@ export function botHamlesi(d: Durum, rastgele: () => number = Math.random): Haml
   return hamleler[Math.floor(rastgele() * hamleler.length)]
 }
 
-// Takas, yeni avuçla yapılabilecek en iyi hamle şu ankinden en az bu kadar puan iyiyse yapılır.
-const TAKAS_ESIGI = 10
+// Takas ya da çekme, sonrasında yapılabilecek en iyi hamle şu ankinden en az bu kadar puan iyiyse yapılır.
+const GUC_ESIGI = 10
 
 // Basit akıllı bot: her hamleyi dener, rakiplere giden puan ile kendi ceza yığınındaki değişimi tartar.
 // Yakalama yoksa ortaya en az puanlı kartı atar (yakalanırsa az zarar versin).
-// 8 varsa: rakiplerin avuçlarına bakar (test botu, hile serbest); belirgin daha iyi bir avuç varsa takas yapar.
+// 8 ya da Kız varsa: rakiplerin avuçlarına bakar (test botu, hile serbest). Takasta yeni avuçla, çekmede
+// gelebilecek her kartla en iyi hamleyi dener (çekme rastgele olduğu için ortalaması); belirgin iyiyse gücü kullanır.
 export function akilliBotHamlesi(d: Durum, rastgele: () => number = Math.random): Hamle {
   const hamleler = gecerliHamleler(d)
   const adaylar = puanlanmis(d, hamleler)
   const enIyi = Math.max(...adaylar.map(x => x.puan))
-  const takas = hamleler
-    .filter(h => h.tip === 'takas')
+  // Güçten sonra sıra yine bendeymiş gibi dene (hamleYap yeni durum döndürür, takas/çekme blok açmaz).
+  const sonrasi = (h: Hamle) => {
+    const t = hamleYap(d, h)
+    t.sira = d.sira
+    return Math.max(...puanlanmis(t).map(x => x.puan))
+  }
+  const guc = hamleler
+    .filter(h => h.tip === 'takas' || h.tip === 'cek')
     .map(h => {
-      // Takastan sonra sıra yine bendeymiş gibi yeni avucu dene (hamleYap yeni durum döndürür, takas blok açmaz).
-      const t = hamleYap(d, h)
-      t.sira = d.sira
-      return { h, puan: Math.max(...puanlanmis(t).map(x => x.puan)) }
+      if (h.tip === 'takas') return { h, puan: sonrasi(h) }
+      const onun = d.oyuncular[h.hedef!].avuc
+      return { h, puan: onun.reduce((t, _, cekilen) => t + sonrasi({ ...h, cekilen }), 0) / onun.length }
     })
     .sort((a, b) => b.puan - a.puan)[0]
-  if (takas && takas.puan >= enIyi + TAKAS_ESIGI) return takas.h
+  if (guc && guc.puan >= enIyi + GUC_ESIGI) return guc.h
   const secilen = adaylar.filter(x => x.puan === enIyi)
   return secilen[Math.floor(rastgele() * secilen.length)].h
 }
 
-// Takas dışındaki geçerli hamleler ve puanları (sıradaki oyuncunun gözünden).
+// Takas ve çekme dışındaki geçerli hamleler ve puanları (sıradaki oyuncunun gözünden).
 function puanlanmis(d: Durum, hamleler = gecerliHamleler(d)) {
   const ben = d.sira
   const cezalar = (x: Durum) => x.oyuncular.map(o => yiginPuani(o.ceza))
   const once = cezalar(d)
   return hamleler
-    .filter(h => h.tip !== 'takas')
+    .filter(h => h.tip !== 'takas' && h.tip !== 'cek')
     .map(h => {
       const fark = cezalar(hamleYap(d, h)).map((p, i) => p - once[i])
       const rakiplere = fark.reduce((t, f, i) => (i === ben ? t : t + f), 0)

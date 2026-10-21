@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// Kapsam: seri, 2 (blok) ve 8 (takas) var; diğer özel kartların etkisi yok (sadece puanlı kart), hedef her zaman sıradaki.
+// Kapsam: seri, 2 (blok), 8 (takas) ve Kız (çekme) var; diğer özel kartların etkisi yok (sadece puanlı kart), hedef her zaman sıradaki.
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -48,6 +48,8 @@ export interface HamleSonucu {
   nereye: string
   // 8 ile takas: avucu değiştirilen oyuncu (8 ortaya gider, iki avuç yer değiştirir).
   takas?: number
+  // Kız ile çekme: kartı alınan oyuncu ve çekilen kart (çekenin avucunun sonuna eklenir).
+  cekme?: { hedef: number; kart: Kart }
 }
 
 export type HamleTipi =
@@ -59,12 +61,16 @@ export type HamleTipi =
   | 'blok' // blok penceresinde: 2 ile gelen kartları gönderene geri yolla (2 altlarına girer)
   | 'kabul' // blok penceresinde: kartları kabul et (kart oynanmaz, kart = -1)
   | 'takas' // 8 ortaya düşer (eşleşme/seri yok), avucunu hedefle değiştirirsin (7)
+  | 'cek' // Kız ortaya düşer (eşleşme/seri yok), hedefin avucundan rastgele bir kart çekersin (7)
 
-// kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (ekle) ya da avucu alınan oyuncu (takas)
+// kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (ekle) ya da avucu alınan oyuncu (takas, cek)
 export interface Hamle {
   tip: HamleTipi
   kart: number
   hedef?: number
+  // Sadece cek: hedefin avucundan çekilecek kartın sırası. Yoksa rastgele (ters dönmüş karılmış karttan seçmek gibi).
+  // Testler ve botun hesabı için; geçerlilik kontrolünde bakılmaz.
+  cekilen?: number
 }
 
 const RENKLER: Renk[] = ['maca', 'kupa', 'karo', 'sinek']
@@ -185,6 +191,9 @@ export function gecerliHamleler(d: Durum): Hamle[] {
     if (yakalar(siradaki.ceza, k)) hamleler.push({ tip: 'alIlerlet', kart })
     // 8 ile herkesle takas, avucu boş olanla da; Mut kartlarında 8 olsa da serbest (5.2 istisnası).
     if (k.deger === 8) for (const i of rakipler) hamleler.push({ tip: 'takas', kart, hedef: i })
+    // Kız ile herkesten çekme, ama avucu boş olandan olmaz (çekilecek kart yok); Mut'ta Kız olsa da serbest.
+    if (k.deger === 12)
+      for (const i of rakipler) if (d.oyuncular[i].avuc.length > 0) hamleler.push({ tip: 'cek', kart, hedef: i })
   })
   return hamleler
 }
@@ -209,6 +218,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
   let eslesen: Kart[] = []
   let nereden: string | null = null
   let nereye = `ceza:${s1}`
+  let cekilen: Kart | undefined
 
   switch (h.tip) {
     case 'ortayaAt':
@@ -238,6 +248,14 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       nereye = 'orta'
       ;[ben.avuc, d.oyuncular[h.hedef!].avuc] = [d.oyuncular[h.hedef!].avuc, ben.avuc]
       break
+    case 'cek': {
+      nereye = 'orta'
+      const onun = d.oyuncular[h.hedef!].avuc
+      const j = h.cekilen ?? Math.floor(rastgele(d) * onun.length)
+      cekilen = onun.splice(j, 1)[0]
+      ben.avuc.push(cekilen)
+      break
+    }
     case 'blok':
       // Kartlar asıl sahibine değil, hamleyi yapana döner (6.5).
       eslesen = ben.ceza.splice(ben.ceza.length - d.blok!.adet)
@@ -252,6 +270,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
   else d.oyuncular[hedef].ceza.push(...eslesen, k)
   d.sonHamle = { oyuncu, kart: k, eslesen, nereden, nereye }
   if (h.tip === 'takas') d.sonHamle.takas = h.hedef
+  if (cekilen) d.sonHamle.cekme = { hedef: h.hedef!, kart: cekilen }
 
   // Ceza yığınına kart gelen oyuncunun 2'si varsa blok penceresi açılır (zincir blok da böyle).
   // Not: PROJE.md'ye göre pencere 2 olmasa da açılır (kimde 2 olduğu belli olmasın); bu, herkesin kendi

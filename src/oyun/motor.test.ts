@@ -411,3 +411,65 @@ describe('takas (8)', () => {
     expect(d.oyuncular[2].avuc).toEqual([])
   })
 })
+
+describe('çekme (Kız)', () => {
+  // Bende Kız ve 4; B'de üç kart, C'de iki kart. Ortada 10-J (Kız ortaya bırakılırsa seri olur).
+  const kur = (p: { mut?: Kart[]; cAvucu?: Kart[] } = {}) =>
+    durum({
+      avuclar: [[k(12), k(4)], [k(9, 'kupa'), k(2, 'kupa'), k(5, 'kupa')], p.cAvucu ?? [k(5, 'karo'), k(6, 'karo')]],
+      orta: [k(10), k(11)],
+      mut: p.mut,
+    })
+
+  it('Kız ile herkesten çekme seçeneği var, diğer kartlarla yok', () => {
+    expect(gecerliHamleler(kur()).filter((h) => h.tip === 'cek')).toEqual([
+      { tip: 'cek', kart: 0, hedef: 1 },
+      { tip: 'cek', kart: 0, hedef: 2 },
+    ])
+  })
+  it('avucu boş olandan çekme yok', () => {
+    expect(gecerliHamleler(kur({ cAvucu: [] })).filter((h) => h.tip === 'cek')).toEqual([{ tip: 'cek', kart: 0, hedef: 1 }])
+  })
+  it('çekme: seçilen kart avucumun sonuna gelir, Kız ortaya düşer, seri olmaz', () => {
+    const d = hamleYap(kur(), { tip: 'cek', kart: 0, hedef: 1, cekilen: 1 })
+    expect(d.oyuncular[0].avuc).toEqual([k(4), k(2, 'kupa')])
+    expect(d.oyuncular[1].avuc).toEqual([k(9, 'kupa'), k(5, 'kupa')])
+    expect(d.orta).toEqual([k(10), k(11), k(12)])
+    expect(d.oyuncular.every((o) => o.ceza.length === 0)).toBe(true)
+    expect(d.sonHamle).toEqual({
+      oyuncu: 0, kart: k(12), eslesen: [], nereden: null, nereye: 'orta', cekme: { hedef: 1, kart: k(2, 'kupa') },
+    })
+  })
+  it('seçim verilmezse rastgele bir kart çekilir; aynı tohumla hep aynı kart', () => {
+    const a = hamleYap(kur(), { tip: 'cek', kart: 0, hedef: 1 })
+    const b = hamleYap(kur(), { tip: 'cek', kart: 0, hedef: 1 })
+    expect(a.oyuncular[0].avuc.length).toBe(2)
+    expect(a.oyuncular[1].avuc.length).toBe(2)
+    expect(a.sonHamle?.cekme).toEqual(b.sonHamle?.cekme)
+  })
+  it('aynı Kız ortaya bırakılırsa seri yakalanır (seçim oyuncunun)', () => {
+    expect(hamleYap(kur(), { tip: 'ortayaAt', kart: 0 }).oyuncular[1].ceza).toEqual([k(10), k(11), k(12)])
+  })
+  it('bloklanamaz; sıra 6.6 ile: çeken yine en kalabalık olunca tekrar oynar', () => {
+    // Çekmeden sonra: ben 2, B 2, C 2 → eşitlikte başlatan (ben).
+    const d = hamleYap(kur(), { tip: 'cek', kart: 0, hedef: 1, cekilen: 1 })
+    expect(d.blok).toBeUndefined()
+    expect(d.sira).toBe(0)
+  })
+  it('Mut kartlarında Kız varken: ortaya atılamaz ama çekme serbest, Mut Kız yerinde kalır', () => {
+    const d0 = kur({ mut: [k(12, 'kupa')] })
+    d0.orta = [k(3)]
+    expect(tipler(d0, 0)).toEqual(['cek', 'cek', 'mutEslestir'])
+    const d = hamleYap(d0, { tip: 'cek', kart: 0, hedef: 2, cekilen: 0 })
+    expect(d.mut).toEqual([k(12, 'kupa')])
+    expect(d.orta).toEqual([k(3), k(12)])
+  })
+  it('son kartı Kız olan çeker: çektiği kartla avucunda bir kart kalır', () => {
+    const d0 = kur()
+    d0.oyuncular[0].avuc = [k(12)]
+    d0.deste.push(k(4))
+    const d = hamleYap(d0, { tip: 'cek', kart: 0, hedef: 2, cekilen: 1 })
+    expect(d.oyuncular[0].avuc).toEqual([k(6, 'karo')])
+    expect(d.oyuncular[2].avuc).toEqual([k(5, 'karo')])
+  })
+})

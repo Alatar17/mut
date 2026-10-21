@@ -39,3 +39,20 @@ it('akıllı bot: rakipte çok daha iyi avuç varsa 8 ile takas yapar, yoksa yap
   d.oyuncular[2].avuc = [k(3, 'maca')]
   expect(akilliBotHamlesi(d)).toEqual({ tip: 'takas', kart: 0, hedef: 2 })
 })
+
+it('akıllı bot: rakipten çekilecek kart büyük ihtimalle işe yarıyorsa Kız ile çeker, yoksa çekmez', () => {
+  const d = yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum: 1 })
+  const k = (deger: number, renk: Kart['renk']) => kart(deger as Deger, renk)
+  d.sira = 0
+  // 9 Mut kartlarında: Kız ortaya düşünce üstünü kapatmasın.
+  d.mut = [k(9, 'maca')]
+  d.orta = []
+  d.oyuncular[0].avuc = [k(12, 'maca'), k(4, 'maca')]
+  d.oyuncular[1].avuc = [k(5, 'kupa'), k(6, 'kupa')]
+  d.oyuncular[2].avuc = [k(4, 'kupa'), k(7, 'kupa')]
+  // Kimden ne gelse Mut 9'u yakalayamaz: çekme yok.
+  expect(akilliBotHamlesi(d).tip).not.toBe('cek')
+  // C'nin avucunda iki 9: hangisi gelse Mut 9 yakalanır → C'den çeker.
+  d.oyuncular[2].avuc = [k(9, 'kupa'), k(9, 'karo')]
+  expect(akilliBotHamlesi(d)).toEqual({ tip: 'cek', kart: 0, hedef: 2 })
+})

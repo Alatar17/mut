@@ -16,7 +16,7 @@
   - **Aşama 2 için:** Kartı çekilen oyuncu, çekenin hangi kartını kaldırdığını kendi ekranında canlı görür (göz göze gelmenin yerine); isterse tepki/hazır söz. "Kartı öne itme" (yem) fikri kahve testinden sonra düşünülecek.
   - **"Kız dene":** avucumda Kız-4-5-6, Mut kartlarında 9, sağdaki B'de sadece iki 9 (`denemeKur`'a `mut` ve `eksik` seçenekleri eklendi), soldaki C dolu. Kız ortaya düşünce üstünü kapattığı için 9 ortada değil Mut'ta.
   - **"Bot Kız dene":** sırası soldaki C'de, C'nin elinde Kız; avucumda üç 9, Mut kartlarında 9 → C benden çeker (tarayıcıda denendi, çalışıyor).
-  - **Kart arkasında "MUT" yazısı** (2026-10-21, kullanıcı istedi, beğenmezse geri alınacak): Test menüsünde "Kart arkasında Mut yazısı" anahtarı, varsayılan açık. Renk `--kart-arka-yazi` (tema).
+  - Kart arkasında soluk "MUT" yazısı denendi, kullanıcı beğenmedi, kaldırıldı (2026-10-21).
   - Sonra Vale → As → 3 → 10 → Papaz → 7. Çalışma biçimi: parça parça, her parçadan sonra kullanıcı test eder; her özel kart için Dene menüsüne "… dene" eli; akıllı bot hamleleri deneyerek seçtiği için yeni kartları çoğunlukla kendiliğinden kullanır.
 - **4f 8 / takas yapıldı — 2026-10-21 (kullanıcı testinden geçti):**
   - **Kurallar:** 8'i **orta yığına** bırakmak = normal oyun (eşleşme/seri olursa yakalama). 8'i bir oyuncunun **avucunun ya da isim etiketinin** üstüne bırakmak = takas; 8 ortaya düşer, eşleşme ve seri olmaz (pencere yok, oyuncu bırakacağı yerle seçer). Herkesle takas yapılır, **avucu boş olanla da**; son kartı 8 olan da takas yapabilir (kahvede oluyor). **Mut'ta 8 varken** ortaya atmak yasak ama takas serbest; Mut 8 yerinde kalır. Bloklanamaz. Sıra 6.6 ile. Avucum takasla değişince kurulu kalkan sökülür.

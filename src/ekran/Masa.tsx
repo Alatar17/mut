@@ -283,9 +283,7 @@ export function Masa() {
   const [botlarOtomatik, setBotlarOtomatik] = useKayitli('botlarOtomatik', true)
   const [botKartlariKapali, setBotKartlariKapali] = useKayitli('botKartlariKapali', false)
   const [botKartlariDuz, setBotKartlariDuz] = useKayitli('botKartlariDuz', true)
-  const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)
-  const [arkaYazi, setArkaYazi] = useKayitli('arkaYazi', true)
-  const [botHizi, setBotHizi] = useKayitli<BotHizi>('botHizi', 'Orta')
+  const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)  const [botHizi, setBotHizi] = useKayitli<BotHizi>('botHizi', 'Orta')
   const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi', 'Orta')
   const [duraklama, setDuraklama] = useKayitli<Duraklama>('duraklama', 'Kısa')
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
@@ -636,7 +634,7 @@ export function Masa() {
 
   return (
     <GizliKartlar.Provider value={gizli}>
-    <div className={'masa' + (arkaYazi ? ' arka-yazi' : '')} ref={masaRef}>
+    <div className="masa" ref={masaRef}>
       <button className="yuvarlak-dugme puan-dugme" aria-label="Puanlar" onClick={() => setPuanlarAcik(true)}>
         <svg viewBox="0 0 24 24" width="20" height="20">
           <path d="M6 3h12v18H6z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
@@ -746,9 +744,7 @@ export function Masa() {
           </button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
-          <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
-          <TestSecenegi ad="Kart arkasında Mut yazısı" acik={arkaYazi} degistir={setArkaYazi} />
-        </div>
+          <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />        </div>
       )}
       <Deste kalan={gorunen.deste.length} />
 

@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
-import { seriDenemesi } from '../oyun/deneme'
+import { cezaSerisiDenemesi, seriDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
@@ -45,13 +45,13 @@ function yanYelpaze(sira: number, adet: number, taraf: 'sol' | 'sag') {
 const RAKIP_KART_BINME = 20
 
 // Bırakılan yer ekranda data-hedef ile işaretli: "orta", "mut:<sayı>", "ceza:<oyuncu>".
-// red: kart avuca dönerken sallanır. mutUyarisi: kart sessizce döner, onun yerine eşleşen Mut kartı sallanır.
-type Birakma = 'kabul' | 'red' | 'mutUyarisi' | 'bekle'
+// red: kart sessizce avuca döner (Mut kuralına takıldıysa eşleşen Mut kartı sallanır).
+type Birakma = 'kabul' | 'red' | 'bekle'
 
-// Reddedilen hamlede "olmaz" der gibi hafif sallanma. Sadece kartı bırakanın ekranında olur.
-function salla(el: Element | null | undefined, gecikme = 0) {
+// Mut kuralına takılan hamlede eşleşen Mut kartı "olmaz" der gibi hafif sallanır. Sadece kartı bırakanın ekranında.
+function salla(el: Element) {
   const x = [0, -6, 6, -4, 3, 0].map(p => ({ transform: `translateX(${p}px)` }))
-  el?.animate(x, { duration: 400, delay: gecikme })
+  el.animate(x, { duration: 400 })
 }
 
 // Bot oynayacağı kartı önce masaya doğru biraz kaldırır.
@@ -182,10 +182,7 @@ function useSurukle(dokun: () => void, birak: Birak) {
         .elementsFromPoint(e.clientX, e.clientY)
         .map(el => el.closest<HTMLElement>('[data-hedef]'))
         .find(el => el)?.dataset.hedef
-      const sonuc = hedef ? birak(hedef) : null
-      if (sonuc === 'kabul') return
-      // Kart yerine döndükten sonra sallanır (dönüş 0,18 sn).
-      if (sonuc === 'red') salla(e.currentTarget.firstElementChild, 180)
+      if (hedef && birak(hedef) === 'kabul') return
       setKayma(null)
     },
     onPointerCancel: () => {
@@ -434,8 +431,8 @@ export function Masa() {
       // Mut kartlarıyla eşleşen kart ortaya atılamaz: neden olmadığını eşleşen Mut kartı sallanarak gösterir.
       const deger = d.oyuncular[oyuncu].avuc[kart].deger
       if (!hamleGecerliMi(d, { tip: 'ortayaAt', kart }) && d.mut.some(m => m.deger === deger)) {
-        masaRef.current!.querySelectorAll(`[data-hedef="mut:${deger}"]`).forEach(el => salla(el))
-        return 'mutUyarisi'
+        masaRef.current!.querySelectorAll(`[data-hedef="mut:${deger}"]`).forEach(salla)
+        return 'red'
       }
       return dene('ortayaAt')
     }
@@ -547,6 +544,7 @@ export function Masa() {
           </button>
           <button className="test-satir" onClick={() => yeniOyunBaslat()}>Yeni oyun</button>
           <button className="test-satir" onClick={() => yeniOyunBaslat(seriDenemesi)}>Seri dene</button>
+          <button className="test-satir" onClick={() => yeniOyunBaslat(cezaSerisiDenemesi)}>Ceza serisi dene</button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />

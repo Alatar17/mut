@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// Kapsam: özel kartların etkisi yok (hepsi sadece puanlı kart), seri sadece orta yığında, hedef her zaman sıradaki.
+// Kapsam: özel kartların etkisi yok (hepsi sadece puanlı kart), seri var, hedef her zaman sıradaki.
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -87,6 +87,14 @@ function ustGrubuAl(yigin: Kart[]): Kart[] {
   return yigin.splice(i)
 }
 
+// k bu yığının üstüyle eşleşiyor ya da seriyi tamamlıyor/uzatıyor mu?
+const yakalar = (yigin: Kart[], k: Kart) => eslesir(yigin, k) || seriUzunlugu(yigin, k) > 0
+
+// k ile yakalanan kartları (aynı sayılar ya da seri) yığından çıkarıp döndürür.
+function yakala(yigin: Kart[], k: Kart): Kart[] {
+  return eslesir(yigin, k) ? ustGrubuAl(yigin) : yigin.splice(yigin.length - seriUzunlugu(yigin, k))
+}
+
 export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?: number }): Durum {
   const n = secenek.isimler.length
   if (n !== 3 && n !== 4) throw new Error(`Mut 3 ya da 4 kişiyle oynanır (${n} verildi)`)
@@ -133,6 +141,8 @@ function avuclariDagit(d: Durum, mutDahil: boolean) {
   const n = d.oyuncular.length
   d.dagitim = []
   const ver = (yigin: Kart[]) => {
+    // Normal oyunda deste hep yeter; Test menüsü denemelerinde eksik kalabilir, o zaman avuçlar eksik dağıtılır.
+    if (d.deste.length === 0) return
     const k = d.deste.pop()!
     yigin.push(k)
     d.dagitim.push(k)
@@ -152,12 +162,12 @@ export function gecerliHamleler(d: Durum): Hamle[] {
   ben.avuc.forEach((k, kart) => {
     const mutVar = d.mut.some((m) => m.deger === k.deger)
     // Mut kartlarıyla eşleşen kart orta yığına boşa atılamaz; ortada eşleşme ya da seri varsa oyuncu seçer (5.2).
-    if (!mutVar || eslesir(d.orta, k) || seriUzunlugu(d.orta, k) > 0) hamleler.push({ tip: 'ortayaAt', kart })
+    if (!mutVar || yakalar(d.orta, k)) hamleler.push({ tip: 'ortayaAt', kart })
     if (mutVar) hamleler.push({ tip: 'mutEslestir', kart })
-    if (eslesir(ben.ceza, k)) hamleler.push({ tip: 'cezaBosalt', kart })
-    // Üstüne yığ herkese; al ve ilerlet normal elde sadece sıradakinden (6.3).
-    for (const i of rakipler) if (eslesir(d.oyuncular[i].ceza, k)) hamleler.push({ tip: 'ustuneYig', kart, hedef: i })
-    if (eslesir(siradaki.ceza, k)) hamleler.push({ tip: 'alIlerlet', kart })
+    if (yakalar(ben.ceza, k)) hamleler.push({ tip: 'cezaBosalt', kart })
+    // Üstüne yığ herkese; al ve ilerlet normal elde sadece sıradakinden (6.3). Seri uzatma da aynı kuralla.
+    for (const i of rakipler) if (yakalar(d.oyuncular[i].ceza, k)) hamleler.push({ tip: 'ustuneYig', kart, hedef: i })
+    if (yakalar(siradaki.ceza, k)) hamleler.push({ tip: 'alIlerlet', kart })
   })
   return hamleler
 }
@@ -179,11 +189,8 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
 
   switch (h.tip) {
     case 'ortayaAt':
-      if (eslesir(d.orta, k)) {
-        eslesen = ustGrubuAl(d.orta)
-        nereden = 'orta'
-      } else if (seriUzunlugu(d.orta, k) > 0) {
-        eslesen = d.orta.splice(d.orta.length - seriUzunlugu(d.orta, k))
+      if (yakalar(d.orta, k)) {
+        eslesen = yakala(d.orta, k)
         nereden = 'orta'
       } else nereye = 'orta'
       break
@@ -193,14 +200,14 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       nereden = 'mut'
       break
     case 'cezaBosalt':
-      eslesen = ustGrubuAl(ben.ceza)
+      eslesen = yakala(ben.ceza, k)
       nereden = `ceza:${oyuncu}`
       break
     case 'ustuneYig':
       nereye = `ceza:${h.hedef}`
       break
     case 'alIlerlet':
-      eslesen = ustGrubuAl(d.oyuncular[s1].ceza)
+      eslesen = yakala(d.oyuncular[s1].ceza, k)
       nereden = `ceza:${s1}`
       nereye = `ceza:${sonraki(d, s1)}`
       break

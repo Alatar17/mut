@@ -6,8 +6,9 @@
 ## 0. Proje Durumu
 - **Aşama:** 3. adım (birleştirme) bitti — 2026-10-20. İlk oynanabilir sürüm: masa ekranı kural motoruna bağlı, sürükle-bırak, akıllı botlar, animasyonlar. Özel kartların etkisi ve seri hâlâ yok; hepsi sadece puanlı kart.
 - **Sıradaki iş:** 4. adım (özel kartlar), parça parça; her parçadan sonra kullanıcı test eder. Sıra: seri (önce orta yığın, sonra ceza yığını; kararlar 6.3'te) → 2 → 8 → Kız → Vale → As → 3 → 10 → Papaz → 7. Her özel kart eklenince akıllı bota da kullanması öğretilir.
-- **4b seri (orta yığın) yapıldı — 2026-10-21:** Orta yığının üstündeki sıralı kartlar + atılan kart (en az 3) sıradakinin ceza yığınına gider; yakalama gibi zorunlu. Mut kartıyla eşleşen kart, ortada seri oluşturuyorsa ortaya da atılabilir (oyuncu seçer). Papaz'dan As'a dönmez. Akıllı bot hamleleri deneyerek seçtiği için seriyi kendiliğinden kullanır. Otomatik testlerden geçti; **kullanıcı testi bekliyor.** Sıradaki: ceza yığınında seri.
-- **Test menüsü (2026-10-21):** Ayarlar tarayıcıda saklanır (F5'te kaybolmaz). **"Seri dene"** düğmesi: ortada 4-5, avucumda 6 ve 3 hazır yeni el (`src\oyun\deneme.ts`; Mut kartları 2 açılır ki deste sayısı bozulmasın). Her yeni özel kart için aynı yöntemle "… dene" düğmesi eklenecek.
+- **4b seri (orta yığın) yapıldı — 2026-10-21:** Orta yığının üstündeki sıralı kartlar + atılan kart (en az 3) sıradakinin ceza yığınına gider; yakalama gibi zorunlu. Mut kartıyla eşleşen kart, ortada seri oluşturuyorsa ortaya da atılabilir (oyuncu seçer). Papaz'dan As'a dönmez. Akıllı bot hamleleri deneyerek seçtiği için seriyi kendiliğinden kullanır. Kullanıcı testinden geçti.
+- **4c seri (ceza yığınları) yapıldı — 2026-10-21:** Kendi yığınını boşaltma, üstüne yığ (herkese) ve al-ilerlet (sıradakinden) eşleşmenin yanında seriyle de yapılır; sadece üstteki sıralı kartlar gider (4-4-5 üstüne 6 → üstteki 4-5-6). Test menüsünde **"Ceza serisi dene"**: herkesin yığınında 4-5-6, avucumda üç 7. Botlar seriyi kendiliğinden kullanıp zincirliyor. Otomatik testlerden geçti; **kullanıcı testi bekliyor.** Sıradaki: 2 (blok).
+- **Test menüsü (2026-10-21):** Ayarlar tarayıcıda saklanır (F5'te kaybolmaz). **"Seri dene"** düğmesi: ortada 4-5, avucumda 6 ve 3 hazır yeni el (`src\oyun\deneme.ts`; masaya konan kartlar desteden eksilir, son tur eksik dağıtılır — motor kısa desteyi kaldırır). Her yeni özel kart için aynı yöntemle "… dene" düğmesi eklenecek.
 - **4a (altyapı) yapıldı — 2026-10-21:** Motor her hamlenin sonucunu `Durum.sonHamle` içine yazar (oyuncu, oynanan kart, eşleşen kartlar, nereden, nereye); dağıtılan kartların sırası `Durum.dagitim`. Ekran (`Masa.tsx`) eşleşmeyi ve dağıtım sırasını artık kendisi hesaplamıyor, bunları okuyor; sıradaki için motorun `sonraki()`'si; yakalamada kartın inişi `gec()`in `ekUcus` seçeneğiyle. Testler + tarayıcıda otomatik bir el oynatıldı, hata yok. **Kullanıcı elle denemedi (3c ile birlikte test bekliyor).**
 - **3. adımda yapılanlar (2026-10-20):**
   - **3a** Ekran motora bağlandı (`ornekDurum.ts` silindi). El sonu puan kağıdı kendiliğinden açılır + "Sonraki el"; oyun sonu kazanan/berabere + "Yeni oyun".
@@ -380,10 +381,9 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 
 **Yardım yok, geri alma yok:** Oyun eşleşebilecek yerleri parlatmaz; dikkat oyuncunun işidir. (Tek istisna: blok penceresindeki kalkan uyarısı, bkz. 6.5.1.) Bırakılan kart geri alınamaz (örn. ceza yığınlarında kullanabileceğin 5'i yanlışlıkla orta yığına atarsan o hamle geçerlidir).
 
-**Geçersiz hamle (karar 2026-10-21):** Kurala aykırı bırakılan kart avucuna döner ve **yazı yok**, hafif sallanmayla uyarılır (yaklaşık 0,4 sn, "hayır" der gibi):
-- Mut kartlarıyla eşleşen kart ortaya bırakılırsa **eşleşen Mut kartı** sallanır (kart sessizce döner).
-- Diğer bütün durumlarda (eşleşmeyen yığın, sıra sende değil vb.) avuca dönen **kartın kendisi** sallanır.
-- Boş masaya bırakmak vazgeçmek sayılır, sallanma yok.
+**Geçersiz hamle (karar 2026-10-21):** Kurala aykırı bırakılan kart sessizce avucuna döner, **yazı yok**.
+- Tek uyarı: Mut kartlarıyla eşleşen kart ortaya bırakılırsa **eşleşen Mut kartı** hafifçe sallanır (yaklaşık 0,4 sn, "hayır" der gibi).
+- Kartın kendisinin sallanması denendi, kullanıcı gereksiz buldu, kaldırıldı.
 - Sallanma sadece kartı bırakanın ekranında olur; herkes kendi telefonundan oynarken diğerlerine gitmez (eldeki kart hakkında bilgi vermesin).
 
 **Kart kaldırma (rakipler görür):** Oyuncu avucundaki bir karta dokununca kart hafif yukarı kalkar. Diğer oyuncular da o oyuncunun avucunda **aynı sıradaki kartın arkasının** kalktığını görür (Hearthstone'daki gibi); kartın yüzü görünmez.

@@ -294,7 +294,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
    - Mut kartlarındaki 10 ile eşleştirme zorunlu olduğundan bomba her bomba elinde mutlaka kurulur.
    - **Bomba kurulduktan sonra başka oyuncuların 10'u:** Oynanan her 10 **bombaya eklenir** (zorunlu); bomba sahibinde kalır, sadece büyür. Böylece kaç 10 kaldığı herkes tarafından görülür. Bomba sahibi 10 oynarsa ekleyip devreder.
 4. **Blok:** Bomba gönderilen oyuncu 2 ile blok yapabilir; 2'ler bomba kartlarının altına girer, bomba gönderene döner.
-5. **Patlama (el sonu):** Bomba kimdeyse, **orta yığındaki tüm kartlar** ve **bomba yığınındaki kartlar** (10'lar ve 2'ler) onun ceza yığınına eklenir.
+5. **Patlama (el sonu):** Bomba kimdeyse, **orta yığındaki tüm kartlar**, **Mut kartlarında kalanlar** (karar 2026-10-21) ve **bomba yığınındaki kartlar** (10'lar ve 2'ler) onun ceza yığınına eklenir.
 6. **Ekran:** Bomba elinde **orta yığının puanı** da gösterilir (normalde sadece ceza yığınlarının puanı görünür).
 
 ### 6.9 Kral eli (Mut kartlarında Papaz varsa)
@@ -437,7 +437,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 ## 11. Açık Sorular ve Kararlar
 
 ### Açık sorular
-3. **El sonu:** Deste bitince orta yığında kalan kartlar kimsenin puanına sayılmadan atılıyor (bomba yoksa) — geçici karar olarak motorda böyle (2026-10-20), kahve testinde onaylanacak. **Mut kartlarında kalanlar da** aynı şekilde kimseye sayılmıyor (motorda böyle). Bu zaten olabiliyordu (Mut kartıyla eşleşen kartlar ceza yığınlarına "ekle" ile de gidebilir); 8 ve Kız'ın Mut zorunluluğunu aşması bunu daha sık yapar. Bomba elinde Mut'ta kalanlar da orta yığınla birlikte bombacıya mı gitsin, konuşulacak.
+3. **El sonu:** Deste bitince orta yığında kalan kartlar kimsenin puanına sayılmadan atılıyor (bomba yoksa) — geçici karar olarak motorda böyle (2026-10-20), kahve testinde onaylanacak. **Mut kartlarında kalanlar da** aynı şekilde kimseye sayılmıyor (motorda böyle). Bu zaten olabiliyordu (Mut kartıyla eşleşen kartlar ceza yığınlarına "ekle" ile de gidebilir); 8 ve Kız'ın Mut zorunluluğunu aşması bunu daha sık yapar. Bomba elinde Mut'ta kalanlar orta yığınla birlikte bombacıya gider (karar 2026-10-21, bkz. 6.8).
 4. **Eksi el hedefi:** Şimdilik herkesin ceza yığınından alınabilir; emin değiliz (6.7).
 5. **Mut kartı çakışmaları:** 3↔As ve 10↔As dışındaki çakışmalar konuşulacak (5.1).
 6. **Tavşan deliği (6.10):** Kapatma ve ekleme sıra dışı da yapılabilir mi? Deliğe gönderim 2 ile bloklanabilir mi?

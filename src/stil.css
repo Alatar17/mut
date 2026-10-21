@@ -148,6 +148,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   display: grid; place-items: center; border-radius: 50%;
   background: var(--panel); color: var(--kalkan);
 }
+.kalkan.kurulu { background: var(--kalkan); color: var(--panel); box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--kalkan); }
 .kalkan.aktif { animation: kalkan-yanip-son 0.5s ease-in-out infinite alternate; }
 @keyframes kalkan-yanip-son {
   to { background: var(--kalkan); color: var(--panel); transform: scale(1.15); }

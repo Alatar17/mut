@@ -223,9 +223,10 @@ function RakipKart({ kart, transform, kapali, birak }: { kart: KartTipi; transfo
 }
 
 // Avucumda 2 varsa durur. Bana saldırı gelince (blok penceresi) yanıp söner, dokununca blok yapılır.
-function Kalkan({ aktif, blokla }: { aktif: boolean; blokla: () => void }) {
+// Saldırı yokken dokununca kurulur / sökülür (6.5.1): kurulu kalkan saldırı gelince 2'yi kendiliğinden oynar.
+function Kalkan({ aktif, kurulu, bas }: { aktif: boolean; kurulu: boolean; bas: () => void }) {
   return (
-    <button className={'kalkan' + (aktif ? ' aktif' : '')} aria-label="Kalkan" onClick={() => aktif && blokla()}>
+    <button className={'kalkan' + (aktif ? ' aktif' : '') + (kurulu ? ' kurulu' : '')} aria-label="Kalkan" onClick={bas}>
       <svg viewBox="0 0 24 24" width="26" height="26">
         <path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5l-8-3Z" fill="currentColor" />
       </svg>
@@ -250,6 +251,8 @@ export function Masa() {
   const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi', 'Orta')
   const [duraklama, setDuraklama] = useKayitli<Duraklama>('duraklama', 'Kısa')
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
+  // Önceden kurulmuş kalkan (otomatik blok). Sadece benim ekranımda görünür.
+  const [kalkanKurulu, setKalkanKurulu] = useState(false)
   // Rakibin ceza yığınına bırakılan kart: "Ekle" mi "İlerlet" mi seçilecek.
   const [cezaSecimi, setCezaSecimi] = useState<{ kart: number; yigin: number } | null>(null)
 
@@ -330,6 +333,8 @@ export function Masa() {
   // elle: kartı kullanıcı sürükledi (botun kart kaldırma adımı atlanır).
   const hamleOyna = async (h: Hamle, elle: boolean) => {
     if (mesgulRef.current || !hamleGecerliMi(d, h)) return
+    // Kurulu kalkan benim bir sonraki hamleme kadar kalır (blok da hamle sayılır, 2 gider).
+    if (d.sira === 0 && h.tip !== 'kabul') setKalkanKurulu(false)
     const eski = d
     const yeni = hamleYap(eski, h)
     basla()
@@ -406,12 +411,20 @@ export function Masa() {
 
   // Blok penceresi: hedef ben isem (ya da botları ben oynuyorsam) süre bitince kendiliğinden kabul edilir.
   // Bot hedefse ve botlar kendi oynuyorsa bot hemen karar verir (yukarıdaki bot hamlesi).
+  // Kalkanım kuruluysa pencerenin içinde rastgele bir anda kendiliğinden bloklar (hep anında olursa kurulu olduğu belli olur).
   const blokBende = !!d.blok && !mesgul && (d.blok.hedef === 0 || !botlarOtomatik)
   useEffect(() => {
     if (!blokBende) return
-    const zamanlayici = setTimeout(() => hamleOyna({ tip: 'kabul', kart: -1 }, true), BLOK_SURESI)
+    const otomatik = d.blok!.hedef === 0 && kalkanKurulu
+    const zamanlayici = otomatik
+      ? setTimeout(() => hamleOyna({ tip: 'blok', kart: d.oyuncular[0].avuc.findIndex(k => k.deger === 2) }, true), 400 + Math.random() * (BLOK_SURESI - 1000))
+      : setTimeout(() => hamleOyna({ tip: 'kabul', kart: -1 }, true), BLOK_SURESI)
     return () => clearTimeout(zamanlayici)
-  }, [d, blokBende])
+  }, [d, blokBende, kalkanKurulu])
+  // Avucumda 2 kalmayınca kalkan da kalkar.
+  useEffect(() => {
+    if (!d.oyuncular[0].avuc.some(k => k.deger === 2)) setKalkanKurulu(false)
+  }, [d])
 
   // Durum değişince (biri oynadı, botlar açıldı) açık kalan "Ekle / İlerlet" seçimi geçersizdir.
   useEffect(() => {
@@ -529,7 +542,12 @@ export function Masa() {
         {elimdeIkiVar && (
           <Kalkan
             aktif={blokBende && d.blok!.hedef === 0}
-            blokla={() => oyna({ tip: 'blok', kart: d.oyuncular[0].avuc.findIndex(k => k.deger === 2) })}
+            kurulu={kalkanKurulu}
+            bas={() =>
+              blokBende && d.blok!.hedef === 0
+                ? oyna({ tip: 'blok', kart: d.oyuncular[0].avuc.findIndex(k => k.deger === 2) })
+                : setKalkanKurulu(!kalkanKurulu)
+            }
           />
         )}
       </div>

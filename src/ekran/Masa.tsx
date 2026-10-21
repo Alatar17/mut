@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
+import { karistir } from '../oyun/rastgele'
 import { blokDenemesi, cezaSerisiDenemesi, kizDenemesi, seriDenemesi, takasDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
@@ -288,14 +289,14 @@ export function Masa() {
   const [kalkanKurulu, setKalkanKurulu] = useState(false)
   // Rakibin ceza yığınına bırakılan kart: "Ekle" mi "İlerlet" mi seçilecek.
   const [cezaSecimi, setCezaSecimi] = useState<{ kart: number; yigin: number } | null>(null)
-  // Kız ile çekme: avucu ters dönmüş (karılmış) oyuncu ve dokunulacak kartı bekleyen seçim.
+  // Kız ile çekme: avucu ters dönmüş (karılmış) oyuncu ve kullanıcının seçimini bekleyen çekme
+  // (ceken: kartı alacak oyuncu; kaldir: dokunulan ters kartı kaldırır; al: avuca sürüklenen kartla seçimi bitirir).
   const [ters, setTers] = useState<number | null>(null)
-  const secimRef = useRef<((kart: number) => void) | null>(null)
+  const secimRef = useRef<{ ceken: number; kaldir: (kart: number) => void; al: (kart: number) => void } | null>(null)
+  // Çekilen kartın uçuşa başlayacağı yer (bırakıldığı ya da bottaysa kalktığı yer).
+  const cekmeKaynak = useRef<Konum | undefined>(undefined)
   const sec = (koltuk: number, kart: number) => {
-    const sonuc = secimRef.current
-    if (ters !== koltuk || !sonuc) return
-    secimRef.current = null
-    sonuc(kart)
+    if (ters === koltuk) secimRef.current?.kaldir(kart)
   }
 
   // ---- Animasyon ----
@@ -380,14 +381,17 @@ export function Masa() {
     // Kurulu kalkan benim bir sonraki hamleme kadar kalır (blok da hamle sayılır, 2 gider).
     if (taban.sira === 0 && h.tip !== 'kabul') setKalkanKurulu(false)
     const eski = d
-    const yeni = hamleYap(taban, h)
     basla()
+    let yeni: Durum | undefined
     try {
+      // Çekmede hangi kartın alınacağı ekranda seçilir; hamle ondan sonra yapılır.
+      yeni = hamleYap(taban, h.tip === 'cek' ? { ...h, cekilen: await cekilecekKart(taban, h, elle) } : h)
       await hamleyiGoster(eski, yeni, elle)
       bitir(yeni)
     } catch (hata) {
       // Animasyonda beklenmedik bir hata oyunu kilitlemesin: ekran gerçek duruma döner, oyun sürer.
       console.error(hata)
+      yeni ??= hamleYap(taban, h)
       gorunenRef.current = yeni
       setGorunen(yeni)
       setUcuslar([])
@@ -397,6 +401,61 @@ export function Masa() {
       secimRef.current = null
       bitir(yeni)
     }
+  }
+
+  // Kız ile çekme (9.2): Kız ortaya düşer, hedefin avucu ters döner ve gerçekten karılır. Çeken ters kartlara
+  // dokunup kaldırır (fikrini değiştirebilir), birini kendi avucuna sürükleyince alır; başka yere bırakırsa kart
+  // geri döner. Bot da önce bir kartı kaldırıp düşünür, bazen başkasına geçer. Süre yok.
+  // Dönen: çekilen kartın hedefin karılmamış avucundaki sırası (motora verilir).
+  const cekilecekKart = async (taban: Durum, h: Hamle, elle: boolean) => {
+    const ceken = taban.sira
+    const hedef = h.hedef!
+    const kiz = taban.oyuncular[ceken].avuc[h.kart]
+    if (!elle) {
+      setBotKalkik(kartKimligi(kiz))
+      await bekle(SURE.kalkma * carpan)
+    }
+    const ara = structuredClone(taban)
+    ara.oyuncular[ceken].avuc.splice(h.kart, 1)
+    ara.orta.push(kiz)
+    await gec(ara)
+    setBotKalkik(null)
+    if (hedef === 0) setKalkikKart(null)
+    // Kartlar ters dönmüşken sıraları gerçekten karılır: dokunulan yerdeki kart gerçekten o kart olur.
+    const karisik = structuredClone(ara)
+    const avuc = karistir(karisik.oyuncular[hedef].avuc, { tohum: Math.floor(Math.random() * 2 ** 31) })
+    setTers(hedef)
+    await gec(karisik)
+    await avucuKar(masaRef.current!, hedef, KARMA_SURESI * carpan)
+    const kaldir = (i: number) => (hedef === 0 ? setKalkikKart(i) : setBotKalkik(kartKimligi(avuc[i])))
+    let sira: number
+    if (ceken === 0 || !botlarOtomatik) {
+      sira = await new Promise<number>(al => (secimRef.current = { ceken, kaldir, al }))
+    } else {
+      sira = Math.floor(Math.random() * avuc.length)
+      kaldir(sira)
+      await bekle(BOT_SECIM_SURESI * carpan)
+      if (avuc.length > 1 && Math.random() < 0.5) {
+        sira = (sira + 1 + Math.floor(Math.random() * (avuc.length - 1))) % avuc.length
+        kaldir(sira)
+        await bekle(BOT_SECIM_SURESI * carpan)
+      }
+      cekmeKaynak.current = konumOlc(masaRef.current!, kartKimligi(avuc[sira]), `avuc:${hedef}`)
+    }
+    if (hedef === 0) setKalkikKart(null)
+    else setBotKalkik(null)
+    const secilen = kartKimligi(avuc[sira])
+    return taban.oyuncular[hedef].avuc.findIndex(k => kartKimligi(k) === secilen)
+  }
+
+  // Çekmede ters kart bırakıldı: çekenin avucuna (ya da isim etiketine) bırakıldıysa alınır, değilse geri döner.
+  const cekmeBirak = (koltuk: number, kart: number, hedef: string): Birakma => {
+    const s = secimRef.current
+    if (!s || hedef !== `avuc:${s.ceken}`) return 'red'
+    cekmeKaynak.current = konumOlc(masaRef.current!, kartKimligi(gorunenRef.current.oyuncular[koltuk].avuc[kart]), `avuc:${koltuk}`)
+    secimRef.current = null
+    s.al(kart)
+    return 'kabul'
   }
 
   const hamleyiGoster = async (eski: Durum, yeni: Durum, elle: boolean) => {
@@ -419,6 +478,15 @@ export function Masa() {
       avuc.splice(avuc.findIndex(x => kartKimligi(x) === id), 1)
       return ara
     }
+    if (sonuc.cekme) {
+      // Çekme: Kız ortada, kart seçildi (cekilecekKart). Çekilen kart bırakıldığı yerden çekene uçar;
+      // hedefin avucu eski sırasına döner (ters dururken), sonra açılır.
+      const kaynak = cekmeKaynak.current
+      cekmeKaynak.current = undefined
+      await gec(hamleSonrasi, kaynak ? { kaynak: new Map([[kartKimligi(sonuc.cekme.kart), kaynak]]) } : {})
+      setTers(null)
+      return
+    }
     if (!elle) {
       setBotKalkik(id)
       await bekle(SURE.kalkma * carpan)
@@ -430,34 +498,6 @@ export function Masa() {
       ara.orta.push(k)
       await gec(ara)
       await gec(hamleSonrasi)
-    } else if (sonuc.cekme) {
-      // Çekme (9.2): Kız ortaya düşer, hedefin avucu ters dönüp karılır, çeken bir karta dokunur, kart ona uçar.
-      const { hedef, kart: cekilen } = sonuc.cekme
-      const ara = kartsiz()
-      ara.orta.push(k)
-      await gec(ara)
-      setBotKalkik(null)
-      if (hedef === 0) setKalkikKart(null)
-      setTers(hedef)
-      await avucuKar(masaRef.current!, hedef, KARMA_SURESI * carpan)
-      const adet = ara.oyuncular[hedef].avuc.length
-      const sira =
-        sonuc.oyuncu === 0 || !botlarOtomatik
-          ? await new Promise<number>(r => (secimRef.current = r))
-          : (await bekle(BOT_SECIM_SURESI * carpan), Math.floor(Math.random() * adet))
-      // Kartlar ters ve karılmış olduğu için seçim zaten rastlantı: motorun çektiği kart dokunulan yere konur.
-      const secim = structuredClone(ara)
-      const avuc = secim.oyuncular[hedef].avuc
-      const j = avuc.findIndex(x => kartKimligi(x) === kartKimligi(cekilen))
-      ;[avuc[j], avuc[sira]] = [avuc[sira], avuc[j]]
-      await gec(secim)
-      if (hedef === 0) setKalkikKart(sira)
-      else setBotKalkik(kartKimligi(cekilen))
-      await bekle(SURE.kalkma * carpan)
-      // Kart çekene uçar; hedefin avucu eski sırasıyla yeniden açılır.
-      await gec(hamleSonrasi)
-      setTers(null)
-      if (hedef === 0) setKalkikKart(null)
     } else if (inis) {
       // Yakalama: kart önce eşleştiği yere iner, kısa duraklar, sonra eşleşenlerle birlikte uçar.
       const kaynak = konumOlc(masaRef.current!, id, `avuc:${sonuc.oyuncu}`)
@@ -537,6 +577,7 @@ export function Masa() {
   // Bırakılan yere göre hamle; kurala aykırıysa kart sessizce avuca döner (9.2).
   // Sırası gelen oyuncunun kartı oynanır; botlar kendi oynuyorsa sadece benim kartlarım.
   const kartBirak = (oyuncu: number, kart: number, hedef: string): Birakma => {
+    if (ters === oyuncu) return cekmeBirak(oyuncu, kart, hedef)
     if (mesgul || d.asama !== 'oyun' || (oyuncu !== 0 && botlarOtomatik)) return 'red'
     const [yer, deger] = hedef.split(':')
     const dene = (tip: Hamle['tip'], hedef?: number): Birakma => {

@@ -45,7 +45,14 @@ function yanYelpaze(sira: number, adet: number, taraf: 'sol' | 'sag') {
 const RAKIP_KART_BINME = 20
 
 // Bırakılan yer ekranda data-hedef ile işaretli: "orta", "mut:<sayı>", "ceza:<oyuncu>".
-type Birakma = 'kabul' | 'red' | 'bekle'
+// red: kart avuca dönerken sallanır. mutUyarisi: kart sessizce döner, onun yerine eşleşen Mut kartı sallanır.
+type Birakma = 'kabul' | 'red' | 'mutUyarisi' | 'bekle'
+
+// Reddedilen hamlede "olmaz" der gibi hafif sallanma. Sadece kartı bırakanın ekranında olur.
+function salla(el: Element | null | undefined, gecikme = 0) {
+  const x = [0, -6, 6, -4, 3, 0].map(p => ({ transform: `translateX(${p}px)` }))
+  el?.animate(x, { duration: 400, delay: gecikme })
+}
 
 // Bot oynayacağı kartı önce masaya doğru biraz kaldırır.
 function rakipKartDuzeni(sira: number, adet: number, taraf: 'sol' | 'sag', duz: boolean, kalkik: boolean) {
@@ -175,7 +182,10 @@ function useSurukle(dokun: () => void, birak: Birak) {
         .elementsFromPoint(e.clientX, e.clientY)
         .map(el => el.closest<HTMLElement>('[data-hedef]'))
         .find(el => el)?.dataset.hedef
-      if (hedef && birak(hedef) === 'kabul') return
+      const sonuc = hedef ? birak(hedef) : null
+      if (sonuc === 'kabul') return
+      // Kart yerine döndükten sonra sallanır (dönüş 0,18 sn).
+      if (sonuc === 'red') salla(e.currentTarget.firstElementChild, 180)
       setKayma(null)
     },
     onPointerCancel: () => {
@@ -420,7 +430,15 @@ export function Masa() {
       oyna(h)
       return 'kabul'
     }
-    if (yer === 'orta') return dene('ortayaAt')
+    if (yer === 'orta') {
+      // Mut kartlarıyla eşleşen kart ortaya atılamaz: neden olmadığını eşleşen Mut kartı sallanarak gösterir.
+      const deger = d.oyuncular[oyuncu].avuc[kart].deger
+      if (!hamleGecerliMi(d, { tip: 'ortayaAt', kart }) && d.mut.some(m => m.deger === deger)) {
+        masaRef.current!.querySelectorAll(`[data-hedef="mut:${deger}"]`).forEach(el => salla(el))
+        return 'mutUyarisi'
+      }
+      return dene('ortayaAt')
+    }
     if (yer === 'mut') return Number(deger) === d.oyuncular[oyuncu].avuc[kart].deger ? dene('mutEslestir') : 'red'
     if (yer === 'ceza' && Number(deger) === oyuncu) return dene('cezaBosalt')
     // Sıradakine iki seçenek var (üstüne yığ / ilerlet); diğer rakiplere sadece üstüne yığılır.

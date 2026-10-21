@@ -380,8 +380,11 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 
 **Yardım yok, geri alma yok:** Oyun eşleşebilecek yerleri parlatmaz; dikkat oyuncunun işidir. (Tek istisna: blok penceresindeki kalkan uyarısı, bkz. 6.5.1.) Bırakılan kart geri alınamaz (örn. ceza yığınlarında kullanabileceğin 5'i yanlışlıkla orta yığına atarsan o hamle geçerlidir).
 
-**Geçersiz hamle:** Kurala aykırı bırakılan kart sessizce avucuna döner.
-**Geçersiz hamle uyarısı (ilk sürümde yok, sonra hatırlatılacak 🔔):** Kart yerine dönerken kısa bir yazı çıkar. Örnekler: "Artı elde kendi ceza yığınına kart atamazsın", "Mut kartlarında 9 var, 9'u orta yığına atamazsın", "Bu kart buradakiyle eşleşmiyor".
+**Geçersiz hamle (karar 2026-10-21):** Kurala aykırı bırakılan kart avucuna döner ve **yazı yok**, hafif sallanmayla uyarılır (yaklaşık 0,4 sn, "hayır" der gibi):
+- Mut kartlarıyla eşleşen kart ortaya bırakılırsa **eşleşen Mut kartı** sallanır (kart sessizce döner).
+- Diğer bütün durumlarda (eşleşmeyen yığın, sıra sende değil vb.) avuca dönen **kartın kendisi** sallanır.
+- Boş masaya bırakmak vazgeçmek sayılır, sallanma yok.
+- Sallanma sadece kartı bırakanın ekranında olur; herkes kendi telefonundan oynarken diğerlerine gitmez (eldeki kart hakkında bilgi vermesin).
 
 **Kart kaldırma (rakipler görür):** Oyuncu avucundaki bir karta dokununca kart hafif yukarı kalkar. Diğer oyuncular da o oyuncunun avucunda **aynı sıradaki kartın arkasının** kalktığını görür (Hearthstone'daki gibi); kartın yüzü görünmez.
 - Amaç: masadaki gibi canlılık; kimin ne düşündüğü hissedilir, blöf yapılabilir (kartı kaldırıp vazgeçmek).
@@ -416,8 +419,6 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 ## 11. Açık Sorular ve Kararlar
 
 ### Açık sorular
-1. 🔔 **Hatırlatma:** Kullanıcının aklındaki bir fikir var, sonra hatırlatılacak (geçersiz hamle uyarısı konuşulurken).
-2. 🔔 **Hatırlatma:** İlk sürümden sonra geçersiz hamle uyarı yazısını ekle (9.2).
 3. **El sonu:** Deste bitince orta yığında kalan kartlar kimsenin puanına sayılmadan atılıyor (bomba yoksa) — geçici karar olarak motorda böyle (2026-10-20), kahve testinde onaylanacak.
 4. **Eksi el hedefi:** Şimdilik herkesin ceza yığınından alınabilir; emin değiliz (6.7).
 5. **Mut kartı çakışmaları:** 3↔As ve 10↔As dışındaki çakışmalar konuşulacak (5.1).

@@ -4,18 +4,18 @@
 > İşaretler: ❓ = henüz netleşmedi, 🔔 = sonra hatırlatılacak. Hepsi Bölüm 11'de toplu.
 
 ## 0. Proje Durumu
-- **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme, Vale / çarpan. Vale hariç hepsi kullanıcı testinden geçti (Kız'da son küçük düzeltme hariç, aşağıda). Diğer özel kartlar henüz sadece puanlı kart.
-- **Sıradaki iş:** Kullanıcı "Vale dene" ve "Bot 8 dene"yi elle deneyecek. Sonra **As** (eksi el) — kodlamadan önce kullanıcıyla konuşulacak.
+- **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme, Vale / çarpan. Hepsi kullanıcı testinden geçti. Diğer özel kartlar henüz sadece puanlı kart.
+- **Sıradaki iş:** **As** (eksi el) — kodlamadan önce kullanıcıyla konuşulacak.
   - Sonra 3 → 10 → Papaz → 7. Çalışma biçimi: işi sadece arada kullanıcının elle deneyeceği bir şey varsa parçalara böl (ekransız ara adımı ayrı onaya sunma); her özel kart için Dene menüsüne "… dene" eli; akıllı bot hamleleri deneyerek seçtiği için yeni kartları çoğunlukla kendiliğinden kullanır.
 - **Sonra konuşulacak — süre (kullanıcı, 2026-10-21):** Biri oynamazsa oyun kilitleniyor; genel hamle süresi ve Kız seçimine süre gerekip gerekmediği "en son" konuşulacak.
-- **4h Vale (çarpan) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda bakıldı; kullanıcının elle denemesi bekliyor):**
+- **4h Vale (çarpan) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda bakıldı; kullanıcı testinden geçti, "Bot 8 dene" dahil):**
   - **Kurallar (kullanıcı onayı, kahvede ek kural yok):** Mut kartlarında Vale varsa elin bütün puanları ×2 (el sonunda önünde 214 varsa 428 yazılır); her ek Vale +2 (×4, ×6, ×8); el boyunca sürer; temiz ön / boş ön de çarpılır (−200). Avuçtaki Vale'nin gücü yok (25 puanlı kart).
   - **Motor:** `valeCarpani(mut)`; el kurulurken `d.carpan` buna göre ayarlanır (puan gösterimi ve el sonu zaten çarpanı kullanıyordu). Bot değişmedi.
   - **Ekran:** Kullanıcı A'yı seçti: sadece sol üstte "×2" yazısı, puanlar çarpılmış görünür (parlama yok).
   - **"Vale dene":** Mut'ta Vale, avucumda Vale; sağdaki B'nin yığınında 9 (18 görünür). Vale'yi Mut Vale'ye bırakınca B 118 olmalı.
   - **"Bot 8 dene":** sıra sağdaki B'de, bende 2 + üç 9 ve kalkan kurulu başlar; B benimle takas yapar (2 bana geçer, kalkan görünür ama kurulu değil), sonra 9'u Mut 9'la yakalar. Claude tarayıcıda denedi, çalışıyor.
 - **4g Kız (çekme) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda deneme geçti; kullanıcı denedi, geri bildirimle düzeltildi):**
-  - Son düzeltme (kullanıcının elle denemesi bekliyor): sürüklemeye başlanan ters kart seçilmiş sayılır, önceki kalkık kart iner; geri dönen kart kalkık oturur (kullanıcı tamamen inmesini isterse değişir).
+  - Son düzeltme (kullanıcı testinden geçti): sürüklemeye başlanan ters kart seçilmiş sayılır, önceki kalkık kart iner; geri dönen kart kalkık oturur (kullanıcı tamamen inmesini isterse değişir).
   - `/code-review` yapıldı (2026-10-21): motorda geçersiz `cekilen` sırasına hata + test; hata kurtarmada Kız seçim durumu temizleniyor. Bırakılanlar: bot çekmeden/takastan sonra hemen tekrar oynayacakmış gibi hesaplıyor (6.6 sırayı başkasına verebilir; bilerek sade); Kız'ın ortaya düşme ara durumu `kartsiz()` ile benzer kodu tekrarlıyor.
   - **Kurallar (kullanıcı onayı):** 8 ile aynı oynanış; avucu boş olandan ve kendinden çekme yok; Mut'ta Kız varken çekme serbest; bloklanamaz; sıra 6.6. Kurulu kalkanımdaki 2 çekilirse: avucumda başka 2 kalmadıysa kalkan sökülür (mevcut kural), kaldıysa kalkan kurulu kalır. 2 çekersem kalkan belirir ama kurulu olmaz.
   - **Motor:** `cek` hamlesi (`hedef`; isteğe bağlı `cekilen` = hedefin avucundaki sıra, yoksa tohumlu rastgele). Çekilen kart çekenin avucunun sonuna eklenir. `sonHamle.cekme = { hedef, kart }`.

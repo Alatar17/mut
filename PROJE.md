@@ -5,7 +5,19 @@
 
 ## 0. Proje Durumu
 - **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme, Vale / çarpan. Hepsi kullanıcı testinden geçti. Diğer özel kartlar henüz sadece puanlı kart.
-- **Sıradaki iş:** **As** (eksi el) — kodlamadan önce kullanıcıyla konuşulacak.
+- **Sıradaki iş:** As'ın kullanıcı testi; sonra 3 → 10 → Papaz → 7. Ses efektleri daha sonra eklenecek (kullanıcı istedi, 2026-10-21).
+- **4i As (eksi el) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda "As dene" bakıldı; kullanıcı testi bekliyor):**
+  - **Motor:** `d.eksi` (`eksiEl(mut)`); eksi elde `ekle` sadece kendine (hedef = kendin), `alIlerlet` herkesten (`hedef` = yığını alınan), `cezaBosalt` yok. Blok penceresi yığınından alınana açılır; blokta kartlar alanın yığınından bloklayanınkine döner (zincir de çalışır). Puan × −1. Bot puan hesabını ters çevirir.
+  - **Ekran:** kartı kendi yığınına bırakmak = ekle, rakibin yığınına bırakmak = al. "Eksi el" etiketi, puanlar eksi.
+  - **"As dene":** avucumda 5-9-7-2; ortada 9, benim yığınımda 5, B'de 4-5-6, C'de 10 üstünde 5. **"Bot As dene":** B benim üç 9'umu alır, ben 2 ile bloklarım.
+- **As kuralları (konuşuldu 2026-10-21):**
+  - **Hamleler (eksi elde):** Yakalanan her kart yakalayanın **kendi** ceza yığınına gider (orta eşleşmesi, Mut, orta seri). **Başkasının ceza yığınından al:** **herkesten**; üstteki eşleşen kartlar (ya da uzatılan seri) + kendi kartın kendi yığınına. **Kendi yığınına ekle (yeni hamle):** yığınının üstünde 5, avucunda 5 → üstüne eklersin; 4-5-6'ya 7 ekleyip seriyi uzatmak da olur. **Boşalt ve ekle (başkasına) yasak** — kartlar hep kendine geldiği için zaten mümkün değil. 8 ve Kız değişmez.
+  - **Zorunluluk:** Kendi yığınına eklemek zorunlu değil; 5'i ortaya da atabilirsin (ceza yığınıyla eşleştirme hiçbir zaman zorunlu değil). Orta ve Mut zorunlulukları aynen.
+  - **Blok:** Pencere sadece biri başkasının yığınından aldığında, o kişi için açılır; kurulu kalkan kendiliğinden bloklar. Kartlar 2 ile sahibinin yığınına döner. Kendine (orta/Mut) almada pencere yok.
+  - **Puan:** El sonunda eksi yazılır; boş yığın +100 (×çarpan). İki As ek etki yok. 3/10 ile çakışma o kartlar gelince.
+  - **Ekran:** Sol üstte "Eksi el" yazısı (Vale'nin ×2'si gibi); ceza yığını puanları eksi görünür (−118).
+  - **Bot:** Eksi elde puan hesabını tersine çevirir (Claude ayarlar).
+  - **Dene:** "As dene" (Mut'ta As, ortada eşleşecek kart, B'nin yığınında alınacak kartlar) ve "Bot As dene" (bot benden alır, ben 2 ile bloklarım).
   - Sonra 3 → 10 → Papaz → 7. Çalışma biçimi: işi sadece arada kullanıcının elle deneyeceği bir şey varsa parçalara böl (ekransız ara adımı ayrı onaya sunma); her özel kart için Dene menüsüne "… dene" eli; akıllı bot hamleleri deneyerek seçtiği için yeni kartları çoğunlukla kendiliğinden kullanır.
 - **Sonra konuşulacak — süre (kullanıcı, 2026-10-21):** Biri oynamazsa oyun kilitleniyor; genel hamle süresi ve Kız seçimine süre gerekip gerekmediği "en son" konuşulacak.
 - **4h Vale (çarpan) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda bakıldı; kullanıcı testinden geçti, "Bot 8 dene" dahil):**
@@ -299,7 +311,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 - Mut kartları **sadece ilk turda** açılır; masanın üst ortasında, orta yığından ayrı durur.
 - Tur bitince ceza yığınları ve orta yığında kalan kartlar **olduğu gibi kalır**, yeni avuçlar dağıtılır.
 - El bitince **puanlar yazılır**, kartlar toplanır ve yeni el baştan başlar.
-- **Eksi elde:** Yakalanan bütün kartlar otomatik olarak yakalayanın ceza yığınına gelir; başkalarının ceza yığınından da (şimdilik herkesten ❓) eşleştirerek çekilebilir. "Kendi ceza yığınını boşalt" ve "ekle" eksi elde anlamsızdır.
+- **Eksi elde:** Yakalanan bütün kartlar otomatik olarak yakalayanın ceza yığınına gelir; başkalarının ceza yığınından da (**herkesten**, karar 2026-10-21) eşleştirerek çekilebilir. "Kendi ceza yığınını boşalt" ve başkasına "ekle" eksi elde yoktur; yerine **kendi yığınına ekle** vardır (zorunlu değil). Ayrıntı Bölüm 0.
 
 ### 6.8 Bomba eli (Mut kartlarında 10 varsa)
 1. **Bombanın kurulması:** Mut kartlarındaki 10 ile avucundaki 10 eşleştirilir ve sıradakine (serbest elde: istediğine) gönderilir.
@@ -454,7 +466,6 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 ## 11. Açık Sorular ve Kararlar
 
 ### Açık sorular
-4. **Eksi el hedefi:** Şimdilik herkesin ceza yığınından alınabilir; emin değiliz (6.7).
 5. **Mut kartı çakışmaları:** 3↔As ve 10↔As dışındaki çakışmalar konuşulacak (5.1).
 6. **Tavşan deliği (6.10):** Kapatma ve ekleme sıra dışı da yapılabilir mi? Deliğe gönderim 2 ile bloklanabilir mi?
 7. **Blok penceresi (6.5.1):** Pencere süresi (başlangıç 3 sn) ve ek süre butonunun sınırı kahve testinde ayarlanacak.

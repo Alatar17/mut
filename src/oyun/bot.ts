@@ -12,7 +12,7 @@ export function botHamlesi(d: Durum, rastgele: () => number = Math.random): Haml
 // Takas ya da çekme, sonrasında yapılabilecek en iyi hamle şu ankinden en az bu kadar puan iyiyse yapılır.
 const GUC_ESIGI = 10
 
-// Basit akıllı bot: her hamleyi dener, rakiplere giden puan ile kendi ceza yığınındaki değişimi tartar.
+// Basit akıllı bot: her hamleyi dener, rakiplere giden puan ile kendi ceza yığınındaki değişimi tartar (eksi elde tersi).
 // Yakalama yoksa ortaya en az puanlı kartı atar (yakalanırsa az zarar versin).
 // 8 ya da Kız varsa: rakiplerin avuçlarına bakar (test botu, hile serbest). Takasta yeni avuçla, çekmede
 // gelebilecek her kartla en iyi hamleyi dener (çekme rastgele olduğu için ortalaması); belirgin iyiyse gücü kullanır.
@@ -50,6 +50,8 @@ function puanlanmis(d: Durum, hamleler = gecerliHamleler(d)) {
       const fark = cezalar(hamleYap(d, h)).map((p, i) => p - once[i])
       const rakiplere = fark.reduce((t, f, i) => (i === ben ? t : t + f), 0)
       const kart = d.oyuncular[ben].avuc[h.kart]
-      return { h, puan: rakiplere - fark[ben] - (kart ? kartPuani(kart) / 100 : 0) }
+      // Eksi elde ters: kendi yığınına gelen iyi, rakiplere giden kötü.
+      const isaret = d.eksi ? -1 : 1
+      return { h, puan: isaret * (rakiplere - fark[ben]) - (kart ? kartPuani(kart) / 100 : 0) }
     })
 }

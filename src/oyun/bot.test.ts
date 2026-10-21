@@ -4,6 +4,7 @@ import { kart, type Deger, type Kart } from './kart'
 import { akilliBotHamlesi, botHamlesi } from './bot'
 import { hamleYap, sonrakiEl, toplamPuanlar, yeniOyun } from './motor'
 import { rastgele } from './rastgele'
+import { asBotDenemesi } from './deneme'
 
 it('akıllı bot rastgele botları çoğunlukla yener', () => {
   const OYUN = 100
@@ -55,4 +56,9 @@ it('akıllı bot: rakipten çekilecek kart büyük ihtimalle işe yarıyorsa Kı
   // C'nin avucunda iki 9: hangisi gelse Mut 9 yakalanır → C'den çeker.
   d.oyuncular[2].avuc = [k(9, 'kupa'), k(9, 'karo')]
   expect(akilliBotHamlesi(d)).toEqual({ tip: 'cek', kart: 0, hedef: 2 })
+})
+
+it('akıllı bot eksi elde benim yığınımdaki 9\'ları kendine alır', () => {
+  const d = asBotDenemesi(yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum: 3 }))
+  expect(akilliBotHamlesi(d, () => 0)).toEqual({ tip: 'alIlerlet', kart: 0, hedef: 0 })
 })

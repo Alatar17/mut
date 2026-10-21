@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { kart, type Deger, type Kart } from './kart'
-import { gecerliHamleler, hamleYap, siradakiOyuncu, valeCarpani, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
+import { eksiEl, gecerliHamleler, hamleYap, siradakiOyuncu, valeCarpani, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
 
 // Kartı kısaca yazmak için: k(5) = 5 maça. Renk sadece kartları ayırt etmek için.
 const k = (deger: number, renk: Kart['renk'] = 'maca') => kart(deger as Deger, renk)
@@ -490,4 +490,66 @@ it('çekme: avuçta olmayan sıra verilirse hata (yanlış kart çekilmez)', () 
   const d = durum({ avuclar: [[k(12)], [k(9, 'kupa')], [k(5, 'karo')]] })
   expect(() => hamleYap(d, { tip: 'cek', kart: 0, hedef: 1, cekilen: -1 })).toThrow()
   expect(() => hamleYap(d, { tip: 'cek', kart: 0, hedef: 1, cekilen: 1 })).toThrow()
+})
+
+describe('eksi el (As)', () => {
+  const eksi = (p: Parameters<typeof durum>[0]) => {
+    const d = durum({ mut: [k(1, 'kupa')], ...p })
+    d.eksi = true
+    return d
+  }
+  it('Mut kartlarında As varsa el eksi; yoksa değil', () => {
+    expect(eksiEl([k(5), k(1)])).toBe(true)
+    expect(eksiEl([k(5), k(13)])).toBe(false)
+  })
+  it('orta ve Mut yakalaması kendi yığınına gider', () => {
+    const d0 = eksi({ avuclar: [[k(9), k(1)], [k(4, 'kupa')], [k(5, 'kupa')]], orta: [k(9, 'kupa')] })
+    const d = hamleYap(d0, { tip: 'ortayaAt', kart: 0 })
+    expect(d.oyuncular[0].ceza).toEqual([k(9, 'kupa'), k(9)])
+    const d2 = hamleYap(eksi({ avuclar: [[k(1)], [k(4, 'kupa')], [k(5, 'kupa')]] }), { tip: 'mutEslestir', kart: 0 })
+    expect(d2.oyuncular[0].ceza).toEqual([k(1, 'kupa'), k(1)])
+  })
+  it('boşalt ve başkasına ekle yok; kendi yığınına ekle, herkesten al var', () => {
+    const d = eksi({ avuclar: [[k(5)], [k(4, 'kupa')], [k(6, 'kupa')]], cezalar: [[k(5, 'kupa')], [k(5, 'karo')], [k(5, 'sinek')]] })
+    expect(gecerliHamleler(d)).toEqual([
+      { tip: 'ortayaAt', kart: 0 },
+      { tip: 'ekle', kart: 0, hedef: 0 },
+      { tip: 'alIlerlet', kart: 0, hedef: 1 },
+      { tip: 'alIlerlet', kart: 0, hedef: 2 },
+    ])
+    expect(hamleYap(d, { tip: 'ekle', kart: 0, hedef: 0 }).oyuncular[0].ceza).toEqual([k(5, 'kupa'), k(5)])
+    const al = hamleYap(d, { tip: 'alIlerlet', kart: 0, hedef: 2 })
+    expect(al.oyuncular[0].ceza).toEqual([k(5, 'kupa'), k(5, 'sinek'), k(5)])
+    expect(al.oyuncular[2].ceza).toEqual([])
+  })
+  it('seri: kendi yığınında uzatılır, rakibin yığınındaki seri alınır', () => {
+    const seri = [k(4, 'kupa'), k(5, 'kupa'), k(6, 'kupa')]
+    const d = eksi({ avuclar: [[k(7)], [k(4)], [k(9)]], cezalar: [[], seri] })
+    expect(hamleYap(d, { tip: 'alIlerlet', kart: 0, hedef: 1 }).oyuncular[0].ceza).toEqual([...seri, k(7)])
+    const d2 = eksi({ avuclar: [[k(7)], [k(4)], [k(9)]], cezalar: [seri] })
+    expect(hamleYap(d2, { tip: 'ekle', kart: 0, hedef: 0 }).oyuncular[0].ceza).toEqual([...seri, k(7)])
+  })
+  it('blok: yığınından alınan bloklar, kartlar 2 ile geri gelir; zincirde alan geri bloklar', () => {
+    const d0 = eksi({ avuclar: [[k(9), k(2)], [k(2, 'kupa'), k(4, 'kupa')], [k(5, 'kupa')]], cezalar: [[], [k(9, 'kupa')]] })
+    // Kendine almak (orta/Mut) pencere açmaz; başkasından almak açar.
+    const d = hamleYap(d0, { tip: 'alIlerlet', kart: 0, hedef: 1 })
+    expect(d.blok).toEqual({ hedef: 1, gonderen: 0, adet: 2 })
+    const b = hamleYap(d, { tip: 'blok', kart: 0 })
+    expect(b.oyuncular[1].ceza).toEqual([k(2, 'kupa'), k(9, 'kupa'), k(9)])
+    expect(b.oyuncular[0].ceza).toEqual([])
+    expect(b.blok).toEqual({ hedef: 0, gonderen: 1, adet: 3 })
+    const b2 = hamleYap(b, { tip: 'blok', kart: 0 })
+    expect(b2.oyuncular[0].ceza).toEqual([k(2), k(2, 'kupa'), k(9, 'kupa'), k(9)])
+    expect(b2.oyuncular[1].ceza).toEqual([])
+  })
+  it('kendine eklemek ya da ortadan almak blok penceresi açmaz', () => {
+    const d0 = eksi({ avuclar: [[k(9), k(4)], [k(2, 'kupa'), k(4, 'kupa')], [k(2, 'karo'), k(6)]], orta: [k(9, 'kupa')] })
+    expect(hamleYap(d0, { tip: 'ortayaAt', kart: 0 }).blok).toBeUndefined()
+  })
+  it('puan eksi yazılır, boş yığın +100, Vale ile çarpılır', () => {
+    const d = eksi({ avuclar: [[k(9)], [], []], cezalar: [[], [k(5, 'kupa')], [k(11, 'kupa')]], desteBos: true })
+    d.carpan = 2
+    const son = hamleYap(d, { tip: 'ortayaAt', kart: 0 })
+    expect(son.puanKagidi[0]).toEqual([100 * 2, -5 * 2, -25 * 2])
+  })
 })

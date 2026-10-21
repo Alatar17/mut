@@ -1,6 +1,6 @@
 // Test menüsündeki "… dene" düğmeleri: istenen kartlar hazır dizilmiş yeni bir el (oyun bitince kalkacak).
 import { kart, type Kart } from './kart'
-import { valeCarpani, type Durum } from './motor'
+import { eksiEl, valeCarpani, type Durum } from './motor'
 
 const ayni = (a: Kart, b: Kart) => a.renk === b.renk && a.deger === b.deger
 
@@ -26,6 +26,7 @@ function denemeKur(d: Durum, p: { avucum: Kart[]; digerAvuclar?: Kart[][]; orta?
   })
   d.mut = [...mut, ...normal.splice(normal.length - (4 - mut.length))]
   d.carpan = valeCarpani(d.mut)
+  d.eksi = eksiEl(d.mut)
   d.orta = [...orta]
   d.deste = normal
   d.elBaslatani = 0
@@ -111,4 +112,24 @@ export const kizBotDenemesi = (d: Durum) =>
     digerAvuclar: [[], [kart(12, 'kupa'), kart(4, 'maca'), kart(5, 'maca'), kart(6, 'maca')]],
     mut: [kart(9, 'maca'), kart(7, 'kupa'), kart(7, 'karo'), kart(7, 'sinek')],
     sira: 2,
+  })
+
+// Eksi el (Mut kartlarında As). Avucumda 5, 9, 7 ve 2. Ortada 9 (kapınca bana gelir), benim yığınımda 5 (5'i ekleyebilirim),
+// sağdaki B'nin yığınında 4-5-6 (7 ile seriyi alabilirim), soldaki C'nin yığınında 10 ve üstünde 5 (5 ile alabilirim).
+export const asDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(5, 'maca'), kart(9, 'kupa'), kart(7, 'karo'), kart(2, 'sinek')],
+    orta: [kart(9, 'maca')],
+    cezalar: [[kart(5, 'kupa')], [kart(4, 'karo'), kart(5, 'karo'), kart(6, 'karo')], [kart(10, 'sinek'), kart(5, 'sinek')]],
+    mut: [kart(1, 'maca'), kart(4, 'sinek'), kart(6, 'sinek'), kart(13, 'kupa')],
+  })
+
+// Eksi el; sağdaki B (sırası onda) benim yığınımdaki üç 9'u kendi 9'uyla alır. Bende 2 var: bloklarsam dört 9 bana geri gelir.
+export const asBotDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(2, 'maca'), kart(4, 'kupa'), kart(6, 'kupa'), kart(10, 'kupa')],
+    digerAvuclar: [[kart(9, 'sinek'), kart(3, 'karo'), kart(4, 'karo'), kart(6, 'karo')]],
+    cezalar: [[kart(9, 'maca'), kart(9, 'kupa'), kart(9, 'karo')]],
+    mut: [kart(1, 'maca'), kart(5, 'sinek'), kart(7, 'sinek'), kart(13, 'kupa')],
+    sira: 1,
   })

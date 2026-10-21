@@ -24,6 +24,13 @@ type Duraklama = keyof typeof DURAKLAMALAR
 const SURE = { kalkma: 250, ucus: 380, dagitimAraligi: 70 }
 // Blok penceresi süresi (6.5.1); kahve testinde ayarlanacak.
 const BLOK_SURESI = 3000
+// Kurulu kalkan bloklamadan önce parladığı görülsün diye kısa bekleme (ms).
+const KALKAN_GECIKMESI = 300
+
+// Blok penceresi açıkken normal bir hamle (kart atmak) kabul sayılır: önce kabul uygulanır, hamle ondan sonraki
+// durumda yapılır. Kabulden sonra sıra o oyuncuda değilse hamle geçersiz olur (6.6 bozulmasın).
+const KABUL: Hamle = { tip: 'kabul', kart: -1 }
+const kabulSonrasi = (d: Durum, h: Hamle) => (d.blok && h.tip !== 'blok' && h.tip !== 'kabul' ? hamleYap(d, KABUL) : d)
 
 // 0 = sen (alt), 1 = sağdaki (sıradaki), 2 = soldaki
 const yeniOyunKur = () => yeniOyun({ isimler: ['Sen', 'Bot B', 'Bot C'], toplamEl: TOPLAM_EL })
@@ -332,11 +339,13 @@ export function Masa() {
 
   // elle: kartı kullanıcı sürükledi (botun kart kaldırma adımı atlanır).
   const hamleOyna = async (h: Hamle, elle: boolean) => {
-    if (mesgulRef.current || !hamleGecerliMi(d, h)) return
+    if (mesgulRef.current) return
+    const taban = kabulSonrasi(d, h)
+    if (!hamleGecerliMi(taban, h)) return
     // Kurulu kalkan benim bir sonraki hamleme kadar kalır (blok da hamle sayılır, 2 gider).
-    if (d.sira === 0 && h.tip !== 'kabul') setKalkanKurulu(false)
+    if (taban.sira === 0 && h.tip !== 'kabul') setKalkanKurulu(false)
     const eski = d
-    const yeni = hamleYap(eski, h)
+    const yeni = hamleYap(taban, h)
     basla()
     try {
       await hamleyiGoster(eski, yeni, elle)
@@ -411,13 +420,13 @@ export function Masa() {
 
   // Blok penceresi: hedef ben isem (ya da botları ben oynuyorsam) süre bitince kendiliğinden kabul edilir.
   // Bot hedefse ve botlar kendi oynuyorsa bot hemen karar verir (yukarıdaki bot hamlesi).
-  // Kalkanım kuruluysa pencerenin içinde rastgele bir anda kendiliğinden bloklar (hep anında olursa kurulu olduğu belli olur).
+  // Kalkanım kuruluysa kısa bir an parlayıp kendiliğinden bloklar.
   const blokBende = !!d.blok && !mesgul && (d.blok.hedef === 0 || !botlarOtomatik)
   useEffect(() => {
     if (!blokBende) return
     const otomatik = d.blok!.hedef === 0 && kalkanKurulu
     const zamanlayici = otomatik
-      ? setTimeout(() => hamleOyna({ tip: 'blok', kart: d.oyuncular[0].avuc.findIndex(k => k.deger === 2) }, true), 400 + Math.random() * (BLOK_SURESI - 1000))
+      ? setTimeout(() => hamleOyna({ tip: 'blok', kart: d.oyuncular[0].avuc.findIndex(k => k.deger === 2) }, true), KALKAN_GECIKMESI)
       : setTimeout(() => hamleOyna({ tip: 'kabul', kart: -1 }, true), BLOK_SURESI)
     return () => clearTimeout(zamanlayici)
   }, [d, blokBende, kalkanKurulu])
@@ -449,30 +458,34 @@ export function Masa() {
   // Bırakılan yere göre hamle; kurala aykırıysa kart sessizce avuca döner (9.2).
   // Sırası gelen oyuncunun kartı oynanır; botlar kendi oynuyorsa sadece benim kartlarım.
   const kartBirak = (oyuncu: number, kart: number, hedef: string): Birakma => {
-    if (mesgul || d.asama !== 'oyun' || d.sira !== oyuncu || (oyuncu !== 0 && botlarOtomatik)) return 'red'
-    const siradaki = sonraki(d, oyuncu)
+    if (mesgul || d.asama !== 'oyun' || (oyuncu !== 0 && botlarOtomatik)) return 'red'
     const [yer, deger] = hedef.split(':')
     const dene = (tip: Hamle['tip'], hedef?: number): Birakma => {
       const h = { tip, kart, hedef }
-      if (!hamleGecerliMi(d, h)) return 'red'
+      if (!hamleGecerliMi(kabulSonrasi(d, h), h)) return 'red'
       oyna(h)
       return 'kabul'
     }
+    // Blok penceresinde 2 kendi ceza yığınına bırakılınca blok yapılır (kalkana basmakla aynı).
+    if (d.blok?.hedef === oyuncu && yer === 'ceza' && Number(deger) === oyuncu && d.oyuncular[oyuncu].avuc[kart].deger === 2)
+      return dene('blok')
+    // Pencerede başka kart atmak kabul sayılır; kurallara kabulden sonraki durumdan bakılır.
+    const t = kabulSonrasi(d, { tip: 'ortayaAt', kart })
+    if (t.sira !== oyuncu || d.blok && d.blok.hedef !== oyuncu) return 'red'
+    const siradaki = sonraki(t, oyuncu)
     if (yer === 'orta') {
       // Mut kartlarıyla eşleşen kart ortaya atılamaz: neden olmadığını eşleşen Mut kartı sallanarak gösterir.
-      const deger = d.oyuncular[oyuncu].avuc[kart].deger
-      if (!hamleGecerliMi(d, { tip: 'ortayaAt', kart }) && d.mut.some(m => m.deger === deger)) {
+      const deger = t.oyuncular[oyuncu].avuc[kart].deger
+      if (!hamleGecerliMi(t, { tip: 'ortayaAt', kart }) && t.mut.some(m => m.deger === deger)) {
         masaRef.current!.querySelectorAll(`[data-hedef="mut:${deger}"]`).forEach(salla)
         return 'red'
       }
       return dene('ortayaAt')
     }
-    if (yer === 'mut') return Number(deger) === d.oyuncular[oyuncu].avuc[kart].deger ? dene('mutEslestir') : 'red'
-    // Blok penceresinde 2 kendi ceza yığınına bırakılınca blok yapılır (kalkana basmakla aynı).
-    if (d.blok) return yer === 'ceza' && Number(deger) === oyuncu ? dene('blok') : 'red'
+    if (yer === 'mut') return Number(deger) === t.oyuncular[oyuncu].avuc[kart].deger ? dene('mutEslestir') : 'red'
     if (yer === 'ceza' && Number(deger) === oyuncu) return dene('cezaBosalt')
     // Sıradakine iki seçenek var (ekle / ilerlet); diğer rakiplere sadece eklenir.
-    if (yer === 'ceza' && Number(deger) === siradaki && hamleGecerliMi(d, { tip: 'alIlerlet', kart })) {
+    if (yer === 'ceza' && Number(deger) === siradaki && hamleGecerliMi(t, { tip: 'alIlerlet', kart })) {
       setCezaSecimi({ kart, yigin: siradaki })
       if (oyuncu === 0) setKalkikKart(kart)
       return 'bekle'

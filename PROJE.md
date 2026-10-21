@@ -5,7 +5,15 @@
 
 ## 0. Proje Durumu
 - **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak). Hepsi kullanıcı testinden geçti. Diğer özel kartlar henüz sadece puanlı kart.
-- **Sıradaki iş:** **8 (takas).** Kodlamadan önce kullanıcıyla konuşulacak (ekranda "Takas yap / Normal oyna" seçimi, 8'i bir avucun üstüne bırakmak, boş avuçla takas yasağı — bkz. 7, 9.2). Takas olunca kurulu kalkan sökülecek. "8 dene" düğmesi eklenecek. Sonra Kız → Vale → As → 3 → 10 → Papaz → 7. Çalışma biçimi: parça parça, her parçadan sonra kullanıcı test eder; her özel kart için Dene menüsüne "… dene" eli; akıllı bot hamleleri deneyerek seçtiği için yeni kartları çoğunlukla kendiliğinden kullanır.
+- **Sıradaki iş:** **8 (takas)** — kurallar kullanıcıyla konuşuldu (2026-10-21), kodlanmaya hazır:
+  - **Oynama:** Pencere yok. 8'i **orta yığına** bırakmak = normal oyun (eşleşme/seri olursa yakalama). 8'i bir oyuncunun **avucunun üstüne** bırakmak = takas; 8 ortaya düşer, eşleşme ve seri olmaz. Takas mı seri/eşleşme mi, oyuncu bırakacağı yerle seçer.
+  - Herkesle takas yapılır; **avucu boş olanla da** (eski yasak kalktı). Son kartı 8 olan da takas yapabilir (kendisi boşalır, karşısındakinin avucunu alır; kahvede oluyor).
+  - **Mut kartlarında 8 varken:** 8'i ortaya bırakmak yasak (Mut 8 ile eşleştirilir), ama takas serbest; takas yapan 8 ortaya düşer, Mut 8 yerinde kalır. Kız'da da aynısı.
+  - Bloklanamaz (blok penceresi açılmaz). Sıra 6.6 ile. Takasa giren iki avuçtan birinde benim kalkanım kuruluysa sökülür.
+  - Akıllı bot: avucuyla şu an yapabileceği en iyi hamlenin puanını, rakiplerin avuçlarıyla karşılaştırır; belirgin daha iyi bir avuç varsa takas yapar, yoksa 8'i normal oynar.
+  - "8 dene": avucumda 8 ve işe yaramaz kartlar; bir botun avucunda ortadaki kartla eşleşen kart ve bir 2.
+  - Parçalar: **8a** motor + bot + testler; **8b** ekran (avuca bırakma, iki avucun yer değiştirme animasyonu, kalkan sökme, "8 dene").
+  - Sonra Kız → Vale → As → 3 → 10 → Papaz → 7. Çalışma biçimi: parça parça, her parçadan sonra kullanıcı test eder; her özel kart için Dene menüsüne "… dene" eli; akıllı bot hamleleri deneyerek seçtiği için yeni kartları çoğunlukla kendiliğinden kullanır.
 - **Seri bittiğinde önerilmişti, yapılmadı:** `/code-review` (büyük bir parça bitince iyi olur).
 - **4b seri (orta yığın) yapıldı — 2026-10-21:** Orta yığının üstündeki sıralı kartlar + atılan kart (en az 3) sıradakinin ceza yığınına gider; yakalama gibi zorunlu. Mut kartıyla eşleşen kart, ortada seri oluşturuyorsa ortaya da atılabilir (oyuncu seçer). Papaz'dan As'a dönmez. Akıllı bot hamleleri deneyerek seçtiği için seriyi kendiliğinden kullanır. Kullanıcı testinden geçti.
 - **4c seri (ceza yığınları) yapıldı — 2026-10-21:** Kendi yığınını boşaltma, üstüne yığ (herkese) ve al-ilerlet (sıradakinden) eşleşmenin yanında seriyle de yapılır; sadece üstteki sıralı kartlar gider (4-4-5 üstüne 6 → üstteki 4-5-6). Test menüsünde **"Ceza serisi dene"**: herkesin yığınında 4-5-6, avucumda üç 7. Botlar seriyi kendiliğinden kullanıp zincirliyor. Kullanıcı testinden geçti.
@@ -70,7 +78,7 @@
 - Kullanıcının bu adımda beğenmediği şeyler: masa ortasında her şeyin alt alta sıkışması, avuç etrafında çerçeve, gerçekçi resimli kartlar, J/Q/K'nin büyük harfi.
 
 ## 1. Genel Bakış
-- **Oyunun adı:** Mut
+- **Oyunun adı:** Mut — kahvede oynayan üç arkadaşın baş harfleri: **M**ert, **U**ğur, **T**ahir.
 - **Tür:** Kart oyunu
 - **Oyuncu sayısı:** 3–4 kişi (genelde kahvede 3 kişi oynanıyor)
 - **Kökeni:** Geleneksel olarak iskambil kağıtlarıyla oynanan bir oyun.
@@ -133,6 +141,7 @@ Bazı açılış kartları birbiriyle çelişir. Bu durumda **önce açılan kar
 - Avucundaki kart Mut kartlarından biriyle eşleşiyorsa onları eşleştirip **sıradaki oyuncunun ceza yığınına** gönderebilirsin (serbest elde: istediğine).
   - Örnek: Mut kartlarında Vale var, avucunda Vale var → iki Vale sıradakinin ceza yığınına.
 - **Zorunluluk:** Mut kartlarından biriyle eşleşen bir kartı **orta yığına boşa atamazsın**; Mut kartları boşa gitmesin diye eşleştirmek zorundasın. Ama o kartı **bu sıra oynamak zorunda değilsin**; avucunda tutup başka kart oynayabilirsin.
+  - **İstisna — 8 ve Kız'ın gücü (karar 2026-10-21):** Mut kartlarında 8 varken avucundaki 8 ile takas yapabilirsin; 8 ortaya düşer, Mut 8 yerinde kalır. Kız'da da aynı. Güç, Mut zorunluluğundan önce gelir.
 - **Birden fazla aynı Mut kartı:** Mut kartlarında aynı sayıdan birden çok varsa (örn. üç 5), avucundaki **tek** 5 ile **hepsini** alırsın.
   - **Ekranda:** Kartı Mut 5'lerden herhangi birinin üstüne bırakırsın; bütün Mut 5'ler kartınla birlikte toplanır ve hedefe uçar. Normal elde hedef otomatik (sıradaki), serbest elde hedef oyuncuya bırakarak ya da dokunarak seçilir.
 - **Mut kartlarında seri yoktur:** Mut kartları 2-3-4-5-6 olsa bile avucundaki 7 ile bunları alamazsın. Mut kartlarıyla sadece **aynı sayı** eşleşir.
@@ -201,7 +210,7 @@ Rakibin ceza yığınındaki en üst kart avuçtaki kartla eşleşiyorsa iki yol
 ### 6.4 Zorunluluklar ve beton dökmek
 **Zorunluluklar:**
 - **Zorunlu:** Mut kartlarıyla eşleşen kartı orta yığına atamazsın, eşleştirmelisin. Bu her sayı için geçerli; örn. Mut kartlarında 2 varsa avucundaki 2'yi orta yığına atamazsın.
-- **Zorunlu:** Orta yığına attığın kart üstteki kartla eşleşirse ya da seri oluşursa yakalama gerçekleşir; kartlar birinin ceza yığınına gönderilmek zorundadır. Örn. orta yığında 2 varken üstüne 2 atıp "kapatamazsın", eşleşir. (Tek istisna: 8 ve Kız'da güç kullanmayı seçersen eşleşme olmaz.)
+- **Zorunlu:** Orta yığına attığın kart üstteki kartla eşleşirse ya da seri oluşursa yakalama gerçekleşir; kartlar birinin ceza yığınına gönderilmek zorundadır. Örn. orta yığında 2 varken üstüne 2 atıp "kapatamazsın", eşleşir. (Tek istisna: 8 ile takas ya da Kız ile çekme yaparsan kart ortaya düşer ama eşleşme ve seri olmaz.)
 - **Zorunlu değil:** Ceza yığınlarıyla eşleştirme. Örn. birinin ceza yığınının üstünde 2 var, avucunda 2 var → üstüne eklemek zorunda değilsin, 2'yi orta yığına atabilir ya da blok için saklayabilirsin.
 
 **Beton dökmek:** Bir yığındaki değerli kartların üstünü başka kartlarla kapatıp onları alınamaz hale getirmek.
@@ -321,7 +330,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 | **5** | 5 | Normal | — | — |
 | **6** | 6 | Normal | — | — |
 | **7** | 7 | Daimi | Tavşan deliği | Savunma kartı. Sana gönderilen kartları saldıranın ceza yığınının **yanına** ayrı bir yığın olarak koyarsın. Detay: 6.10 (taslak ❓) |
-| **8** | 8 | Daimi | Takas | Her zaman orta yığına atılır. Oyuncu **isterse** kendi avucunu **herhangi bir** oyuncunun avucuyla değiştirir (serbest el gerekmez, kart sayıları farklı olabilir). Avucu **boş** olan oyuncuyla takas yapılamaz (geçici karar ❓). **Bloklanamaz.** Ekranda: 8 atılınca "Takas yap / Normal oyna" seçimi; takas olursa iki avuç animasyonla yer değiştirir. |
+| **8** | 8 | Daimi | Takas | Her zaman orta yığına atılır. Oyuncu **isterse** kendi avucunu **herhangi bir** oyuncunun avucuyla değiştirir (serbest el gerekmez, kart sayıları farklı olabilir). Avucu boş olanla da takas yapılır; son kartı 8 olan da takas yapabilir. Takasta eşleşme/seri olmaz. Mut'ta 8 olsa da takas serbest. **Bloklanamaz.** Ekranda: 8'i bir avucun üstüne bırakmak takas, ortaya bırakmak normal oyun; takas olursa iki avuç animasyonla yer değiştirir. |
 | **9** | 9 | Normal | — | — |
 | **10** | 10 | Açılış | Bomba | Mut kartlarındaysa: Mut 10 ile eşleştiren bombayı kurar, bomba alıcının ceza yığınının yanında ayrı durur. Sonraki her 10 bombaya eklenir; sahibi eklerse devreder. El sonunda bomba kimdeyse orta yığın onun ceza yığınına girer. Detay: 6.8 |
 | **Vale (Jilet)** | **25** | Açılış | Çarpan | Mut kartlarındaysa: **puanlar ×2** sayılır (her ek Vale +2: ×4, ×6, ×8). |
@@ -334,7 +343,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
   - 2: blok yapmadan sıranda orta yığına atılabilir.
   - 8 ve Kız: her durumda orta yığına gider; takas/çekme yapıp yapmamak oyuncuya kalmış.
 - 8 ve Kız'ın gücü için serbest el gerekmez; hedef herkes olabilir.
-- Orta yığının üstünde aynı kart varken (8 üstüne 8, Kız üstüne Kız) oyuncu **birini seçer**: ya eşleştirip gönderir, ya da kart orta yığında kalır ve gücünü kullanır.
+- Orta yığının üstünde aynı kart varken (8 üstüne 8, Kız üstüne Kız) ya da kart ortada seri yapacakken oyuncu **birini seçer**: ya eşleştirip/seriyi alıp gönderir, ya da kart orta yığında kalır ve gücünü kullanır. Seçim kartın bırakıldığı yerle yapılır: orta yığın = normal oyun, bir oyuncunun avucu = güç.
 
 ## 8. Puanlama
 - **El sonunda** ceza yığınlarındaki kartların puanları toplanır ve puan kağıdına yazılır.
@@ -428,11 +437,11 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 ## 11. Açık Sorular ve Kararlar
 
 ### Açık sorular
-3. **El sonu:** Deste bitince orta yığında kalan kartlar kimsenin puanına sayılmadan atılıyor (bomba yoksa) — geçici karar olarak motorda böyle (2026-10-20), kahve testinde onaylanacak.
+3. **El sonu:** Deste bitince orta yığında kalan kartlar kimsenin puanına sayılmadan atılıyor (bomba yoksa) — geçici karar olarak motorda böyle (2026-10-20), kahve testinde onaylanacak. **Mut kartlarında kalanlar da** aynı şekilde kimseye sayılmıyor (motorda böyle). Bu zaten olabiliyordu (Mut kartıyla eşleşen kartlar ceza yığınlarına "ekle" ile de gidebilir); 8 ve Kız'ın Mut zorunluluğunu aşması bunu daha sık yapar. Bomba elinde Mut'ta kalanlar da orta yığınla birlikte bombacıya mı gitsin, konuşulacak.
 4. **Eksi el hedefi:** Şimdilik herkesin ceza yığınından alınabilir; emin değiliz (6.7).
 5. **Mut kartı çakışmaları:** 3↔As ve 10↔As dışındaki çakışmalar konuşulacak (5.1).
 6. **Tavşan deliği (6.10):** Kapatma ve ekleme sıra dışı da yapılabilir mi? Deliğe gönderim 2 ile bloklanabilir mi?
-7. **Blok penceresi (6.5.1):** Pencere süresi (başlangıç 3 sn) ve ek süre butonunun sınırı kahve testinde ayarlanacak.8. **8 ile boş avuç:** Avucu boş oyuncuyla takas yasak — geçici karar, kahve testinde değerlendirilecek.
+7. **Blok penceresi (6.5.1):** Pencere süresi (başlangıç 3 sn) ve ek süre butonunun sınırı kahve testinde ayarlanacak.
 9. **İsimler:** "Avuç", "Daimi kart", "Açılış kartı" uygun mu?
 10. **Hazır sözler listesi** (9.3).
 11. **Aşama 2 bağlantı yöntemi:** PeerJS gibi ücretsiz servis mi, QR ile eşleştirme mi (Bölüm 9)?
@@ -446,6 +455,7 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 - Bomba devri, bombanın her bomba elinde kurulması, patlamanın el sonunda olması (6.8).
 - Kral: hangi yığınlar, ne seçilir; iki Papaz aynı hamlede art arda (6.9).
 - 8 / Kız orta yığındaki aynı kartla: ya eşleştir ya güç kullan.
+- 8 takası (2026-10-21): avuca bırakınca takas, boş avuçla da serbest, Mut 8 takası engellemez (Kız'da da aynı). Ayrıntı Bölüm 0 "Sıradaki iş".
 - Pas kuralı: en çok kartı olan oynar (6.6).
 - Blok penceresi her gönderimde açılır; kalkan uyarısı "yardım yok" kuralının tek istisnası (6.5.1) — 2026-10-20.
 - Geliştirme botlu, herkesin avucu açık, "Botlar otomatik" butonlu yapılacak (9.1) — 2026-10-20.

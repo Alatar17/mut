@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
+import { seriDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
@@ -116,6 +117,24 @@ function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun }: { d: Durum; kapat: () 
   )
 }
 
+// Test menüsü ayarları tarayıcıda saklanır, sayfa yenilenince (F5) aynen gelir.
+function useKayitli<T>(ad: string, ilk: T) {
+  const [deger, setDeger] = useState<T>(() => {
+    try {
+      const kayit = localStorage.getItem('mut.test.' + ad)
+      return kayit === null ? ilk : JSON.parse(kayit)
+    } catch {
+      return ilk
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('mut.test.' + ad, JSON.stringify(deger))
+    } catch {}
+  }, [deger])
+  return [deger, setDeger] as const
+}
+
 // Geliştirme sırasında kullanılan ayarlar; oyun bitince Test menüsü kalkacak.
 function TestSecenegi({ ad, acik, degistir }: { ad: string; acik: boolean; degistir: (v: boolean) => void }) {
   return (
@@ -212,13 +231,13 @@ export function Masa() {
   const elimdeIkiVar = ben.avuc.some(k => k.deger === 2)
   const [puanlarAcik, setPuanlarAcik] = useState(false)
   const [testAcik, setTestAcik] = useState(false)
-  const [botlarOtomatik, setBotlarOtomatik] = useState(true)
-  const [botKartlariKapali, setBotKartlariKapali] = useState(false)
-  const [botKartlariDuz, setBotKartlariDuz] = useState(true)
-  const [botKartlariKirpik, setBotKartlariKirpik] = useState(false)
-  const [botHizi, setBotHizi] = useState<BotHizi>('Orta')
-  const [animasyonHizi, setAnimasyonHizi] = useState<AnimasyonHizi>('Orta')
-  const [duraklama, setDuraklama] = useState<Duraklama>('Kısa')
+  const [botlarOtomatik, setBotlarOtomatik] = useKayitli('botlarOtomatik', true)
+  const [botKartlariKapali, setBotKartlariKapali] = useKayitli('botKartlariKapali', false)
+  const [botKartlariDuz, setBotKartlariDuz] = useKayitli('botKartlariDuz', true)
+  const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)
+  const [botHizi, setBotHizi] = useKayitli<BotHizi>('botHizi', 'Orta')
+  const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi', 'Orta')
+  const [duraklama, setDuraklama] = useKayitli<Duraklama>('duraklama', 'Kısa')
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
   // Rakibin ceza yığınına bırakılan kart: "Üstüne yığ" mı "İlerlet" mi seçilecek.
   const [cezaSecimi, setCezaSecimi] = useState<{ kart: number; yigin: number } | null>(null)
@@ -417,10 +436,12 @@ export function Masa() {
     const adlar = Object.keys(secenekler) as T[]
     ayarla(adlar[(adlar.indexOf(simdiki) + 1) % adlar.length])
   }
-  const yeniOyunBaslat = () => {
+  // deneme: Test menüsündeki "… dene" düğmeleri için kartları hazır dizer.
+  const yeniOyunBaslat = (deneme?: (d: Durum) => Durum) => {
     if (mesgulRef.current) return
     setPuanlarAcik(false)
-    topluDagit(yeniOyunKur())
+    const yeni = yeniOyunKur()
+    topluDagit(deneme ? deneme(yeni) : yeni)
   }
 
   return (
@@ -502,7 +523,8 @@ export function Masa() {
           <button className="test-satir" onClick={() => sonrakiSecenek(DURAKLAMALAR, duraklama, setDuraklama)}>
             Yakalamada duraklama <span className="test-deger">{duraklama}</span>
           </button>
-          <button className="test-satir" onClick={yeniOyunBaslat}>Yeni oyun</button>
+          <button className="test-satir" onClick={() => yeniOyunBaslat()}>Yeni oyun</button>
+          <button className="test-satir" onClick={() => yeniOyunBaslat(seriDenemesi)}>Seri dene</button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
@@ -519,7 +541,7 @@ export function Masa() {
             setPuanlarAcik(false)
             topluDagit(sonrakiEl(d))
           }}
-          yeniOyun={yeniOyunBaslat}
+          yeniOyun={() => yeniOyunBaslat()}
         />
       )}
 

@@ -4,10 +4,13 @@
 > İşaretler: ❓ = henüz netleşmedi, 🔔 = sonra hatırlatılacak. Hepsi Bölüm 11'de toplu.
 
 ## 0. Proje Durumu
-- **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme (kullanıcı testi bekliyor). Kız hariç hepsi kullanıcı testinden geçti. Diğer özel kartlar henüz sadece puanlı kart.
-- **Sıradaki iş:** **Kız kullanıcı testi** (aşağıda 4g). Sonra Vale.
+- **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme. Hepsi kullanıcı testinden geçti (Kız'da son küçük düzeltme hariç, aşağıda). Diğer özel kartlar henüz sadece puanlı kart.
+- **Sıradaki iş:** Önce kullanıcıya sor: "Bot 8 dene" eli eklenip botun seninle 8 takası (ve kurulu kalkanın sökülmesi) Claude tarafından denensin mi? (Normal oyunda bot 8'leri ortaya attığı için kullanıcı göremedi.) Sonra **Vale** — kodlamadan önce kullanıcıyla konuşulacak.
+  - Sonra As → 3 → 10 → Papaz → 7. Çalışma biçimi: işi sadece arada kullanıcının elle deneyeceği bir şey varsa parçalara böl (ekransız ara adımı ayrı onaya sunma); her özel kart için Dene menüsüne "… dene" eli; akıllı bot hamleleri deneyerek seçtiği için yeni kartları çoğunlukla kendiliğinden kullanır.
 - **Sonra konuşulacak — süre (kullanıcı, 2026-10-21):** Biri oynamazsa oyun kilitleniyor; genel hamle süresi ve Kız seçimine süre gerekip gerekmediği "en son" konuşulacak.
-- **4g Kız (çekme) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda deneme geçti; kullanıcı testi bekliyor):**
+- **4g Kız (çekme) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda deneme geçti; kullanıcı denedi, geri bildirimle düzeltildi):**
+  - Son düzeltme (kullanıcının elle denemesi bekliyor): sürüklemeye başlanan ters kart seçilmiş sayılır, önceki kalkık kart iner; geri dönen kart kalkık oturur (kullanıcı tamamen inmesini isterse değişir).
+  - `/code-review` yapıldı (2026-10-21): motorda geçersiz `cekilen` sırasına hata + test; hata kurtarmada Kız seçim durumu temizleniyor. Bırakılanlar: bot çekmeden/takastan sonra hemen tekrar oynayacakmış gibi hesaplıyor (6.6 sırayı başkasına verebilir; bilerek sade); Kız'ın ortaya düşme ara durumu `kartsiz()` ile benzer kodu tekrarlıyor.
   - **Kurallar (kullanıcı onayı):** 8 ile aynı oynanış; avucu boş olandan ve kendinden çekme yok; Mut'ta Kız varken çekme serbest; bloklanamaz; sıra 6.6. Kurulu kalkanımdaki 2 çekilirse: avucumda başka 2 kalmadıysa kalkan sökülür (mevcut kural), kaldıysa kalkan kurulu kalır. 2 çekersem kalkan belirir ama kurulu olmaz.
   - **Motor:** `cek` hamlesi (`hedef`; isteğe bağlı `cekilen` = hedefin avucundaki sıra, yoksa tohumlu rastgele). Çekilen kart çekenin avucunun sonuna eklenir. `sonHamle.cekme = { hedef, kart }`.
   - **Akıllı bot:** her rakipte gelebilecek her kartla en iyi sonraki hamleyi dener, ortalamaya bakar; şimdikinden 10 puan iyiyse çeker (`GUC_ESIGI`, takasla ortak).
@@ -17,7 +20,6 @@
   - **"Kız dene":** avucumda Kız-4-5-6, Mut kartlarında 9, sağdaki B'de sadece iki 9 (`denemeKur`'a `mut` ve `eksik` seçenekleri eklendi), soldaki C dolu. Kız ortaya düşünce üstünü kapattığı için 9 ortada değil Mut'ta.
   - **"Bot Kız dene":** sırası soldaki C'de, C'nin elinde Kız; avucumda üç 9, Mut kartlarında 9 → C benden çeker (tarayıcıda denendi, çalışıyor).
   - Kart arkasında soluk "MUT" yazısı denendi, kullanıcı beğenmedi, kaldırıldı (2026-10-21).
-  - Sonra Vale → As → 3 → 10 → Papaz → 7. Çalışma biçimi: parça parça, her parçadan sonra kullanıcı test eder; her özel kart için Dene menüsüne "… dene" eli; akıllı bot hamleleri deneyerek seçtiği için yeni kartları çoğunlukla kendiliğinden kullanır.
 - **4f 8 / takas yapıldı — 2026-10-21 (kullanıcı testinden geçti):**
   - **Kurallar:** 8'i **orta yığına** bırakmak = normal oyun (eşleşme/seri olursa yakalama). 8'i bir oyuncunun **avucunun ya da isim etiketinin** üstüne bırakmak = takas; 8 ortaya düşer, eşleşme ve seri olmaz (pencere yok, oyuncu bırakacağı yerle seçer). Herkesle takas yapılır, **avucu boş olanla da**; son kartı 8 olan da takas yapabilir (kahvede oluyor). **Mut'ta 8 varken** ortaya atmak yasak ama takas serbest; Mut 8 yerinde kalır. Bloklanamaz. Sıra 6.6 ile. Avucum takasla değişince kurulu kalkan sökülür.
   - **Motor:** `takas` hamlesi (`hedef` = avucu alınan oyuncu; `sonHamle.takas` ekrana bildirir). **Akıllı bot:** takastan sonraki en iyi hamlesi şimdikinden 10 puan iyiyse takas yapar (`TAKAS_ESIGI`, bot rakip avuçlarını görüyor).

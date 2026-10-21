@@ -54,10 +54,11 @@ export const cezaSerisiDenemesi = (d: Durum) =>
     cezalar: (['maca', 'kupa', 'karo'] as const).map(r => [kart(4, r), kart(5, r), kart(6, r)]),
   })
 
-// Avucumda 8 ve işe yaramaz kartlar; sağdaki B'de ortadaki 9'u yakalayacak 9 ve bir 2. 8'i B'nin avucuna bırak → takas.
+// Avucumda 8 ve işe yaramaz kartlar; sağdaki B'de bir 8 ve bir 2. 8'i B'nin avucuna bırak → takas; benim 8'im
+// ortaya düşer, B'den gelen 8'i onun üstüne atınca yakalanır.
 export const takasDenemesi = (d: Durum) =>
   denemeKur(d, {
     avucum: [kart(8, 'maca'), kart(4, 'kupa'), kart(5, 'sinek'), kart(6, 'karo')],
-    digerAvuclar: [[kart(9, 'kupa'), kart(2, 'sinek')]],
+    digerAvuclar: [[kart(8, 'kupa'), kart(2, 'sinek')]],
     orta: [kart(9, 'maca')],
   })

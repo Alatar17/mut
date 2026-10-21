@@ -4,10 +4,10 @@
 > İşaretler: ❓ = henüz netleşmedi, 🔔 = sonra hatırlatılacak. Hepsi Bölüm 11'de toplu.
 
 ## 0. Proje Durumu
-- **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme, Vale / çarpan (hepsi kullanıcı testinden geçti), As / eksi el (kullanıcı testi bekliyor; kullanıcı Bot As dene'yi açtı, ceza yığını görünüm sorununu buldu). Diğer özel kartlar henüz sadece puanlı kart.
-- **Sıradaki iş:** As'ın kullanıcı testi (Bölüm 0 "4i" test rehberi: As dene, Bot As dene); sonra 3 → 10 → Papaz → 7. Ses efektleri daha sonra eklenecek (kullanıcı istedi, 2026-10-21).
+- **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme, Vale / çarpan (hepsi kullanıcı testinden geçti), As / eksi el (hepsi kullanıcı testinden geçti). Diğer özel kartlar henüz sadece puanlı kart.
+- **Sıradaki iş:** **3** (serbest el) — kodlamadan önce kullanıcıyla konuşulacak; sonra → 10 → Papaz → 7. Ses efektleri daha sonra eklenecek (kullanıcı istedi, 2026-10-21).
 - **Sonra yapılacak — ceza yığını görünümü (karar 2026-10-21, kullanıcı "şimdi değil" dedi):** Sorun: ceza yığınında sadece en üst kart görünüyor (Bot As dene'de dört 9'un üçü görünmüyor). Karar: **her zaman** alınabilecek üst grup (aynı sayılar ya da seri) orta yığındaki gibi kaydırılmış görünür; **basılı tutunca** (bilgisayarda fareyle üstüne gelince) yığının tamamı yelpaze gibi açılır. Kahvede de kartlar düzgün dizilmez, alttakiler ucundan görünür, istenirse elle bakılır; yani tamamını açmak kahveye uygun.
-- **4i As (eksi el) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda "As dene" bakıldı; kullanıcı testi bekliyor):**
+- **4i As (eksi el) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda bakıldı; kullanıcı testinden geçti):**
   - **Motor:** `d.eksi` (`eksiEl(mut)`); eksi elde `ekle` sadece kendine (hedef = kendin), `alIlerlet` herkesten (`hedef` = yığını alınan), `cezaBosalt` yok. Blok penceresi yığınından alınana açılır; blokta kartlar alanın yığınından bloklayanınkine döner (zincir de çalışır). Puan × −1. Bot puan hesabını ters çevirir.
   - **Ekran:** kartı kendi yığınına bırakmak = ekle, rakibin yığınına bırakmak = al. "Eksi el" etiketi, puanlar eksi.
   - **"As dene":** avucumda 5-9-7-2; ortada 9, benim yığınımda 5, B'de 4-5-6, C'de 10 üstünde 5. **"Bot As dene":** B benim üç 9'umu alır, ben 2 ile bloklarım.

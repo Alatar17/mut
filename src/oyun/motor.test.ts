@@ -171,3 +171,36 @@ it('geçersiz hamle reddedilir, eski durum değişmez', () => {
   hamleYap(d, { tip: 'mutEslestir', kart: 0 })
   expect(d.mut.length).toBe(1)
 })
+
+describe('hamle sonucu (sonHamle) ve dağıtım sırası', () => {
+  it('orta yığında eşleşme: eşleşen kartlar ve yerler bildirilir', () => {
+    const d = durum({ avuclar: [[k(5)], [k(9)], [k(10)]], orta: [k(4), k(5, 'kupa')] })
+    const s = hamleYap(d, { tip: 'ortayaAt', kart: 0 }).sonHamle!
+    expect(s).toEqual({ oyuncu: 0, kart: k(5), eslesen: [k(5, 'kupa')], nereden: 'orta', nereye: 'ceza:1' })
+  })
+  it('eşleşmeyen kart: eşleşen yok, kart ortaya gider', () => {
+    const d = durum({ avuclar: [[k(6)], [k(9)], [k(10)]], orta: [k(5)] })
+    const s = hamleYap(d, { tip: 'ortayaAt', kart: 0 }).sonHamle!
+    expect(s).toMatchObject({ eslesen: [], nereden: null, nereye: 'orta' })
+  })
+  it('al ve ilerlet: sıradakinin sıradakine gider', () => {
+    const d = durum({ avuclar: [[k(7)], [k(9)], [k(10)]], cezalar: [[], [k(7, 'kupa'), k(7, 'karo')], []] })
+    const s = hamleYap(d, { tip: 'alIlerlet', kart: 0 }).sonHamle!
+    expect(s).toMatchObject({ eslesen: [k(7, 'kupa'), k(7, 'karo')], nereden: 'ceza:1', nereye: 'ceza:2' })
+  })
+  it('üstüne yığ: eşleşen yok, kart sıradakinin ceza yığınına', () => {
+    const d = durum({ avuclar: [[k(7)], [k(9)], [k(10)]], cezalar: [[], [k(7, 'kupa')], []] })
+    const s = hamleYap(d, { tip: 'ustuneYig', kart: 0 }).sonHamle!
+    expect(s).toMatchObject({ eslesen: [], nereden: null, nereye: 'ceza:1' })
+  })
+  it('dağıtım sırası: başlatandan herkese birer, sonra Mut; 4 kez', () => {
+    const d = yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum: 3 })
+    const n = 3
+    const beklenen: Kart[] = []
+    for (let t = 0; t < 4; t++) {
+      for (let j = 0; j < n; j++) beklenen.push(d.oyuncular[(d.elBaslatani + j) % n].avuc[t])
+      beklenen.push(d.mut[t])
+    }
+    expect(d.dagitim).toEqual(beklenen)
+  })
+})

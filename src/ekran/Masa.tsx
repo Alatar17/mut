@@ -1,9 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from 'react'
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
-import { hamleGecerliMi, hamleYap, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type Oyuncu } from '../oyun/motor'
+import { hamleGecerliMi, hamleYap, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
 import { Kart } from './Kart'
-import { bekle, dagitimOncesi, dagitimSirasi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
+import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
 import { CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 
@@ -232,22 +232,23 @@ export function Masa() {
   // Animasyon sürerken yeni hamle yapılmaz.
   const [mesgul, setMesgul] = useState(true)
   const mesgulRef = useRef(true)
-  const bekleyenGecis = useRef<null | { tasinan: [string, string][]; kaynak: Map<string, Konum>; gecikme: Map<string, number>; bitti: () => void }>(null)
+  const bekleyenGecis = useRef<null | { tasinan: [string, string][]; kaynak: Map<string, Konum>; gecikme: Map<string, number>; ekUcus?: Ucus; bitti: () => void }>(null)
   const carpan = ANIMASYON_HIZLARI[animasyonHizi]
   const ucusSuresi = SURE.ucus * carpan
 
   // Ekranı yeni duruma geçirir; yeri değişen kartlar eski yerinden yenisine uçar.
   // kaynak: bazı kartların başlangıç yeri elle verilir. sira: kartlar bu sırayla arka arkaya kalkar (dağıtım).
-  const gec = (yeni: Durum, ayar: { kaynak?: Map<string, Konum>; sira?: string[] } = {}) => {
+  // ekUcus: ölçülmeden verilen ek uçuş (yakalamada kartın eşleştiği yere inişi); bitince ekranda kalır.
+  const gec = (yeni: Durum, ayar: { kaynak?: Map<string, Konum>; sira?: string[]; ekUcus?: Ucus } = {}) => {
     const onceki = kartYerleri(gorunenRef.current)
     const tasinan = [...kartYerleri(yeni)].filter(([id, yer]) => onceki.get(id) !== yer)
     const kaynak = new Map(tasinan.map(([id]) => [id, ayar.kaynak?.get(id) ?? konumOlc(masaRef.current!, id, onceki.get(id) ?? 'deste')]))
     const gecikme = new Map((ayar.sira ?? []).map((id, i) => [id, i * SURE.dagitimAraligi * carpan]))
     gorunenRef.current = yeni
     setGorunen(yeni)
-    if (tasinan.length === 0) return Promise.resolve()
+    if (tasinan.length === 0 && !ayar.ekUcus) return Promise.resolve()
     return new Promise<void>(bitti => {
-      bekleyenGecis.current = { tasinan, kaynak, gecikme, bitti }
+      bekleyenGecis.current = { tasinan, kaynak, gecikme, ekUcus: ayar.ekUcus, bitti }
       setGizli(new Set(tasinan.map(([id]) => id)))
     })
   }
@@ -267,11 +268,12 @@ export function Masa() {
       // Desteye giden ve desteden dağıtılan kartlar kapalı uçar; Mut kartları açık iner.
       kapali: yer === 'deste' || (b.gecikme.has(id) && yer !== 'mut') || (botKartlariKapali && yer.startsWith('avuc:') && yer !== 'avuc:0'),
     }))
+    if (b.ekUcus) yeniUcuslar.unshift(b.ekUcus)
     setUcuslar(yeniUcuslar)
-    const toplam = Math.max(...yeniUcuslar.map(u => u.gecikme)) + ucusSuresi
+    const toplam = Math.max(...yeniUcuslar.map(u => u.gecikme + u.sure))
     setTimeout(() => {
       setGizli(new Set())
-      setUcuslar([])
+      if (!b.ekUcus) setUcuslar([])
       b.bitti()
     }, toplam)
   }, [gorunen])
@@ -287,19 +289,11 @@ export function Masa() {
   }
 
   // Yakalamada oynanan kartın önce indiği yer: eşleştiği kartın biraz kaydırılmış üstü.
-  const inisYeri = (eski: Durum, h: Hamle): Konum | null => {
-    const n = eski.oyuncular.length
-    const oynayan = eski.oyuncular[eski.sira]
-    const k = oynayan.avuc[h.kart]
-    const sonraki = (eski.sira + 1) % n
-    const ustKart = (yigin: KartTipi[]) => yigin[yigin.length - 1] as KartTipi | undefined
-    let eslesen: { kart: KartTipi | undefined; yer: string } | undefined
-    if (h.tip === 'ortayaAt' && ustKart(eski.orta)?.deger === k.deger) eslesen = { kart: ustKart(eski.orta), yer: 'orta' }
-    if (h.tip === 'mutEslestir') eslesen = { kart: eski.mut.find(m => m.deger === k.deger), yer: 'mut' }
-    if (h.tip === 'cezaBosalt') eslesen = { kart: ustKart(oynayan.ceza), yer: `ceza:${eski.sira}` }
-    if (h.tip === 'alIlerlet') eslesen = { kart: ustKart(eski.oyuncular[sonraki].ceza), yer: `ceza:${sonraki}` }
-    if (!eslesen?.kart) return null
-    const konum = konumOlc(masaRef.current!, kartKimligi(eslesen.kart), eslesen.yer)
+  // Eşleşmeyi motor bildirir (sonHamle); ekran sadece yerini ölçer.
+  const inisYeri = (s: HamleSonucu): Konum | null => {
+    const eslesen = s.eslesen[s.eslesen.length - 1]
+    if (!eslesen || !s.nereden) return null
+    const konum = konumOlc(masaRef.current!, kartKimligi(eslesen), s.nereden)
     return { ...konum, x: konum.x + 8, y: konum.y + 6 }
   }
 
@@ -310,7 +304,7 @@ export function Masa() {
     const yeni = hamleYap(eski, h)
     basla()
     try {
-      await hamleyiGoster(eski, h, yeni, elle)
+      await hamleyiGoster(eski, yeni, elle)
       bitir(yeni)
     } catch (hata) {
       // Animasyonda beklenmedik bir hata oyunu kilitlemesin: ekran gerçek duruma döner, oyun sürer.
@@ -324,8 +318,9 @@ export function Masa() {
     }
   }
 
-  const hamleyiGoster = async (eski: Durum, h: Hamle, yeni: Durum, elle: boolean) => {
-    const k = eski.oyuncular[eski.sira].avuc[h.kart]
+  const hamleyiGoster = async (eski: Durum, yeni: Durum, elle: boolean) => {
+    const sonuc = yeni.sonHamle!
+    const k = sonuc.kart
     const id = kartKimligi(k)
     if (!elle) {
       setBotKalkik(id)
@@ -334,29 +329,28 @@ export function Masa() {
     // Tur bitip yeni kartlar dağıtıldıysa önce hamle, sonra dağıtım gösterilir.
     const dagitildi = yeni.asama === 'oyun' && yeni.tur !== eski.tur
     const hamleSonrasi = dagitildi ? dagitimOncesi(yeni, false) : yeni
-    const inis = inisYeri(eski, h)
+    const inis = inisYeri(sonuc)
     if (inis) {
       // Yakalama: kart önce eşleştiği yere iner, kısa duraklar, sonra eşleşenlerle birlikte uçar.
-      const kaynak = konumOlc(masaRef.current!, id, `avuc:${eski.sira}`)
+      const kaynak = konumOlc(masaRef.current!, id, `avuc:${sonuc.oyuncu}`)
       const ara = structuredClone(eski)
-      ara.oyuncular[eski.sira].avuc.splice(h.kart, 1)
-      gorunenRef.current = ara
-      setGorunen(ara)
-      setUcuslar([{ kart: k, kaynak, hedef: inis, sure: ucusSuresi, gecikme: 0, kapali: false }])
-      await bekle(ucusSuresi + DURAKLAMALAR[duraklama])
+      const avuc = ara.oyuncular[sonuc.oyuncu].avuc
+      avuc.splice(avuc.findIndex(x => kartKimligi(x) === id), 1)
+      await gec(ara, { ekUcus: { kart: k, kaynak, hedef: inis, sure: ucusSuresi, gecikme: 0, kapali: false } })
+      await bekle(DURAKLAMALAR[duraklama])
       await gec(hamleSonrasi, { kaynak: new Map([[id, inis]]) })
     } else {
       await gec(hamleSonrasi)
     }
     setBotKalkik(null)
-    if (dagitildi) await gec(yeni, { sira: dagitimSirasi(yeni, false) })
+    if (dagitildi) await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
   }
 
   // Yeni el / yeni oyun: kartlar desteye toplanır, sonra dağıtılır.
   const topluDagit = async (yeni: Durum) => {
     basla()
     await gec(dagitimOncesi(yeni, true))
-    await gec(yeni, { sira: dagitimSirasi(yeni, true) })
+    await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
     bitir(yeni)
   }
 
@@ -399,7 +393,7 @@ export function Masa() {
   // Sırası gelen oyuncunun kartı oynanır; botlar kendi oynuyorsa sadece benim kartlarım.
   const kartBirak = (oyuncu: number, kart: number, hedef: string): Birakma => {
     if (mesgul || d.asama !== 'oyun' || d.sira !== oyuncu || (oyuncu !== 0 && botlarOtomatik)) return 'red'
-    const sonraki = (oyuncu + 1) % d.oyuncular.length
+    const siradaki = sonraki(d, oyuncu)
     const [yer, deger] = hedef.split(':')
     const dene = (tip: Hamle['tip']): Birakma => {
       if (!hamleGecerliMi(d, { tip, kart })) return 'red'
@@ -409,8 +403,8 @@ export function Masa() {
     if (yer === 'orta') return dene('ortayaAt')
     if (yer === 'mut') return Number(deger) === d.oyuncular[oyuncu].avuc[kart].deger ? dene('mutEslestir') : 'red'
     if (yer === 'ceza' && Number(deger) === oyuncu) return dene('cezaBosalt')
-    if (yer === 'ceza' && Number(deger) === sonraki && hamleGecerliMi(d, { tip: 'ustuneYig', kart })) {
-      setCezaSecimi({ kart, yigin: sonraki })
+    if (yer === 'ceza' && Number(deger) === siradaki && hamleGecerliMi(d, { tip: 'ustuneYig', kart })) {
+      setCezaSecimi({ kart, yigin: siradaki })
       if (oyuncu === 0) setKalkikKart(kart)
       return 'bekle'
     }

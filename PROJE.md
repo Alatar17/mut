@@ -5,7 +5,8 @@
 
 ## 0. Proje Durumu
 - **Aşama:** 3. adım (birleştirme) bitti — 2026-10-20. İlk oynanabilir sürüm: masa ekranı kural motoruna bağlı, sürükle-bırak, akıllı botlar, animasyonlar. Özel kartların etkisi ve seri hâlâ yok; hepsi sadece puanlı kart.
-- **Sıradaki iş:** 4. adım (özel kartlar). **Kodlamadan önce kullanıcıyla konuşulacak.** İlk iş, kod incelemesinden kalan altyapı düzeltmesi: `hamleYap` hamlenin sonucunu (oynanan kart, eşleşen kartlar, nereden, nereye) da döndürsün; `Masa.tsx` `inisYeri` eşleşmeyi kendisi hesaplamasın, bunu okusun. Aynı sırada: UI'da `(i+1)%n` yerine motorun `sonraki()`'si, dağıtım sırası (`animasyon.tsx` `dagitimSirasi`) motordan gelsin, yakalamanın 1. aşaması `gec()` içine alınsın. Sonra seri → 2 → 8 → Kız → Vale → As → 3 → 10 → Papaz → 7. Her özel kart eklenince akıllı bota da kullanması öğretilir.
+- **Sıradaki iş:** 4. adım (özel kartlar), parça parça; her parçadan sonra kullanıcı test eder. Sıra: seri (önce orta yığın, sonra ceza yığını; kararlar 6.3'te) → 2 → 8 → Kız → Vale → As → 3 → 10 → Papaz → 7. Her özel kart eklenince akıllı bota da kullanması öğretilir.
+- **4a (altyapı) yapıldı — 2026-10-21:** Motor her hamlenin sonucunu `Durum.sonHamle` içine yazar (oyuncu, oynanan kart, eşleşen kartlar, nereden, nereye); dağıtılan kartların sırası `Durum.dagitim`. Ekran (`Masa.tsx`) eşleşmeyi ve dağıtım sırasını artık kendisi hesaplamıyor, bunları okuyor; sıradaki için motorun `sonraki()`'si; yakalamada kartın inişi `gec()`in `ekUcus` seçeneğiyle. Testler + tarayıcıda otomatik bir el oynatıldı, hata yok. **Kullanıcı elle denemedi (3c ile birlikte test bekliyor).**
 - **3. adımda yapılanlar (2026-10-20):**
   - **3a** Ekran motora bağlandı (`ornekDurum.ts` silindi). El sonu puan kağıdı kendiliğinden açılır + "Sonraki el"; oyun sonu kazanan/berabere + "Yeni oyun".
   - **3b** Sürükle-bırak: orta yığın, Mut kartı (aynı sayıysa), kendi ceza yığını, sıradakinin ceza yığını. Geçersizse kart sessizce döner; dokununca kart kalkar. Rakip ceza yığınına bırakınca yanında **"Üstüne yığ" / "İlerlet"** düğmeleri. Kullanıcı testinden geçti.
@@ -160,6 +161,12 @@ Temel ilke: **Sadece eşleşen kartlar hareket eder** ve hedef her zaman **en ü
 - Ceza yığınına seri gelen oyuncu iki şey yapabilir:
   - **En üsttekini eşleştir:** Ceza yığınında 4-5-6 var, avucunda 6 → iki 6 gönderilir, 4-5 ceza yığınında kalır.
   - **Seriyi uzat:** Avucunda 7 var → 4-5-6-7 **hep birlikte** gönderilir.
+- **Kararlar (2026-10-21):**
+  - Seri sadece **yığının üstüne** bakılarak bulunur; kartları kimin attığı, hangi turda ya da hangi hamlede geldiği önemli değil (orta yığında da ceza yığınında da).
+  - Önceki turdan orta yığında kalan kartlarla da seri olur.
+  - Seri uzatma her ceza yığını hamlesinde geçerli: kendi ceza yığınını boşaltırken (4-5-6'ya 7 ekleyip hepsini gönder), "üstüne yığ" (rakibin 4-5-6'sına 7 ekleyip orada bırak), "al ve ilerlet".
+  - Mut kartlarında 7 varken orta yığında 4-5-6 varsa avuçtaki 7 ile **oyuncu seçer**: seriyi mi alır, Mut 7'yi mi (iki durumda da yakalama olur).
+  - Uygulama iki parça: önce orta yığında seri, sonra ceza yığınında seri.
 
 **Seçenek 2 — Kendi ceza yığınını boşalt** (sadece artı elde mantıklı)
 - Ceza yığınındaki **en üstteki** aynı sayılı kart(lar) ile avucundaki kart eşleştirilir.

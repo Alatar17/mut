@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// 2. adım kapsamı: özel kartların etkisi yok (hepsi sadece puanlı kart), seri yok, hedef her zaman sıradaki.
+// Kapsam: özel kartların etkisi yok (hepsi sadece puanlı kart), seri yok, hedef her zaman sıradaki.
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -28,6 +28,21 @@ export interface Durum {
   // Her satır bir el; sütunlar oyuncular sırasıyla.
   puanKagidi: number[][]
   tohum: number
+  // Son yapılan hamlenin sonucu (ekran animasyonu bundan okur); el başında yok.
+  sonHamle?: HamleSonucu
+  // Son dağıtımda kartların dağıtılma sırası (ekran dağıtım animasyonu bundan okur).
+  dagitim: Kart[]
+}
+
+// Yer: "orta", "mut", "ceza:<oyuncu>".
+export interface HamleSonucu {
+  oyuncu: number
+  kart: Kart
+  // Oynanan kartın eşleştiği (birlikte alınan) kartlar ve geldikleri yer; eşleşme yoksa boş.
+  eslesen: Kart[]
+  nereden: string | null
+  // Oynanan kartın (ve eşleşenlerin) gittiği yer.
+  nereye: string
 }
 
 export type HamleTipi =
@@ -80,6 +95,7 @@ export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?:
     carpan: 1,
     asama: 'oyun',
     puanKagidi: [],
+    dagitim: [],
     tohum: secenek.tohum ?? Math.floor(Math.random() * 2 ** 31),
   }
   d.elBaslatani = Math.floor(rastgele(d) * d.oyuncular.length)
@@ -98,6 +114,7 @@ function elKur(d: Durum) {
   d.tur = 1
   d.carpan = 1
   d.asama = 'oyun'
+  d.sonHamle = undefined
   avuclariDagit(d, true)
   d.sira = d.elBaslatani
 }
@@ -105,9 +122,15 @@ function elKur(d: Durum) {
 // Teker teker: başlatandan itibaren herkese birer, ilk turda sonra Mut kartlarına bir; 4 kez.
 function avuclariDagit(d: Durum, mutDahil: boolean) {
   const n = d.oyuncular.length
+  d.dagitim = []
+  const ver = (yigin: Kart[]) => {
+    const k = d.deste.pop()!
+    yigin.push(k)
+    d.dagitim.push(k)
+  }
   for (let tekrar = 0; tekrar < 4; tekrar++) {
-    for (let j = 0; j < n; j++) d.oyuncular[(d.elBaslatani + j) % n].avuc.push(d.deste.pop()!)
-    if (mutDahil) d.mut.push(d.deste.pop()!)
+    for (let j = 0; j < n; j++) ver(d.oyuncular[(d.elBaslatani + j) % n].avuc)
+    if (mutDahil) ver(d.mut)
   }
 }
 
@@ -137,31 +160,41 @@ export const hamleGecerliMi = (d: Durum, h: Hamle) =>
 export function hamleYap(eski: Durum, h: Hamle): Durum {
   if (!hamleGecerliMi(eski, h)) throw new Error(`Geçersiz hamle: ${JSON.stringify(h)}`)
   const d = structuredClone(eski)
-  const ben = d.oyuncular[d.sira]
-  const hedef = d.oyuncular[sonraki(d, d.sira)]
+  const oyuncu = d.sira
+  const ben = d.oyuncular[oyuncu]
+  const s1 = sonraki(d, oyuncu)
   const [k] = ben.avuc.splice(h.kart, 1)
+  let eslesen: Kart[] = []
+  let nereden: string | null = null
+  let nereye = `ceza:${s1}`
 
   switch (h.tip) {
     case 'ortayaAt':
-      if (eslesir(d.orta, k)) hedef.ceza.push(...ustGrubuAl(d.orta), k)
-      else d.orta.push(k)
+      if (eslesir(d.orta, k)) {
+        eslesen = ustGrubuAl(d.orta)
+        nereden = 'orta'
+      } else nereye = 'orta'
       break
-    case 'mutEslestir': {
-      const alinan = d.mut.filter((m) => m.deger === k.deger)
+    case 'mutEslestir':
+      eslesen = d.mut.filter((m) => m.deger === k.deger)
       d.mut = d.mut.filter((m) => m.deger !== k.deger)
-      hedef.ceza.push(...alinan, k)
+      nereden = 'mut'
       break
-    }
     case 'cezaBosalt':
-      hedef.ceza.push(...ustGrubuAl(ben.ceza), k)
+      eslesen = ustGrubuAl(ben.ceza)
+      nereden = `ceza:${oyuncu}`
       break
     case 'ustuneYig':
-      hedef.ceza.push(k)
       break
     case 'alIlerlet':
-      d.oyuncular[sonraki(d, sonraki(d, d.sira))].ceza.push(...ustGrubuAl(hedef.ceza), k)
+      eslesen = ustGrubuAl(d.oyuncular[s1].ceza)
+      nereden = `ceza:${s1}`
+      nereye = `ceza:${sonraki(d, s1)}`
       break
   }
+  if (nereye === 'orta') d.orta.push(k)
+  else d.oyuncular[Number(nereye.split(':')[1])].ceza.push(...eslesen, k)
+  d.sonHamle = { oyuncu, kart: k, eslesen, nereden, nereye }
 
   ilerle(d)
   return d

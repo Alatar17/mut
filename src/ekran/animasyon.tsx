@@ -92,17 +92,3 @@ export function dagitimOncesi(d: Durum, mutDahil: boolean): Durum {
   if (mutDahil) o.mut = []
   return o
 }
-
-// Dağıtım sırası (PROJE.md 5): başlatandan itibaren herkese birer, ilk turda sonra Mut'a bir; 4 kez.
-export function dagitimSirasi(d: Durum, mutDahil: boolean): string[] {
-  const n = d.oyuncular.length
-  const sira: string[] = []
-  for (let tekrar = 0; tekrar < 4; tekrar++) {
-    for (let j = 0; j < n; j++) {
-      const k = d.oyuncular[(d.elBaslatani + j) % n].avuc[tekrar]
-      if (k) sira.push(kartKimligi(k))
-    }
-    if (mutDahil && d.mut[tekrar]) sira.push(kartKimligi(d.mut[tekrar]))
-  }
-  return sira
-}

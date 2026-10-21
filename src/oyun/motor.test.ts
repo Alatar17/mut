@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { kart, type Deger, type Kart } from './kart'
-import { eksiEl, gecerliHamleler, hamleYap, siradakiOyuncu, valeCarpani, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
+import { acilisKurallari, gecerliHamleler, hamleYap, siradakiOyuncu, valeCarpani, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
 
 // Kartı kısaca yazmak için: k(5) = 5 maça. Renk sadece kartları ayırt etmek için.
 const k = (deger: number, renk: Kart['renk'] = 'maca') => kart(deger as Deger, renk)
@@ -499,8 +499,8 @@ describe('eksi el (As)', () => {
     return d
   }
   it('Mut kartlarında As varsa el eksi; yoksa değil', () => {
-    expect(eksiEl([k(5), k(1)])).toBe(true)
-    expect(eksiEl([k(5), k(13)])).toBe(false)
+    expect(acilisKurallari([k(5), k(1)]).eksi).toBe(true)
+    expect(acilisKurallari([k(5), k(13)]).eksi).toBe(false)
   })
   it('orta ve Mut yakalaması kendi yığınına gider', () => {
     const d0 = eksi({ avuclar: [[k(9), k(1)], [k(4, 'kupa')], [k(5, 'kupa')]], orta: [k(9, 'kupa')] })
@@ -551,5 +551,48 @@ describe('eksi el (As)', () => {
     d.carpan = 2
     const son = hamleYap(d, { tip: 'ortayaAt', kart: 0 })
     expect(son.puanKagidi[0]).toEqual([100 * 2, -5 * 2, -25 * 2])
+  })
+})
+
+describe('serbest el (3)', () => {
+  const serbest = (p: Parameters<typeof durum>[0]) => {
+    const d = durum({ mut: [k(3, 'kupa')], ...p })
+    d.serbest = true
+    return d
+  }
+  it('Mut kartlarında 3 serbest el; As ile önce açılan geçerli', () => {
+    expect(acilisKurallari([k(5), k(3)])).toEqual({ eksi: false, serbest: true })
+    expect(acilisKurallari([k(3), k(5), k(1)])).toEqual({ eksi: false, serbest: true })
+    expect(acilisKurallari([k(1), k(3)])).toEqual({ eksi: true, serbest: false })
+    expect(acilisKurallari([k(5), k(13)])).toEqual({ eksi: false, serbest: false })
+  })
+  it('orta, Mut ve kendi yığını yakalaması istenen rakibe gider (kendime değil)', () => {
+    const d = serbest({ avuclar: [[k(9), k(3), k(5)], [k(4, 'kupa')], [k(6, 'kupa')]], orta: [k(9, 'kupa')], cezalar: [[k(5, 'kupa')]] })
+    const hamleler = gecerliHamleler(d)
+    for (const [kart, tip] of (['ortayaAt', 'mutEslestir', 'cezaBosalt'] as const).entries())
+      expect(hamleler.filter((h) => h.tip === tip && h.kart === kart).map((h) => h.gonder)).toEqual([1, 2])
+    expect(hamleYap(d, { tip: 'ortayaAt', kart: 0, gonder: 2 }).oyuncular[2].ceza).toEqual([k(9, 'kupa'), k(9)])
+    expect(hamleYap(d, { tip: 'mutEslestir', kart: 1, gonder: 2 }).oyuncular[2].ceza).toEqual([k(3, 'kupa'), k(3)])
+    expect(hamleYap(d, { tip: 'cezaBosalt', kart: 2, gonder: 1 }).oyuncular[1].ceza).toEqual([k(5, 'kupa'), k(5)])
+    // Hedef verilmeden yakalama geçersiz; yakalamayan kart ortaya hedefsiz atılır.
+    expect(() => hamleYap(d, { tip: 'ortayaAt', kart: 0 })).toThrow()
+    expect(gecerliHamleler(serbest({ avuclar: [[k(9)], [k(4)], [k(5)]] }))).toEqual([{ tip: 'ortayaAt', kart: 0 }])
+  })
+  it('al ve ilerlet herkesten; alınan rakibe geri gitmez (3 kişide tek hedef)', () => {
+    const d = serbest({ avuclar: [[k(5)], [k(4)], [k(6)]], cezalar: [[], [k(5, 'kupa')], [k(5, 'karo')]] })
+    expect(gecerliHamleler(d).filter((h) => h.tip === 'alIlerlet')).toEqual([
+      { tip: 'alIlerlet', kart: 0, hedef: 1, gonder: 2 },
+      { tip: 'alIlerlet', kart: 0, hedef: 2, gonder: 1 },
+    ])
+    const al = hamleYap(d, { tip: 'alIlerlet', kart: 0, hedef: 2, gonder: 1 })
+    expect(al.oyuncular[1].ceza).toEqual([k(5, 'kupa'), k(5, 'karo'), k(5)])
+    expect(al.oyuncular[2].ceza).toEqual([])
+  })
+  it('blok penceresi kartların gittiği rakibe açılır, blokta gönderene döner', () => {
+    const d0 = serbest({ avuclar: [[k(9), k(4)], [k(4, 'kupa'), k(5)], [k(2, 'kupa'), k(6)]], orta: [k(9, 'kupa')] })
+    const d = hamleYap(d0, { tip: 'ortayaAt', kart: 0, gonder: 2 })
+    expect(d.blok).toEqual({ hedef: 2, gonderen: 0, adet: 2 })
+    const b = hamleYap(d, { tip: 'blok', kart: 0 })
+    expect(b.oyuncular[0].ceza).toEqual([k(2, 'kupa'), k(9, 'kupa'), k(9)])
   })
 })

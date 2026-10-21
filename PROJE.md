@@ -4,9 +4,15 @@
 > İşaretler: ❓ = henüz netleşmedi, 🔔 = sonra hatırlatılacak. Hepsi Bölüm 11'de toplu.
 
 ## 0. Proje Durumu
-- **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme, Vale / çarpan (hepsi kullanıcı testinden geçti), As / eksi el (hepsi kullanıcı testinden geçti). Diğer özel kartlar henüz sadece puanlı kart.
-- **Sıradaki iş:** **3** (serbest el) — kodlamadan önce kullanıcıyla konuşulacak; sonra 10 → Papaz → 7. Ses efektleri daha sonra eklenecek (kullanıcı istedi, 2026-10-21).
+- **Aşama:** 4. adım (özel kartlar) sürüyor — son güncelleme 2026-10-21. Biten: altyapı (4a), seri (orta + ceza yığınları), 2 / blok (pencere, zincir, kalkan, kalkanı kurmak), 8 / takas, Kız / çekme, Vale / çarpan (hepsi kullanıcı testinden geçti), As / eksi el (hepsi kullanıcı testinden geçti), 3 / serbest el (**kullanıcı testi bekliyor**). Diğer özel kartlar henüz sadece puanlı kart.
+- **Sıradaki iş:** 3'ün kullanıcı testi (Test menüsünde "Serbest el hedefi" Dokun/Sürükle seçimi dahil); sonra 10 → Papaz → 7. Ses efektleri daha sonra eklenecek (kullanıcı istedi, 2026-10-21).
 - **Sonra yapılacak — ceza yığını görünümü (karar 2026-10-21, kullanıcı "şimdi değil" dedi):** Sorun: ceza yığınında sadece en üst kart görünüyor (Bot As dene'de dört 9'un üçü görünmüyor). Karar: **her zaman** alınabilecek üst grup (aynı sayılar ya da seri) orta yığındaki gibi kaydırılmış görünür; **basılı tutunca** (bilgisayarda fareyle üstüne gelince) yığının tamamı yelpaze gibi açılır. Kahvede de kartlar düzgün dizilmez, alttakiler ucundan görünür, istenirse elle bakılır; yani tamamını açmak kahveye uygun.
+- **4j 3 (serbest el) yapıldı — 2026-10-21 (otomatik testler + Claude tarayıcıda denedi; kullanıcı testi bekliyor):**
+  - **Kurallar (kullanıcı onayı):** Mut'ta 3 varsa yakalanan kartlar (orta eşleşme/seri, Mut, kendi yığınını boşaltma) istenen rakibe gider, kendine değil. Al ve ilerlet herkesten; kartlar alınan rakibe geri gidemez → 3 kişide tek hedef, seçim sorulmaz. Ekle değişmez (zaten herkese). İki 3 ek etki yapmaz. 3 ile As: önce açılan geçerli. Hedef seçilmeden vazgeçilmez (geri alma yok). Blok aynı (kartlar gönderene döner).
+  - **Motor:** `d.serbest`, `acilisKurallari(mut)` (`eksiEl` yerine; ilk açılan As/3 kazanır). Hamlede `gonder` = kartların gideceği oyuncu; serbest elde her rakip ayrı hamle. Serbest al ve ilerlet: `hedef` = alınan, `gonder` = giden.
+  - **Bot:** Rakiplere giden puan eşitse kazanmakta olana (oyun toplamı + bu elin puanı en az) gönderir.
+  - **Ekran:** Sol üstte "Serbest el". Kart eşleştiği yere iner, bekler; gönderilebilecek oyuncuların isim etiketi hafifçe parlar. **Dokun (varsayılan, A):** rakibin ceza yığınına, avucuna ya da isim etiketine dokun. **Sürükle (C):** inen kartı oyuncuya sürükle. Test menüsünde "Serbest el hedefi" ile geçilir; kullanıcı seçince biri kalıcı olur. Serbest elde "Ekle / İlerlet" düğmeleri her rakibin yığınında çıkar.
+  - **"3 dene":** Mut'ta 3 ve 7; avucumda 9 (ortadaki 9), 7 (Mut 7), 5 (kendi yığınımdaki 5), 6 (B'nin yığınındaki 6 → İlerlet, kartlar kendiliğinden C'ye). **"Bot 3 dene":** B ortadaki 9'u yakalar, sıradaki C yerine bana (yığınım boş = kazanan) gönderir.
 - **4i As (eksi el) yapıldı — 2026-10-21 (otomatik testler + tarayıcıda bakıldı; kullanıcı testinden geçti):**
   - **Motor:** `d.eksi` (`eksiEl(mut)`); eksi elde `ekle` sadece kendine (hedef = kendin), `alIlerlet` herkesten (`hedef` = yığını alınan), `cezaBosalt` yok. Blok penceresi yığınından alınana açılır; blokta kartlar alanın yığınından bloklayanınkine döner (zincir de çalışır). Puan × −1. Bot puan hesabını ters çevirir.
   - **Ekran:** kartı kendi yığınına bırakmak = ekle, rakibin yığınına bırakmak = al. "Eksi el" etiketi, puanlar eksi.
@@ -230,7 +236,7 @@ Rakibin ceza yığınındaki en üst kart avuçtaki kartla eşleşiyorsa iki yol
 | | Ekle | Al ve ilerlet |
 |---|---|---|
 | **Normal el** | **Herkese** (kendin hariç) | Sadece **sıradakinden** alınır, **onun sıradakine** gider |
-| **Serbest el** | Herkese | **Herkesten** alınır, **istediğine** gider (kendin hariç) |
+| **Serbest el** | Herkese | **Herkesten** alınır, **istediğine** gider (kendin ve alınan hariç; 3 kişide tek hedef) |
 
 (Karar 2026-10-21: kahvede normal elde de herkese "ekle" yapılıyor.) Serbest elde kazanmakta olan (en az puanlı) oyuncu herkesin hedefidir.
 - **3a. Ekle** (eski adı: üstüne yığ)**:** Kendi kartını rakibin ceza yığınına eklersin; rakibin puanı artar. Seri uzatma da (4-5-6'ya 7) aynı kurala uyar.

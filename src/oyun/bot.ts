@@ -1,6 +1,6 @@
 // Botlar (PROJE.md 9.1).
 import { kartPuani, yiginPuani } from './kart'
-import { gecerliHamleler, hamleYap, type Durum, type Hamle } from './motor'
+import { elPuanlari, gecerliHamleler, hamleYap, toplamPuanlar, type Durum, type Hamle } from './motor'
 
 // Rastgele bot: kurallara uygun hamlelerden birini seçer (ekransız testlerde kullanılır).
 export function botHamlesi(d: Durum, rastgele: () => number = Math.random): Hamle {
@@ -44,6 +44,9 @@ function puanlanmis(d: Durum, hamleler = gecerliHamleler(d)) {
   const ben = d.sira
   const cezalar = (x: Durum) => x.oyuncular.map(o => yiginPuani(o.ceza))
   const once = cezalar(d)
+  // Serbest elde rakiplere giden puan aynıysa kartlar kazanmakta olana (oyun toplamı + bu el en az olan) gider.
+  const toplam = toplamPuanlar(d).map((t, i) => t + elPuanlari(d)[i])
+  const lider = d.oyuncular.map((_, i) => i).filter(i => i !== ben).sort((a, b) => toplam[a] - toplam[b])[0]
   return hamleler
     .filter(h => h.tip !== 'takas' && h.tip !== 'cek')
     .map(h => {
@@ -52,6 +55,7 @@ function puanlanmis(d: Durum, hamleler = gecerliHamleler(d)) {
       const kart = d.oyuncular[ben].avuc[h.kart]
       // Eksi elde ters: kendi yığınına gelen iyi, rakiplere giden kötü.
       const isaret = d.eksi ? -1 : 1
-      return { h, puan: isaret * (rakiplere - fark[ben]) - (kart ? kartPuani(kart) / 100 : 0) }
+      const lidere = h.gonder === lider ? 0.005 : 0
+      return { h, puan: isaret * (rakiplere - fark[ben]) - (kart ? kartPuani(kart) / 100 : 0) + lidere }
     })
 }

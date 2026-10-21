@@ -4,7 +4,7 @@ import { kart, type Deger, type Kart } from './kart'
 import { akilliBotHamlesi, botHamlesi } from './bot'
 import { hamleYap, sonrakiEl, toplamPuanlar, yeniOyun } from './motor'
 import { rastgele } from './rastgele'
-import { asBotDenemesi } from './deneme'
+import { asBotDenemesi, ucBotDenemesi } from './deneme'
 
 it('akıllı bot rastgele botları çoğunlukla yener', () => {
   const OYUN = 100
@@ -61,4 +61,13 @@ it('akıllı bot: rakipten çekilecek kart büyük ihtimalle işe yarıyorsa Kı
 it('akıllı bot eksi elde benim yığınımdaki 9\'ları kendine alır', () => {
   const d = asBotDenemesi(yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum: 3 }))
   expect(akilliBotHamlesi(d, () => 0)).toEqual({ tip: 'alIlerlet', kart: 0, hedef: 0 })
+})
+
+it('akıllı bot serbest elde yakaladığını kazanmakta olana gönderir', () => {
+  const d = ucBotDenemesi(yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum: 3 }))
+  expect(akilliBotHamlesi(d, () => 0)).toEqual({ tip: 'ortayaAt', kart: 0, gonder: 0 })
+  // C'nin yığını boş, benimki dolu olunca C'ye.
+  d.oyuncular[0].ceza = d.oyuncular[2].ceza
+  d.oyuncular[2].ceza = []
+  expect(akilliBotHamlesi(d, () => 0)).toEqual({ tip: 'ortayaAt', kart: 0, gonder: 2 })
 })

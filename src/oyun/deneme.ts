@@ -1,6 +1,6 @@
 // Test menüsündeki "… dene" düğmeleri: istenen kartlar hazır dizilmiş yeni bir el (oyun bitince kalkacak).
 import { kart, type Kart } from './kart'
-import { eksiEl, valeCarpani, type Durum } from './motor'
+import { acilisKurallari, valeCarpani, type Durum } from './motor'
 
 const ayni = (a: Kart, b: Kart) => a.renk === b.renk && a.deger === b.deger
 
@@ -26,7 +26,7 @@ function denemeKur(d: Durum, p: { avucum: Kart[]; digerAvuclar?: Kart[][]; orta?
   })
   d.mut = [...mut, ...normal.splice(normal.length - (4 - mut.length))]
   d.carpan = valeCarpani(d.mut)
-  d.eksi = eksiEl(d.mut)
+  Object.assign(d, acilisKurallari(d.mut))
   d.orta = [...orta]
   d.deste = normal
   d.elBaslatani = 0
@@ -131,5 +131,27 @@ export const asBotDenemesi = (d: Durum) =>
     digerAvuclar: [[kart(9, 'sinek'), kart(3, 'karo'), kart(4, 'karo'), kart(6, 'karo')]],
     cezalar: [[kart(9, 'maca'), kart(9, 'kupa'), kart(9, 'karo')]],
     mut: [kart(1, 'maca'), kart(5, 'sinek'), kart(7, 'sinek'), kart(13, 'kupa')],
+    sira: 1,
+  })
+
+// Serbest el (Mut kartlarında 3). Avucumda 9 (ortadaki 9'u yakalar), 7 (Mut 7), 5 (kendi yığınımdaki 5) ve 6
+// (sağdaki B'nin yığınındaki 6: "İlerlet" deyince kartlar kendiliğinden soldaki C'ye gider). Yakalamalarda hedefi ben seçerim.
+export const ucDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(9, 'kupa'), kart(7, 'karo'), kart(5, 'maca'), kart(6, 'sinek')],
+    orta: [kart(9, 'maca')],
+    cezalar: [[kart(5, 'kupa')], [kart(10, 'karo'), kart(6, 'karo')], [kart(13, 'sinek')]],
+    mut: [kart(3, 'maca'), kart(7, 'kupa'), kart(4, 'sinek'), kart(13, 'kupa')],
+  })
+
+// Serbest el; sağdaki B (sırası onda) ortadaki 9'u yakalar. Normalde sıradakine (C) giderdi; serbest elde kazanmakta
+// olana gider: benim yığınım boş (−100), C'ninkinde Papaz var → bana gönderir.
+export const ucBotDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(4, 'kupa'), kart(5, 'kupa'), kart(6, 'kupa'), kart(10, 'kupa')],
+    digerAvuclar: [[kart(9, 'kupa'), kart(4, 'karo'), kart(5, 'karo'), kart(6, 'karo')]],
+    orta: [kart(9, 'maca')],
+    cezalar: [[], [], [kart(13, 'sinek')]],
+    mut: [kart(3, 'maca'), kart(7, 'kupa'), kart(7, 'karo'), kart(7, 'sinek')],
     sira: 1,
   })

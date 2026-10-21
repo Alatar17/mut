@@ -1,5 +1,5 @@
 // Kural motoru (ekransız). Kurallar: PROJE.md Bölüm 5–8.
-// Kapsam: seri, 2 (blok), 8 (takas), Kız (çekme), Vale (çarpan) ve As (eksi el) var; diğer özel kartların etkisi yok (sadece puanlı kart), hedef her zaman sıradaki.
+// Kapsam: seri, 2 (blok), 8 (takas), Kız (çekme), Vale (çarpan), As (eksi el) ve 3 (serbest el) var; diğer özel kartların etkisi yok (sadece puanlı kart).
 // Yığınlarda dizinin sonu = en üstteki kart.
 import { yiginPuani, type Deger, type Kart, type Renk } from './kart'
 import { karistir, rastgele } from './rastgele'
@@ -26,6 +26,8 @@ export interface Durum {
   carpan: number
   // Eksi el (Mut kartlarında As): yakalanan kartlar yakalayanın kendi ceza yığınına, puan eksi yazılır.
   eksi: boolean
+  // Serbest el (Mut kartlarında 3): yakalanan kartlar istenen rakibe gider (hamledeki gonder).
+  serbest: boolean
   asama: Asama
   // Her satır bir el; sütunlar oyuncular sırasıyla.
   puanKagidi: number[][]
@@ -66,7 +68,7 @@ export type HamleTipi =
   | 'takas' // 8 ortaya düşer (eşleşme/seri yok), avucunu hedefle değiştirirsin (7)
   | 'cek' // Kız ortaya düşer (eşleşme/seri yok), hedefin avucundan rastgele bir kart çekersin (7)
 
-// kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (ekle), avucu alınan oyuncu (takas, cek) ya da eksi elde yığını alınan oyuncu (alIlerlet)
+// kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (ekle), avucu alınan oyuncu (takas, cek) ya da eksi/serbest elde yığını alınan oyuncu (alIlerlet)
 export interface Hamle {
   tip: HamleTipi
   kart: number
@@ -74,6 +76,8 @@ export interface Hamle {
   // Sadece cek: hedefin avucundan çekilecek kartın sırası. Yoksa rastgele (ters dönmüş karılmış karttan seçmek gibi).
   // Testler ve botun hesabı için; geçerlilik kontrolünde bakılmaz.
   cekilen?: number
+  // Serbest elde yakalanan kartların gideceği oyuncu (ortayaAt yakalaması, mutEslestir, cezaBosalt, alIlerlet).
+  gonder?: number
 }
 
 const RENKLER: Renk[] = ['maca', 'kupa', 'karo', 'sinek']
@@ -128,6 +132,7 @@ export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?:
     sira: 0,
     carpan: 1,
     eksi: false,
+    serbest: false,
     asama: 'oyun',
     puanKagidi: [],
     dagitim: [],
@@ -152,7 +157,7 @@ function elKur(d: Durum) {
   d.blok = undefined
   avuclariDagit(d, true)
   d.carpan = valeCarpani(d.mut)
-  d.eksi = eksiEl(d.mut)
+  Object.assign(d, acilisKurallari(d.mut))
   d.sira = d.elBaslatani
 }
 
@@ -162,8 +167,12 @@ export function valeCarpani(mut: Kart[]): number {
   return n > 0 ? 2 * n : 1
 }
 
-// Mut kartlarında As: el eksiye döner; iki As ek etki yapmaz (5.1, 7).
-export const eksiEl = (mut: Kart[]) => mut.some((k) => k.deger === 1)
+// Mut kartlarında As: eksi el, 3: serbest el; birden fazlası ek etki yapmaz (7). İkisi birlikteyse önce açılan
+// geçerli (5.1); Mut kartları açılma sırasıyla dizili.
+export function acilisKurallari(mut: Kart[]) {
+  const ilk = mut.find((k) => k.deger === 1 || k.deger === 3)
+  return { eksi: ilk?.deger === 1, serbest: ilk?.deger === 3 }
+}
 
 // Teker teker: başlatandan itibaren herkese birer, ilk turda sonra Mut kartlarına bir; 4 kez.
 function avuclariDagit(d: Durum, mutDahil: boolean) {
@@ -194,20 +203,27 @@ export function gecerliHamleler(d: Durum): Hamle[] {
   const siradaki = d.oyuncular[sonraki(d, d.sira)]
   const hamleler: Hamle[] = []
   const rakipler = d.oyuncular.map((_, i) => i).filter((i) => i !== d.sira)
+  // Serbest elde yakalanan kartlar istenen rakibe gider (6.2): her hedef ayrı hamle. haric: kartların alındığı rakip.
+  const yakalama = (h: Hamle, haric?: number) =>
+    d.serbest ? rakipler.filter((g) => g !== haric).forEach((gonder) => hamleler.push({ ...h, gonder })) : hamleler.push(h)
   ben.avuc.forEach((k, kart) => {
     const mutVar = d.mut.some((m) => m.deger === k.deger)
     // Mut kartlarıyla eşleşen kart orta yığına boşa atılamaz; ortada eşleşme ya da seri varsa oyuncu seçer (5.2).
-    if (!mutVar || yakalar(d.orta, k)) hamleler.push({ tip: 'ortayaAt', kart })
-    if (mutVar) hamleler.push({ tip: 'mutEslestir', kart })
+    if (yakalar(d.orta, k)) yakalama({ tip: 'ortayaAt', kart })
+    else if (!mutVar) hamleler.push({ tip: 'ortayaAt', kart })
+    if (mutVar) yakalama({ tip: 'mutEslestir', kart })
     if (d.eksi) {
       // Eksi elde kart hep kendine: kendi yığınına ekle (zorunlu değil), herkesin yığınından al. Seri uzatma da öyle.
       if (yakalar(ben.ceza, k)) hamleler.push({ tip: 'ekle', kart, hedef: d.sira })
       for (const i of rakipler) if (yakalar(d.oyuncular[i].ceza, k)) hamleler.push({ tip: 'alIlerlet', kart, hedef: i })
     } else {
-      if (yakalar(ben.ceza, k)) hamleler.push({ tip: 'cezaBosalt', kart })
-      // Ekle herkese; al ve ilerlet normal elde sadece sıradakinden (6.3). Seri uzatma da aynı kuralla.
+      if (yakalar(ben.ceza, k)) yakalama({ tip: 'cezaBosalt', kart })
+      // Ekle herkese; al ve ilerlet normal elde sadece sıradakinden, serbest elde herkesten (hedef) alınıp
+      // başka bir rakibe gider (6.3). Seri uzatma da aynı kuralla.
       for (const i of rakipler) if (yakalar(d.oyuncular[i].ceza, k)) hamleler.push({ tip: 'ekle', kart, hedef: i })
-      if (yakalar(siradaki.ceza, k)) hamleler.push({ tip: 'alIlerlet', kart })
+      if (d.serbest) {
+        for (const i of rakipler) if (yakalar(d.oyuncular[i].ceza, k)) yakalama({ tip: 'alIlerlet', kart, hedef: i }, i)
+      } else if (yakalar(siradaki.ceza, k)) hamleler.push({ tip: 'alIlerlet', kart })
     }
     // 8 ile herkesle takas, avucu boş olanla da; Mut kartlarında 8 olsa da serbest (5.2 istisnası).
     if (k.deger === 8) for (const i of rakipler) hamleler.push({ tip: 'takas', kart, hedef: i })
@@ -219,7 +235,7 @@ export function gecerliHamleler(d: Durum): Hamle[] {
 }
 
 export const hamleGecerliMi = (d: Durum, h: Hamle) =>
-  gecerliHamleler(d).some((g) => g.tip === h.tip && g.kart === h.kart && g.hedef === h.hedef)
+  gecerliHamleler(d).some((g) => g.tip === h.tip && g.kart === h.kart && g.hedef === h.hedef && g.gonder === h.gonder)
 
 // Hamleyi uygular, yeni durumu döndürür (eski durum değişmez).
 export function hamleYap(eski: Durum, h: Hamle): Durum {
@@ -237,8 +253,8 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
   const [k] = ben.avuc.splice(h.kart, 1)
   let eslesen: Kart[] = []
   let nereden: string | null = null
-  // Eksi elde yakalanan kartlar yakalayanın kendi yığınına gider.
-  let nereye = `ceza:${d.eksi ? oyuncu : s1}`
+  // Eksi elde yakalanan kartlar yakalayanın kendi yığınına, serbest elde istenen rakibe gider.
+  let nereye = `ceza:${d.eksi ? oyuncu : h.gonder ?? s1}`
   let cekilen: Kart | undefined
 
   switch (h.tip) {
@@ -261,10 +277,10 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       nereye = `ceza:${h.hedef}`
       break
     case 'alIlerlet': {
-      const kimden = d.eksi ? h.hedef! : s1
+      const kimden = d.eksi || d.serbest ? h.hedef! : s1
       eslesen = yakala(d.oyuncular[kimden].ceza, k)
       nereden = `ceza:${kimden}`
-      if (!d.eksi) nereye = `ceza:${sonraki(d, s1)}`
+      if (!d.eksi) nereye = `ceza:${h.gonder ?? sonraki(d, s1)}`
       break
     }
     case 'takas':

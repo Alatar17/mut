@@ -22,7 +22,7 @@ function Kalinlik({ adet, genislik }: { adet: number; genislik: number }) {
 // Uçuş sırasında üstteki kart gizlenince alttaki görünsün diye en üstteki iki kart çizilir.
 export function BombaYigini({ kartlar, sahip, cikan }: { kartlar: KartTipi[]; sahip: number; cikan: number }) {
   return (
-    <div className={`bomba bomba-${sahip}`} data-hedef={`bomba:${sahip}`} data-yer={`bomba:${sahip}`}>
+    <div className={`bomba bomba-${sahip}`} data-hedef={`bomba:${sahip}`} data-yer={`bomba:${sahip}`} data-bak="bomba">
       <div className="yigin-govde" style={{ width: BOMBA_KART_EN, height: kartBoyu(BOMBA_KART_EN) }}>
         {kartlar.slice(-2).map(k => (
           <div key={kartKimligi(k)} className="yigin-kart">
@@ -42,7 +42,7 @@ export function OrtaYigin({ kartlar, carpan }: { kartlar: KartTipi[]; carpan?: n
   const ust = kartlar.slice(-3)
   const alttaKalan = kartlar.length - ust.length
   return (
-    <div className="orta-yigin" data-hedef="orta" data-yer="orta">
+    <div className="orta-yigin" data-hedef="orta" data-yer="orta" data-bak="orta">
       <div className="yigin-govde" style={{ width: KART_EN + 28, height: kartBoyu(KART_EN) }}>
         {kartlar.length === 0 && <div className="bos-yer" style={{ width: KART_EN, height: kartBoyu(KART_EN) }} />}
         {alttaKalan > 0 && <Kalinlik adet={alttaKalan} genislik={KART_EN} />}
@@ -118,7 +118,7 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik }
     </div>
   )
   return (
-    <div className={'ceza-yigini puan-' + puanTarafi} data-hedef={hedef}>
+    <div className={'ceza-yigini puan-' + puanTarafi} data-hedef={hedef} data-bak={hedef}>
       {donuk ? <div className={'yan-yigin ' + donuk} style={{ width: boy, height: en }}>{govde}</div> : govde}
       <Puan deger={yiginPuani(varanlar) * carpan} bos={varanlar.length === 0} />
     </div>

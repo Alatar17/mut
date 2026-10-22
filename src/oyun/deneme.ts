@@ -1,5 +1,5 @@
 // Test menüsündeki "… dene" düğmeleri: istenen kartlar hazır dizilmiş yeni bir el (oyun bitince kalkacak).
-import { kart, type Kart } from './kart'
+import { kart, type Deger, type Kart } from './kart'
 import { acilisKurallari, valeCarpani, type Durum } from './motor'
 
 const ayni = (a: Kart, b: Kart) => a.renk === b.renk && a.deger === b.deger
@@ -202,4 +202,13 @@ export const patlamaDenemesi = (d: Durum) => {
   d.tur = d.toplamTur
   d.dagitim = d.dagitim.filter(k => !fazla.includes(k))
   return d
+}
+
+// Yığına bakış (basılı tutunca açılan yığın): B'nin yığınında 20, C'de 6, bende 4 kart, ortada 6 kart.
+// Kartlar karışık görünsün diye desteden 7'şer atlayarak seçilir; kalan 16 kart avuçlara ve Mut'a.
+export const bakisDenemesi = (d: Durum) => {
+  const renkler = ['maca', 'kupa', 'karo', 'sinek'] as const
+  const hepsi = Array.from({ length: 52 }, (_, i) => kart(((i % 13) + 1) as Deger, renkler[Math.floor(i / 13)]))
+  const sirali = Array.from({ length: 52 }, (_, i) => hepsi[(i * 7) % 52])
+  return denemeKur(d, { avucum: [], orta: sirali.slice(30, 36), cezalar: [sirali.slice(26, 30), sirali.slice(0, 20), sirali.slice(20, 26)] })
 }

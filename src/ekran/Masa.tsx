@@ -3,11 +3,12 @@ import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { cikanOnlar, elPuanlari, elSayisiAyarla, gecerliHamleler, hamleGecerliMi, hamleYap, oyunuBitir, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
 import { karistir } from '../oyun/rastgele'
-import { asBotDenemesi, asDenemesi, blokDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
+import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, patlamaOncesi, patlamaOrtada, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
 import { BombaYigini, CezaYigini, Deste, OrtaYigin } from './Yiginlar'
+import { useYiginBakisi, YiginYelpazesi, type BakisGorunusu } from './YiginBakisi'
 import { puanKagidiniKaydet } from './puanResmi'
 
 const AVUC_KART_EN = 60
@@ -31,6 +32,8 @@ type BotHizi = keyof typeof BOT_HIZLARI
 // Ceza yığınında üstteki kartlar arası kaydırma (orta yığında 14). Kullanıcı Test menüsünde seçecek.
 const CEZA_ARALIKLARI = { '8 px': 8, '10 px': 10, '12 px': 12 }
 type CezaAraligi = keyof typeof CEZA_ARALIKLARI
+// Yığına bakış (basılı tutunca): ortada büyük şerit ya da yığının yerinde. Oyuncunun ayarı (☰ menüsü).
+const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: true }
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
 const ANIMASYON_HIZLARI = { Hızlı: 0.6, Orta: 1, Yavaş: 1.6 }
@@ -398,6 +401,8 @@ export function Masa() {
   const [elPenceresi, setElPenceresi] = useState<'yeni' | 'degistir' | null>(null)
   // Animasyon sürerken istenen el sayısı / oyunu bitirme: hamle bitince uygulanır (bitir).
   const istenenEl = useRef<number | null>(null)
+  // Animasyon sürerken istenen yeni oyun / Dene eli: hamle bitince kurulur.
+  const bekleyenOyun = useRef<{ deneme?: (d: Durum) => Durum; toplamEl: number } | null>(null)
   const bitirIstendi = useRef(false)
   const [botlarOtomatik, setBotlarOtomatik] = useKayitli('botlarOtomatik', true)
   const [botKartlariKapali, setBotKartlariKapali] = useKayitli('botKartlariKapali', false)
@@ -408,6 +413,7 @@ export function Masa() {
   const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi', 'Orta')
   const [duraklama, setDuraklama] = useKayitli<Duraklama>('duraklama', 'Kısa')
   const [hamleSuresi, setHamleSuresi] = useKayitli<HamleSuresi>('hamleSuresi', '30 sn')
+  const [bakisGorunusu, setBakisGorunusu] = useKayitli<BakisGorunusu>('bakisGorunusu', 'Ortada')
   const sure = HAMLE_SURELERI[hamleSuresi] ?? 0
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
   // Önceden kurulmuş kalkan (otomatik blok). Sadece benim ekranımda görünür.
@@ -435,6 +441,7 @@ export function Masa() {
 
   // ---- Animasyon ----
   const masaRef = useRef<HTMLDivElement>(null)
+  const { bakis, olaylar: bakisOlaylari } = useYiginBakisi(masaRef)
   const gorunenRef = useRef(gorunen)
   const [gizli, setGizli] = useState<ReadonlySet<string>>(new Set())
   const [ucuslar, setUcuslar] = useState<Ucus[]>([])
@@ -728,6 +735,13 @@ export function Masa() {
     bitir(yeni)
   }
 
+  useEffect(() => {
+    const b = bekleyenOyun.current
+    if (mesgul || !b) return
+    bekleyenOyun.current = null
+    yeniOyunBaslat(b.deneme, b.toplamEl)
+  }, [mesgul])
+
   // Oyun açılınca ilk dağıtım.
   const ilkDagitim = useRef(false)
   useEffect(() => {
@@ -867,7 +881,8 @@ export function Masa() {
   }
   // deneme: Test menüsündeki "… dene" düğmeleri için kartları hazır dizer.
   const yeniOyunBaslat = (deneme?: (d: Durum) => Durum, toplamEl = elSayisi) => {
-    if (mesgulRef.current) return
+    // Animasyon sürüyorsa (bot hamlesi vb.) istek hatırlanır, hamle bitince kurulur.
+    if (mesgulRef.current) return void (bekleyenOyun.current = { deneme, toplamEl })
     setPuanlarAcik(false)
     istenenEl.current = null
     bitirIstendi.current = false
@@ -883,6 +898,9 @@ export function Masa() {
     if (mesgulRef.current) bitirIstendi.current = true
     else setD(oyunuBitir(d))
   }
+  // Basılı tutulan yığının kartları (YiginBakisi).
+  const bakilanKartlar = (yer: string): KartTipi[] =>
+    yer === 'orta' ? gorunen.orta : yer === 'bomba' ? gorunen.bomba?.kartlar ?? [] : gorunen.oyuncular[Number(yer.split(':')[1])].ceza
   const gosterilenToplamEl = bitirIstendi.current ? d.puanKagidi.length : istenenEl.current ?? d.toplamEl
 
   return (
@@ -896,6 +914,7 @@ export function Masa() {
         zamanAsimi.current = 0
         setUzakta(false)
       }}
+      {...bakisOlaylari}
     >
       <button className="yuvarlak-dugme puan-dugme" aria-label="Puanlar" onClick={() => setPuanlarAcik(true)}>
         <svg viewBox="0 0 24 24" width="20" height="20">
@@ -920,6 +939,9 @@ export function Masa() {
       {menu === 'oyun' && (
         <div className="oyun-menu">
           <button className="test-satir" disabled={d.asama === 'oyunSonu'} onClick={() => setMenu('bitir')}>Oyunu bitir</button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(BAKIS_GORUNUSLERI, bakisGorunusu, setBakisGorunusu)}>
+            Yığına bakış <span className="test-deger">{bakisGorunusu}</span>
+          </button>
         </div>
       )}
       {menu === 'bitir' && (
@@ -1029,7 +1051,7 @@ export function Masa() {
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">
-          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi]] as const).map(([ad, deneme]) => (
+          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
             // "Bot 8 dene" kalkan kurulu başlar: takas gelince sökülmesi görülsün.
             <button key={ad} className="test-satir" onClick={() => { setMenu(null); if (!deneme) return setElPenceresi('yeni'); yeniOyunBaslat(deneme); setKalkanKurulu(ad === 'Bot 8 dene') }}>{ad}</button>
           ))}
@@ -1090,6 +1112,7 @@ export function Masa() {
       )}
 
       {ucuslar.map(u => <UcanKart key={kartKimligi(u.kart)} ucus={u} />)}
+      {bakis && <YiginYelpazesi bakis={bakis} gorunus={bakisGorunusu} kartlar={bakilanKartlar(bakis.yer)} />}
     </div>
     </GizliKartlar.Provider>
   )

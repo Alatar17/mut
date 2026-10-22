@@ -139,7 +139,8 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .rakip-ceza.sag { right: 108px; }
 
 /* ---- Ben ---- */
-.benim-ceza { position: absolute; top: 302px; left: 194px; }
+/* Kartlar büyüyünce (Kart boyutu) yığın aşağı taşmasın diye artan boy kadar yukarı. */
+.benim-ceza { position: absolute; top: calc(302px - (var(--kart-olcek, 1) - 1) * 78px); left: 194px; }
 .benim-avuc {
   position: absolute; bottom: calc(-10px + var(--el-kayma, 0px)); left: calc(50% + 30px); transform: translateX(-50%);
   display: flex; align-items: flex-end;

@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent, type MouseEvent, type RefObject } from 'react'
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { Kart } from './Kart'
+import { kartEni } from './boyut'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
 
 // Yığınlara bakmak (9.2): yığını basılı tutunca (bilgisayarda fare üstünde bekleyince) bütün kartları açılır,
@@ -97,7 +98,7 @@ export function YiginYelpazesi({ bakis, kartlar, gorunus }: { bakis: Bakis; kart
   const n = kartlar.length
 
   if (gorunus === 'Yerinde') {
-    const en = 56
+    const en = kartEni(56)
     const boy = kartBoyu(en)
     const adim = n > 1 ? Math.min(22, (SAHNE_EN - 24 - en) / (n - 1)) : 0
     const gen = en + adim * (n - 1)
@@ -115,7 +116,7 @@ export function YiginYelpazesi({ bakis, kartlar, gorunus }: { bakis: Bakis; kart
     )
   }
 
-  const en = 60
+  const en = kartEni(60)
   const boy = kartBoyu(en)
   const siraBasi = n <= 18 ? n : Math.ceil(n / 2)
   const adim = siraBasi > 1 ? Math.min(40, (760 - en) / (siraBasi - 1)) : 0

@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { kartBoyu, yiginPuani, type Kart as KartTipi } from '../oyun/kart'
+import { kartEni } from './boyut'
 import { BOMBA_KART_EN, kartKimligi, useGizliKartlar } from './animasyon'
 import { Kart } from './Kart'
 
-const KART_EN = 56
+const kartEn = () => kartEni(56)
 
 // Altta kalan kartların kalınlığı: her 3 kart için 1 piksellik kenar, en fazla 8.
 const kalinlik = (adet: number) => Math.min(8, Math.ceil(adet / 3))
 
 // Yığın zemininin (Görünüş menüsü) saracağı alan: görünen kartlar + alttaki kalınlık; stil.css her yandan eşit pay bırakır.
 const zeminOlcusu = (en: number, alttaki: number) =>
-  ({ '--zemin-en': `${en + kalinlik(alttaki)}px`, '--zemin-boy': `${kartBoyu(KART_EN) + kalinlik(alttaki)}px` }) as CSSProperties
+  ({ '--zemin-en': `${en + kalinlik(alttaki)}px`, '--zemin-boy': `${kartBoyu(kartEn()) + kalinlik(alttaki)}px` }) as CSSProperties
 
 function Kalinlik({ adet, genislik }: { adet: number; genislik: number }) {
   return (
@@ -27,10 +28,10 @@ function Kalinlik({ adet, genislik }: { adet: number; genislik: number }) {
 export function BombaYigini({ kartlar, sahip, cikan }: { kartlar: KartTipi[]; sahip: number; cikan: number }) {
   return (
     <div className={`bomba bomba-${sahip}`} data-hedef={`bomba:${sahip}`} data-yer={`bomba:${sahip}`} data-bak="bomba">
-      <div className="yigin-govde" style={{ width: BOMBA_KART_EN, height: kartBoyu(BOMBA_KART_EN) }}>
+      <div className="yigin-govde" style={{ width: kartEni(BOMBA_KART_EN), height: kartBoyu(kartEni(BOMBA_KART_EN)) }}>
         {kartlar.slice(-2).map(k => (
           <div key={kartKimligi(k)} className="yigin-kart">
-            <Kart kart={k} genislik={BOMBA_KART_EN} />
+            <Kart kart={k} genislik={kartEni(BOMBA_KART_EN)} />
           </div>
         ))}
       </div>
@@ -47,12 +48,12 @@ export function OrtaYigin({ kartlar, carpan }: { kartlar: KartTipi[]; carpan?: n
   const alttaKalan = kartlar.length - ust.length
   return (
     <div className="orta-yigin" data-hedef="orta" data-yer="orta" data-bak="orta">
-      <div className="yigin-govde" style={{ width: KART_EN + 28, height: kartBoyu(KART_EN), ...zeminOlcusu(KART_EN + Math.max(0, ust.length - 1) * 14, alttaKalan) }}>
-        {kartlar.length === 0 && <div className="bos-yer" style={{ width: KART_EN, height: kartBoyu(KART_EN) }} />}
-        {alttaKalan > 0 && <Kalinlik adet={alttaKalan} genislik={KART_EN} />}
+      <div className="yigin-govde" style={{ width: kartEn() + 28, height: kartBoyu(kartEn()), ...zeminOlcusu(kartEn() + Math.max(0, ust.length - 1) * 14, alttaKalan) }}>
+        {kartlar.length === 0 && <div className="bos-yer" style={{ width: kartEn(), height: kartBoyu(kartEn()) }} />}
+        {alttaKalan > 0 && <Kalinlik adet={alttaKalan} genislik={kartEn()} />}
         {ust.map((k, i) => (
           <div key={i} className="yigin-kart" style={{ left: i * 14 }}>
-            <Kart kart={k} genislik={KART_EN} />
+            <Kart kart={k} genislik={kartEn()} />
           </div>
         ))}
       </div>
@@ -108,27 +109,27 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, 
   const gizliler = useGizliKartlar()
   // Puan, yerine varmış kartlardan hesaplanır (uçan kart inince artar).
   const varanlar = kartlar.filter(k => !gizliler.has(kartKimligi(k)))
-  const boy = kartBoyu(KART_EN)
-  const en = KART_EN + 2 * aralik
+  const boy = kartBoyu(kartEn())
+  const en = kartEn() + 2 * aralik
   const gorunen = Math.min(3, kartlar.length)
   // Kilitli dörtlü (6.9.1): aynı sayıdan dört kart art arda gelince en üstteki ters çizilir.
   const kilitli = (i: number) => i >= 3 && kartlar.slice(i - 3, i).every(k => k.deger === kartlar[i].deger)
   const govde = (
-    <div className="yigin-govde" style={{ width: en, height: boy, ...zeminOlcusu(KART_EN + Math.max(0, gorunen - 1) * aralik, kartlar.length - gorunen) }} data-yer={hedef}>
+    <div className="yigin-govde" style={{ width: en, height: boy, ...zeminOlcusu(kartEn() + Math.max(0, gorunen - 1) * aralik, kartlar.length - gorunen) }} data-yer={hedef}>
       {kartlar.length > 0 ? (
         <>
-          <Kalinlik adet={kartlar.length - gorunen} genislik={KART_EN} />
+          <Kalinlik adet={kartlar.length - gorunen} genislik={kartEn()} />
           {kartlar.slice(-CIZILEN_UST_KART).map((k, i, ust) => {
             const yukaridan = ust.length - 1 - i
             return (
               <div key={kartKimligi(k)} className={'yigin-kart' + (yukaridan > 0 ? ' alt' : '')} style={{ left: Math.max(0, gorunen - 1 - yukaridan) * aralik, transform: dizilis === 'Dağınık' ? daginik(k) : undefined }}>
-                <Kart kart={k} genislik={KART_EN} kapali={kilitli(kartlar.length - 1 - yukaridan)} />
+                <Kart kart={k} genislik={kartEn()} kapali={kilitli(kartlar.length - 1 - yukaridan)} />
               </div>
             )
           })}
         </>
       ) : (
-        <div className="bos-yer" style={{ width: KART_EN, height: boy }} />
+        <div className="bos-yer" style={{ width: kartEn(), height: boy }} />
       )}
     </div>
   )
@@ -150,9 +151,9 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, 
 export function Deste({ kalan, ac }: { kalan: number; ac?: () => void }) {
   return (
     <div className={'deste' + (ac ? ' acilir' : '')} data-yer="deste" onClick={ac}>
-      <div className="yigin-govde" style={{ width: 42, height: kartBoyu(42) }}>
-        <Kalinlik adet={kalan} genislik={42} />
-        <div className="yigin-kart"><Kart kapali genislik={42} /></div>
+      <div className="yigin-govde" style={{ width: kartEni(42), height: kartBoyu(kartEni(42)) }}>
+        <Kalinlik adet={kalan} genislik={kartEni(42)} />
+        <div className="yigin-kart"><Kart kapali genislik={kartEni(42)} /></div>
       </div>
       <span className="rozet">{kalan}</span>
     </div>

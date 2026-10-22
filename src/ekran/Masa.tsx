@@ -5,6 +5,7 @@ import { akilliBotHamlesi } from '../oyun/bot'
 import { karistir } from '../oyun/rastgele'
 import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
+import { kartEni, kartOlcegi } from './boyut'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, patlamaOncesi, patlamaOrtada, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
 import { BombaYigini, CezaYigini, Deste, OrtaYigin, type CezaDizilisi } from './Yiginlar'
@@ -51,6 +52,9 @@ const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: 
 // Avucun yukarı kayması (masa değişkeni --el-kayma, stil.css). Varsayılan +10 px (kullanıcı kararı, 2026-10-22).
 const EL_YUKSEKLIKLERI = { Eski: '0px', '+10 px': '10px', '+20 px': '20px' }
 type ElYuksekligi = keyof typeof EL_YUKSEKLIKLERI
+// Masadaki bütün kartlar bu oranda büyür (boyut.ts). Kullanıcı Görünüş menüsünde seçecek.
+const KART_BOYUTLARI = { '%100': 1, '%110': 1.1, '%120': 1.2 }
+type KartBoyutu = keyof typeof KART_BOYUTLARI
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
 const ANIMASYON_HIZLARI = { Hızlı: 0.6, Orta: 1, Yavaş: 1.6 }
@@ -148,7 +152,7 @@ function rakipKartDuzeni(sira: number, adet: number, taraf: 'sol' | 'sag', duz: 
 // secilebilir: serbest elde yakalanan kartların gönderilebileceği oyuncu (isim etiketi hafifçe parlar).
 // sureUyari: hamle süresinin son saniyeleri, isim etiketinin çevresinde azalan halka.
 function Rakip({ oyuncu, koltuk, kalkik, birak, sec, sirada, secilebilir, sureUyari, taraf, carpan, kapali, duz, kirpik, cezaAralik, dizilis }: { oyuncu: Oyuncu; koltuk: number; kalkik: string | null; birak: (kart: number, hedef: string) => Birakma; sec: (kart: number) => void; sirada: boolean; secilebilir: boolean; sureUyari: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean; cezaAralik: number; dizilis: CezaDizilisi }) {
-  const avucBoyu = RAKIP_KART_EN + (oyuncu.avuc.length - 1) * (RAKIP_KART_EN - RAKIP_KART_BINME)
+  const avucBoyu = kartEni(RAKIP_KART_EN) + (oyuncu.avuc.length - 1) * kartEni(RAKIP_KART_EN - RAKIP_KART_BINME)
   return (
     <>
       {/* İsim etiketi de takas hedefi: avucu boşken bırakılacak yer kalmasın. */}
@@ -343,7 +347,7 @@ function AvucKart({ kart, sira, adet, kalkik, kapali, dokun, birak, tut }: { kar
     : yelpaze(sira, adet) + (kalkik ? ' translateY(-14px)' : '')
   return (
     <div className={'avuc-kart' + (kayma ? ' surukleniyor' : '')} style={{ transform }} {...olaylar}>
-      <Kart kart={kart} genislik={AVUC_KART_EN} kapali={kapali} />
+      <Kart kart={kart} genislik={kartEni(AVUC_KART_EN)} kapali={kapali} />
     </div>
   )
 }
@@ -355,10 +359,10 @@ function RakipKart({ kart, transform, kapali, birak, dokun }: { kart: KartTipi; 
   return (
     <div
       className={'yan-kart' + (kayma ? ' surukleniyor' : '')}
-      style={{ width: kartBoyu(RAKIP_KART_EN), height: RAKIP_KART_EN, transform: kayma ? `translate(${kayma.x}px, ${kayma.y}px)` : transform }}
+      style={{ width: kartBoyu(kartEni(RAKIP_KART_EN)), height: kartEni(RAKIP_KART_EN), transform: kayma ? `translate(${kayma.x}px, ${kayma.y}px)` : transform }}
       {...olaylar}
     >
-      <Kart kart={kart} genislik={RAKIP_KART_EN} kapali={kapali} />
+      <Kart kart={kart} genislik={kartEni(RAKIP_KART_EN)} kapali={kapali} />
     </div>
   )
 }
@@ -387,8 +391,8 @@ function MutAlani({ kartlar }: { kartlar: KartTipi[] }) {
     <div className="mut-alani" data-yer="mut">
       {yerler.current.map(k =>
         kartlar.some(m => kartKimligi(m) === kartKimligi(k))
-          ? <div key={kartKimligi(k)} data-hedef={`mut:${k.deger}`}><Kart kart={k} genislik={56} /></div>
-          : <div key={kartKimligi(k)} style={{ width: 56 }} />,
+          ? <div key={kartKimligi(k)} data-hedef={`mut:${k.deger}`}><Kart kart={k} genislik={kartEni(56)} /></div>
+          : <div key={kartKimligi(k)} style={{ width: kartEni(56) }} />,
       )}
     </div>
   )
@@ -442,6 +446,10 @@ export function Masa() {
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
   const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', '+10 px')
   const elYuksekligi: ElYuksekligi = elYuksekligiKayit in EL_YUKSEKLIKLERI ? elYuksekligiKayit : '+10 px'
+  const [kartBoyutuKayit, setKartBoyutu] = useKayitli<KartBoyutu>('kartBoyutu', '%100')
+  const kartBoyutu: KartBoyutu = kartBoyutuKayit in KART_BOYUTLARI ? kartBoyutuKayit : '%100'
+  // Alt bileşenler bu çizimde yeni çarpanı okusun diye çizimin başında.
+  kartOlcegi.carpan = KART_BOYUTLARI[kartBoyutu]
   // Deste penceresi ayarı ("Kaç el?" penceresinde) ve açık olup olmadığı.
   const [destePenceresi, setDestePenceresi] = useKayitli('destePenceresi', true)
   // Geliştirici seçenekleri (☰ menüsü): kapalıyken Görünüş, Dene, Test ve duraklat gizlenir; ayarları çalışmaya devam eder.
@@ -945,7 +953,7 @@ export function Masa() {
     <div
       className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '')}
       ref={masaRef}
-      style={{ '--el-kayma': EL_YUKSEKLIKLERI[elYuksekligi] } as CSSProperties}
+      style={{ '--el-kayma': EL_YUKSEKLIKLERI[elYuksekligi], '--kart-olcek': KART_BOYUTLARI[kartBoyutu] } as CSSProperties}
       // Oyunda sağ tık menüsü yok (sürüklemeyi bölüyordu).
       onContextMenu={e => e.preventDefault()}
       onPointerDown={() => {
@@ -1113,6 +1121,9 @@ export function Masa() {
         <div className="test-panel gorunus-panel">
           <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>
             El yüksekliği <span className="test-deger">{elYuksekligi}</span>
+          </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(KART_BOYUTLARI, kartBoyutu, setKartBoyutu)}>
+            Kart boyutu <span className="test-deger">{kartBoyutu}</span>
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(YIGIN_ZEMINLERI, yiginZemini, setYiginZemini)}>
             Yığın zemini <span className="test-deger">{yiginZemini}</span>

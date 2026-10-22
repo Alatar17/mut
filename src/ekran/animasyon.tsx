@@ -5,6 +5,7 @@ import { createContext, useContext, useLayoutEffect, useRef } from 'react'
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import type { Durum } from '../oyun/motor'
 import { Kart } from './Kart'
+import { kartEni } from './boyut'
 import { SAHNE_EN } from './Sahne'
 
 export const kartKimligi = (k: KartTipi) => `${k.renk}-${k.deger}`
@@ -53,7 +54,7 @@ export interface Konum { x: number; y: number; aci: number; en: number }
 
 // 0 = ben (alt), 1 = sağdaki, 2 = soldaki. Yan oturanların kartları ve yığınları yan döner (bomba yığını dönmez).
 const yerinAcisi = (yer: string) => (yer.startsWith('bomba') ? 0 : yer.endsWith(':1') ? -90 : yer.endsWith(':2') ? 90 : 0)
-const yerinKartEni = (yer: string) => (yer === 'avuc:0' ? 60 : yer === 'deste' ? 42 : yer.startsWith('bomba') ? BOMBA_KART_EN : 56)
+const yerinKartEni = (yer: string) => kartEni(yer === 'avuc:0' ? 60 : yer === 'deste' ? 42 : yer.startsWith('bomba') ? BOMBA_KART_EN : 56)
 export const BOMBA_KART_EN = 44
 
 export function konumOlc(masa: HTMLElement, id: string, yer: string): Konum {

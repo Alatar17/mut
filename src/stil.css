@@ -13,7 +13,11 @@ html, body, #kok {
 button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; }
 
 /* ---- Sahne ---- */
-.sahne-dis { position: fixed; inset: 0; }
+/* Kamera deliği / çentik payı kadar içeride (tam ekranda masa deliğin altına girmesin). */
+.sahne-dis {
+  position: fixed;
+  inset: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
+}
 .sahne { position: absolute; left: 50%; top: 50%; transform-origin: center; }
 .cevir-uyari {
   position: absolute; inset: 0; display: grid; place-items: center;
@@ -137,7 +141,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 /* ---- Ben ---- */
 .benim-ceza { position: absolute; top: 302px; left: 194px; }
 .benim-avuc {
-  position: absolute; bottom: -10px; left: calc(50% + 30px); transform: translateX(-50%);
+  position: absolute; bottom: calc(-10px + var(--el-kayma, 0px)); left: calc(50% + 30px); transform: translateX(-50%);
   display: flex; align-items: flex-end;
 }
 .avuc-kart { transform-origin: 50% 100%; touch-action: none; cursor: grab; transition: transform 0.18s; }
@@ -173,7 +177,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 }
 /* Blok penceresi: süre çubuğu (soldan sağa erir) + Kabul düğmesi, avucun üstünde */
 .blok-penceresi {
-  position: absolute; left: 50%; bottom: 96px; transform: translateX(-50%); z-index: 16;
+  position: absolute; left: 50%; bottom: calc(96px + var(--el-kayma, 0px)); transform: translateX(-50%); z-index: 16;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
 }
 .blok-sure {
@@ -232,7 +236,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .blok-sure.bitiyor { animation-name: blok-sure, sure-kirmizi; }
 @keyframes sure-kirmizi { 0%, 65% { background: var(--vurgu); } 70%, 100% { background: var(--sure-bitiyor); } }
 .uzakta {
-  position: absolute; left: 50%; bottom: 130px; transform: translateX(-50%); z-index: 16;
+  position: absolute; left: 50%; bottom: calc(130px + var(--el-kayma, 0px)); transform: translateX(-50%); z-index: 16;
   padding: 5px 12px; border-radius: 14px; font-size: 13px; font-weight: 700; white-space: nowrap;
   background: var(--panel); color: var(--yazi); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }

@@ -196,8 +196,40 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .konusma { left: 14px; bottom: 14px; }
 
 .el-tur {
-  position: absolute; right: 14px; top: 20px;
+  position: absolute; right: 66px; top: 20px;
   display: flex; gap: 12px; font-size: 14px; font-weight: 700; color: var(--yazi-soluk);
+}
+/* "3/10": dokununca el sayısı değişir. */
+.el-sayaci { padding: 0 6px; border-radius: 8px; font: inherit; color: inherit; background: var(--panel); }
+
+/* Oyun menüsü (☰, sağ üst): şimdilik sadece "Oyunu bitir". */
+.menu-dugme { right: 12px; top: 12px; z-index: 10; }
+.menu-dugme.acik { background: var(--vurgu); color: var(--rozet); }
+.oyun-menu {
+  position: absolute; right: 12px; top: 60px; z-index: 10; width: 220px; padding: 6px;
+  display: flex; flex-direction: column; gap: 4px; border-radius: 12px;
+  background: var(--masa-dis); box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+.oyun-menu .test-satir:disabled { opacity: 0.4; }
+.menu-soru { padding: 8px; font-size: 13px; }
+.menu-secenekler { display: flex; gap: 4px; }
+.menu-secenekler .test-satir { flex: 1; justify-content: center; background: var(--panel); }
+.menu-secenekler .menu-onay { background: var(--vurgu); color: var(--rozet); font-weight: 700; }
+
+/* Hamle süresi: elle oynanan rakibin isim etiketinde azalan halka; uzaktaysam avucun üstünde not. */
+@property --kalan { syntax: '<angle>'; inherits: false; initial-value: 360deg; }
+.rakip-ad.sure-uyari::after {
+  content: ""; position: absolute; inset: -5px; padding: 3px; border-radius: 17px; pointer-events: none;
+  background: conic-gradient(var(--yazi) var(--kalan), transparent 0);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: hamle-halka 10s linear forwards;
+}
+@keyframes hamle-halka { to { --kalan: 0deg; } }
+.uzakta {
+  position: absolute; left: 50%; bottom: 130px; transform: translateX(-50%); z-index: 16;
+  padding: 5px 12px; border-radius: 14px; font-size: 13px; font-weight: 700; white-space: nowrap;
+  background: var(--panel); color: var(--yazi); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 .test-dugme {
@@ -241,6 +273,16 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .kagit-dugme {
   display: block; margin: 12px auto 0; padding: 6px 18px; border-radius: 4px;
   border: 2px solid var(--kagit-yazi); color: var(--kagit-yazi); font: inherit; font-weight: 700;
+}
+.kagit-dugme:disabled { opacity: 0.3; }
+.kagit-dugmeler { display: flex; justify-content: center; gap: 10px; margin-top: 12px; }
+.kagit-dugmeler .kagit-dugme { margin: 0; }
+/* "Kaç el?" penceresi: puan kağıdı görünümünde. */
+.el-penceresi { min-width: 300px; }
+.el-baslik { text-align: center; font-size: 20px; font-weight: 800; }
+.el-yazi {
+  width: 90px; padding: 6px 8px; border-radius: 4px; border: 2px solid var(--kagit-cizgi);
+  background: transparent; color: var(--kagit-yazi); font: inherit; text-align: center;
 }
 .anahtar { position: relative; flex: none; width: 30px; height: 16px; border-radius: 8px; background: var(--panel); }
 .anahtar::after {

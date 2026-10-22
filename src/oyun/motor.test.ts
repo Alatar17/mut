@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { kart, type Deger, type Kart } from './kart'
-import { acilisKurallari, gecerliHamleler, hamleYap, siradakiOyuncu, valeCarpani, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
+import { acilisKurallari, elSayisiAyarla, gecerliHamleler, hamleYap, oyunuBitir, siradakiOyuncu, sonrakiEl, valeCarpani, yeniDeste, yeniOyun, type Durum, type Hamle } from './motor'
 
 // Kartı kısaca yazmak için: k(5) = 5 maça. Renk sadece kartları ayırt etmek için.
 const k = (deger: number, renk: Kart['renk'] = 'maca') => kart(deger as Deger, renk)
@@ -653,5 +653,38 @@ describe('bomba eli (10)', () => {
     expect(son.mut).toEqual([])
     expect(son.oyuncular[2].ceza.slice(-3)).toEqual([k(13), k(10, 'kupa'), k(10)])
     expect(son.patlama?.sahip).toBe(2)
+  })
+})
+
+describe('el sayısı ve oyunu bitirmek', () => {
+  // 3 elli bir oyunun 2. elinin sonu.
+  const elSonu = () => {
+    const d = yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 3, tohum: 1 })
+    d.el = 2
+    d.puanKagidi = [[10, 20, 30], [5, 5, 5]]
+    d.asama = 'elSonu'
+    return d
+  }
+  it('el arasında son ele inilirse oyun biter, artırılırsa geri açılır', () => {
+    const bitti = elSayisiAyarla(elSonu(), 2)
+    expect(bitti.asama).toBe('oyunSonu')
+    const birDaha = elSayisiAyarla(bitti, 4)
+    expect(birDaha.asama).toBe('elSonu')
+    expect(sonrakiEl(birDaha).el).toBe(3)
+  })
+  it('oynanan elden aza inilemez', () => {
+    expect(elSayisiAyarla(elSonu(), 1).toplamEl).toBe(2)
+  })
+  it('oyun ortasında bitirince yarım el sayılmaz', () => {
+    const d = yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 10, tohum: 1 })
+    d.el = 3
+    d.puanKagidi = [[10, 20, 30], [5, 5, 5]]
+    const son = oyunuBitir(d)
+    expect(son.asama).toBe('oyunSonu')
+    expect(son.el).toBe(2)
+    expect(son.toplamEl).toBe(2)
+    expect(son.puanKagidi.length).toBe(2)
+    // Bir el daha eklenirse 3. el baştan oynanır.
+    expect(sonrakiEl(elSayisiAyarla(son, 3)).el).toBe(3)
   })
 })

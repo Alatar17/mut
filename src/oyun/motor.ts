@@ -431,5 +431,25 @@ export function sonrakiEl(eski: Durum): Durum {
   return d
 }
 
+// El sayısı oyun içinde değişebilir ("bir el daha", "bu son el"); oynanan elden az olamaz.
+// El arasında son ele inilirse oyun biter; oyun bittikten sonra artırılırsa sonraki el oynanabilir.
+export function elSayisiAyarla(eski: Durum, toplamEl: number): Durum {
+  const d = structuredClone(eski)
+  d.toplamEl = Math.max(toplamEl, d.el)
+  if (d.asama === 'elSonu' && d.el >= d.toplamEl) d.asama = 'oyunSonu'
+  else if (d.asama === 'oyunSonu' && d.el < d.toplamEl) d.asama = 'elSonu'
+  return d
+}
+
+// Oyunu bitir: yarım kalan el sayılmaz, oyun biten ellerle kapanır (masadaki kartlar puana yazılmaz).
+export function oyunuBitir(eski: Durum): Durum {
+  const d = structuredClone(eski)
+  d.el = d.puanKagidi.length
+  d.toplamEl = d.el
+  d.asama = 'oyunSonu'
+  d.blok = undefined
+  return d
+}
+
 export const toplamPuanlar = (d: Durum) =>
   d.oyuncular.map((_, i) => d.puanKagidi.reduce((t, satir) => t + satir[i], 0))

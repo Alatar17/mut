@@ -47,9 +47,6 @@ const PUAN_YERLERI = { Yanında: 'puan-yaninda', Kenarda: 'puan-kenarda', Rozet:
 type PuanYeri = keyof typeof PUAN_YERLERI
 // Deste penceresinde kendi avucumdaki kartlar.
 const KARTLARIM: Record<KartlarimGorunusu, true> = { Soluk: true, Çerçeveli: true }
-// Deste penceresi açıkken masa kararsın mı.
-const DESTE_ARKASI = { Karartılmış: true, Karartmasız: false }
-type DesteArkasi = keyof typeof DESTE_ARKASI
 const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: true }
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
@@ -440,7 +437,6 @@ export function Masa() {
   const [cezaDizilisi, setCezaDizilisi] = useKayitli<CezaDizilisi>('cezaDizilisi', 'Varsayılan')
   const [puanYeri, setPuanYeri] = useKayitli<PuanYeri>('puanYeri', 'Yanında')
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
-  const [desteArkasi, setDesteArkasi] = useKayitli<DesteArkasi>('desteArkasi', 'Karartılmış')
   // Deste penceresi ayarı ("Kaç el?" penceresinde) ve açık olup olmadığı.
   const [destePenceresi, setDestePenceresi] = useKayitli('destePenceresi', true)
   const [desteAcik, setDesteAcik] = useState(false)
@@ -1116,9 +1112,6 @@ export function Masa() {
           <button className="test-satir" onClick={() => sonrakiSecenek(KARTLARIM, kartlarim, setKartlarim)}>
             Destede kartlarım <span className="test-deger">{kartlarim}</span>
           </button>
-          <button className="test-satir" onClick={() => sonrakiSecenek(DESTE_ARKASI, desteArkasi, setDesteArkasi)}>
-            Deste arkası <span className="test-deger">{desteArkasi}</span>
-          </button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
@@ -1145,7 +1138,7 @@ export function Masa() {
         </div>
       )}
       <Deste kalan={gorunen.deste.length} ac={destePenceresi ? () => setDesteAcik(true) : undefined} />
-      {desteAcik && destePenceresi && <DestePenceresi d={gorunen} kartlarim={kartlarim} karart={DESTE_ARKASI[desteArkasi] ?? true} kapat={() => setDesteAcik(false)} />}
+      {desteAcik && destePenceresi && <DestePenceresi d={gorunen} kartlarim={kartlarim} kapat={() => setDesteAcik(false)} />}
 
       {puanlarAcik && (
         <PuanPenceresi

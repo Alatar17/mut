@@ -13,14 +13,14 @@ const RENKLER: Renk[] = ['maca', 'kupa', 'karo', 'sinek']
 const EN = 44
 const ADIM = 26
 
-// karart: pencere açıkken masa kararır (Görünüş menüsü).
-export function DestePenceresi({ d, kartlarim, karart, kapat }: { d: Durum; kartlarim: KartlarimGorunusu; karart: boolean; kapat: () => void }) {
+// Masa kararmaz (kullanıcı kararı; karartmalı hali denendi).
+export function DestePenceresi({ d, kartlarim, kapat }: { d: Durum; kartlarim: KartlarimGorunusu; kapat: () => void }) {
   const gorulen = new Set([...d.orta, ...d.mut, ...(d.bomba?.kartlar ?? []), ...d.oyuncular.flatMap(o => o.ceza)].map(kartKimligi))
   const bende = new Set(d.oyuncular[0].avuc.map(kartKimligi))
   // Sütundaki sıra: bilinmeyenler üstte, sonra benimkiler, en altta görülenler.
   const sira = (k: KartTipi) => (gorulen.has(kartKimligi(k)) ? 2 : bende.has(kartKimligi(k)) ? 1 : 0)
   return (
-    <div className={'pencere-arka' + (karart ? '' : ' karartmasiz')} onClick={kapat}>
+    <div className="pencere-arka karartmasiz" onClick={kapat}>
       <div className="deste-penceresi" onClick={kapat}>
         {Array.from({ length: 13 }, (_, i) => {
           const kartlar = RENKLER.map(r => kart((i + 1) as Deger, r)).sort((a, b) => sira(a) - sira(b))

@@ -244,7 +244,10 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .test-dugme.acik { background: var(--vurgu); color: var(--rozet); }
 .test-dugme { right: 82px; }
 .dene-dugme { right: 140px; }
+.duraklat-dugme { right: 206px; display: grid; place-items: center; height: 28px; }
 .test-panel.dene-panel { right: 140px; width: 340px; }
+.gorunus-dugme { left: 66px; right: auto; }
+.test-panel.gorunus-panel { left: 66px; right: auto; width: 300px; grid-template-columns: 1fr; }
 .test-arka { position: absolute; inset: 0; z-index: 9; }
 .test-panel {
   position: absolute; right: 82px; bottom: 62px; z-index: 10; width: 480px; padding: 6px;
@@ -305,3 +308,19 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   padding: 8px 12px; border-radius: 12px; background: var(--bakis-arka);
 }
 .bakis-rozet { background: var(--vurgu); color: var(--rozet); }
+
+/* Yığın zemini (Görünüş menüsü): ceza ve orta yığının altında kesikli çizgi / çerçeve. Kartlardan önce çizilir. */
+.masa:not(.zemin-yok) :is(.ceza-yigini, .orta-yigin) > .yigin-govde::before,
+.masa:not(.zemin-yok) .yan-yigin > .yigin-govde::before {
+  content: ''; position: absolute; left: -6px; top: -6px; border-radius: 10px;
+  width: calc(var(--zemin-en) + 12px); height: calc(var(--zemin-boy) + 12px); box-sizing: border-box;
+}
+.zemin-cerceve :is(.ceza-yigini, .orta-yigin, .yan-yigin) > .yigin-govde::before { border: 1.5px solid var(--yigin-cerceve); }
+.zemin-kesikli :is(.ceza-yigini, .orta-yigin, .yan-yigin) > .yigin-govde::before { border: 2px dashed var(--masa-cizgi); }
+.masa:not(.zemin-yok) .bos-yer { border-color: transparent; }
+
+/* Mut zemini (Görünüş menüsü): koyu kutu (ilk) / kesikli / çerçeve / yuva / yok. */
+.mut-kesikli .mut-alani { background: none; border: 2px dashed var(--masa-cizgi); }
+.mut-cerceve .mut-alani { background: none; border: 1.5px solid var(--yigin-cerceve); }
+.mut-yuva .mut-alani { background: var(--yuva-zemin); box-shadow: inset 0 3px 7px var(--yuva-golge), 0 1px 0 var(--yuva-isik); }
+.mut-yok .mut-alani { background: none; }

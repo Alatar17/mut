@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { kartBoyu, yiginPuani, type Kart as KartTipi } from '../oyun/kart'
 import { BOMBA_KART_EN, kartKimligi, useGizliKartlar } from './animasyon'
 import { Kart } from './Kart'
@@ -7,6 +7,10 @@ const KART_EN = 56
 
 // Altta kalan kartların kalınlığı: her 3 kart için 1 piksellik kenar, en fazla 8.
 const kalinlik = (adet: number) => Math.min(8, Math.ceil(adet / 3))
+
+// Yığın zemininin (Görünüş menüsü) saracağı alan: görünen kartlar + alttaki kalınlık; stil.css her yandan eşit pay bırakır.
+const zeminOlcusu = (en: number, alttaki: number) =>
+  ({ '--zemin-en': `${en + kalinlik(alttaki)}px`, '--zemin-boy': `${kartBoyu(KART_EN) + kalinlik(alttaki)}px` }) as CSSProperties
 
 function Kalinlik({ adet, genislik }: { adet: number; genislik: number }) {
   return (
@@ -43,7 +47,7 @@ export function OrtaYigin({ kartlar, carpan }: { kartlar: KartTipi[]; carpan?: n
   const alttaKalan = kartlar.length - ust.length
   return (
     <div className="orta-yigin" data-hedef="orta" data-yer="orta" data-bak="orta">
-      <div className="yigin-govde" style={{ width: KART_EN + 28, height: kartBoyu(KART_EN) }}>
+      <div className="yigin-govde" style={{ width: KART_EN + 28, height: kartBoyu(KART_EN), ...zeminOlcusu(KART_EN + Math.max(0, ust.length - 1) * 14, alttaKalan) }}>
         {kartlar.length === 0 && <div className="bos-yer" style={{ width: KART_EN, height: kartBoyu(KART_EN) }} />}
         {alttaKalan > 0 && <Kalinlik adet={alttaKalan} genislik={KART_EN} />}
         {ust.map((k, i) => (
@@ -99,7 +103,7 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik }
   // Kilitli dörtlü (6.9.1): aynı sayıdan dört kart art arda gelince en üstteki ters çizilir.
   const kilitli = (i: number) => i >= 3 && kartlar.slice(i - 3, i).every(k => k.deger === kartlar[i].deger)
   const govde = (
-    <div className="yigin-govde" style={{ width: en, height: boy }} data-yer={hedef}>
+    <div className="yigin-govde" style={{ width: en, height: boy, ...zeminOlcusu(KART_EN + Math.max(0, gorunen - 1) * aralik, kartlar.length - gorunen) }} data-yer={hedef}>
       {kartlar.length > 0 ? (
         <>
           <Kalinlik adet={kartlar.length - gorunen} genislik={KART_EN} />

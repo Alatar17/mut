@@ -33,6 +33,12 @@ type BotHizi = keyof typeof BOT_HIZLARI
 const CEZA_ARALIKLARI = { '8 px': 8, '10 px': 10, '12 px': 12 }
 type CezaAraligi = keyof typeof CEZA_ARALIKLARI
 // Yığına bakış (basılı tutunca): ortada büyük şerit ya da yığının yerinde. Oyuncunun ayarı (☰ menüsü).
+// Ceza ve orta yığının altındaki zemin (masa sınıfı, stil.css). Kullanıcı Görünüş menüsünde seçecek.
+const YIGIN_ZEMINLERI = { Kesikli: 'zemin-kesikli', Çerçeve: 'zemin-cerceve', Yok: 'zemin-yok' }
+type YiginZemini = keyof typeof YIGIN_ZEMINLERI
+// Mut kutusunun zemini; ilk seçenek yuva (kullanıcı kararı, şimdilik). Kullanıcı Görünüş menüsünde seçecek.
+const MUT_ZEMINLERI = { Yuva: 'mut-yuva', 'Koyu kutu': 'mut-kutu', Kesikli: 'mut-kesikli', Çerçeve: 'mut-cerceve', Yok: 'mut-yok' }
+type MutZemini = keyof typeof MUT_ZEMINLERI
 const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: true }
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
@@ -394,9 +400,9 @@ export function Masa() {
   const [ben, sagdaki, soldaki] = gorunen.oyuncular
   const elimdeIkiVar = ben.avuc.some(k => k.deger === 2)
   const [puanlarAcik, setPuanlarAcik] = useState(false)
-  // Menüler: sağ alttaki geliştirme menüleri Test (ayarlar) ve Dene (hazır kurulmuş eller); sağ üstte oyun menüsü
+  // Menüler: geliştirme menüleri Test (ayarlar), Dene (hazır kurulmuş eller) ve sol alttaki Görünüş (görsel seçenekler); sağ üstte oyun menüsü
   // (☰) ve onun "Oyunu bitir" onayı. Aynı anda biri açık.
-  const [menu, setMenu] = useState<'test' | 'dene' | 'oyun' | 'bitir' | null>(null)
+  const [menu, setMenu] = useState<'test' | 'dene' | 'gorunus' | 'oyun' | 'bitir' | null>(null)
   // "Kaç el?" penceresi: yeni oyun için ya da oyun ortasında el sayısını değiştirmek için.
   const [elPenceresi, setElPenceresi] = useState<'yeni' | 'degistir' | null>(null)
   // Animasyon sürerken istenen el sayısı / oyunu bitirme: hamle bitince uygulanır (bitir).
@@ -413,6 +419,10 @@ export function Masa() {
   const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi', 'Orta')
   const [duraklama, setDuraklama] = useKayitli<Duraklama>('duraklama', 'Kısa')
   const [hamleSuresi, setHamleSuresi] = useKayitli<HamleSuresi>('hamleSuresi', '30 sn')
+  const [yiginZeminiKayit, setYiginZemini] = useKayitli<YiginZemini>('yiginZemini', 'Kesikli')
+  // Kaldırılan seçenekler kayıtlıysa varsayılana döner.
+  const yiginZemini: YiginZemini = yiginZeminiKayit in YIGIN_ZEMINLERI ? yiginZeminiKayit : 'Kesikli'
+  const [mutZemini, setMutZemini] = useKayitli<MutZemini>('mutZemini', 'Yuva')
   const [bakisGorunusu, setBakisGorunusu] = useKayitli<BakisGorunusu>('bakisGorunusu', 'Ortada')
   const sure = HAMLE_SURELERI[hamleSuresi] ?? 0
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
@@ -755,12 +765,14 @@ export function Masa() {
   // bot oynar. Serbest elde hedef seçilirken biterse kartlar önerilen oyuncuya gider. Üst üste UZAKTA_SAYISI kez
   // biterse "uzakta" sayılırım: ekrana dokunana kadar benim yerime bot oynar.
   const [sureUyari, setSureUyari] = useState(false)
+  // Duraklat (geliştirme düğmesi, Dene'nin solunda): botlar oynamaz, hamle süresi işlemez; kendi kartlarımı oynayabilirim.
+  const [duraklatildi, setDuraklatildi] = useState(false)
   const [uzakta, setUzakta] = useState(false)
   const zamanAsimi = useRef(0)
   const elleSirada = d.asama === 'oyun' && !d.blok && (d.sira === 0 || !botlarOtomatik)
   useEffect(() => {
     setSureUyari(false)
-    if (!elleSirada || !sure || (d.sira === 0 && uzakta)) return
+    if (!elleSirada || !sure || duraklatildi || (d.sira === 0 && uzakta)) return
     const uyari = setTimeout(() => setSureUyari(true), sure - UYARI_SURESI)
     const bitis = setTimeout(() => {
       setSureUyari(false)
@@ -772,14 +784,14 @@ export function Masa() {
       clearTimeout(uyari)
       clearTimeout(bitis)
     }
-  }, [d, elleSirada, sure, uzakta])
+  }, [d, elleSirada, sure, uzakta, duraklatildi])
 
   // Botlar sırası gelince biraz bekleyip hamle yapar. Benim kartlarımı ben oynarım, uzaktaysam bot.
   useEffect(() => {
-    if (mesgul || d.asama !== 'oyun' || !(d.sira === 0 ? uzakta : botlarOtomatik)) return
+    if (mesgul || duraklatildi || d.asama !== 'oyun' || !(d.sira === 0 ? uzakta : botlarOtomatik)) return
     const zamanlayici = setTimeout(() => hamleOyna(akilliBotHamlesi(d), false), BOT_HIZLARI[botHizi])
     return () => clearTimeout(zamanlayici)
-  }, [d, mesgul, botlarOtomatik, botHizi, uzakta])
+  }, [d, mesgul, botlarOtomatik, botHizi, uzakta, duraklatildi])
 
   // Blok penceresi: hedef ben isem (ya da botları ben oynuyorsam) süre bitince kendiliğinden kabul edilir.
   // Bot hedefse ve botlar kendi oynuyorsa bot hemen karar verir (yukarıdaki bot hamlesi).
@@ -906,7 +918,7 @@ export function Masa() {
   return (
     <GizliKartlar.Provider value={gizli}>
     <div
-      className="masa"
+      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '')}
       ref={masaRef}
       // Oyunda sağ tık menüsü yok (sürüklemeyi bölüyordu).
       onContextMenu={e => e.preventDefault()}
@@ -1042,6 +1054,14 @@ export function Masa() {
         </svg>
       </button>
 
+      <button className={'test-dugme gorunus-dugme' + (menu === 'gorunus' ? ' acik' : '')} onClick={() => setMenu(menu === 'gorunus' ? null : 'gorunus')}>
+        Görünüş
+      </button>
+      <button className={'test-dugme duraklat-dugme' + (duraklatildi ? ' acik' : '')} aria-label={duraklatildi ? 'Devam' : 'Duraklat'} onClick={() => setDuraklatildi(!duraklatildi)}>
+        <svg viewBox="0 0 24 24" width="14" height="14">
+          <path d={duraklatildi ? 'M7 4l13 8-13 8z' : 'M6 4h4v16H6zM14 4h4v16h-4z'} fill="currentColor" />
+        </svg>
+      </button>
       <button className={'test-dugme dene-dugme' + (menu === 'dene' ? ' acik' : '')} onClick={() => setMenu(menu === 'dene' ? null : 'dene')}>
         Dene
       </button>
@@ -1057,6 +1077,22 @@ export function Masa() {
           ))}
         </div>
       )}
+      {menu === 'gorunus' && (
+        <div className="test-panel gorunus-panel">
+          <button className="test-satir" onClick={() => sonrakiSecenek(YIGIN_ZEMINLERI, yiginZemini, setYiginZemini)}>
+            Yığın zemini <span className="test-deger">{yiginZemini}</span>
+          </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(MUT_ZEMINLERI, mutZemini, setMutZemini)}>
+            Mut zemini <span className="test-deger">{mutZemini}</span>
+          </button>
+          <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
+          <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
+          <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
+          <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_ARALIKLARI, cezaAraligi, setCezaAraligi)}>
+            Ceza yığını aralığı <span className="test-deger">{cezaAraligi}</span>
+          </button>
+        </div>
+      )}
       {menu === 'test' && (
         <div className="test-panel">
           <TestSecenegi ad="Botlar kendi oynasın" acik={botlarOtomatik} degistir={setBotlarOtomatik} />
@@ -1068,12 +1104,6 @@ export function Masa() {
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(DURAKLAMALAR, duraklama, setDuraklama)}>
             Yakalamada duraklama <span className="test-deger">{duraklama}</span>
-          </button>
-          <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
-          <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
-          <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
-          <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_ARALIKLARI, cezaAraligi, setCezaAraligi)}>
-            Ceza yığını aralığı <span className="test-deger">{cezaAraligi}</span>
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(HAMLE_SURELERI, hamleSuresi, setHamleSuresi)}>
             Hamle süresi <span className="test-deger">{hamleSuresi}</span>

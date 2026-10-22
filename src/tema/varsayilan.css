@@ -22,6 +22,10 @@
   --kalkan: #6fb7ff;
   --sure-bitiyor: #e5484d;
   --bakis-arka: rgba(0, 0, 0, 0.6);
+  --yigin-cerceve: rgba(255, 255, 255, 0.25);
+  --yuva-zemin: rgba(0, 0, 0, 0.16);
+  --yuva-golge: rgba(0, 0, 0, 0.5);
+  --yuva-isik: rgba(255, 255, 255, 0.07);
 }
 
 :root {

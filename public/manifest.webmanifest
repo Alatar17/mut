@@ -5,8 +5,7 @@
   "lang": "tr",
   "start_url": "./",
   "scope": "./",
-  "display": "fullscreen",
-  "orientation": "landscape",
+  "display": "standalone",
   "background_color": "#0b2a1c",
   "theme_color": "#0b2a1c",
   "icons": [

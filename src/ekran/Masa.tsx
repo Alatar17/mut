@@ -444,6 +444,8 @@ export function Masa() {
   const elYuksekligi: ElYuksekligi = elYuksekligiKayit in EL_YUKSEKLIKLERI ? elYuksekligiKayit : '+10 px'
   // Deste penceresi ayarı ("Kaç el?" penceresinde) ve açık olup olmadığı.
   const [destePenceresi, setDestePenceresi] = useKayitli('destePenceresi', true)
+  // Geliştirici seçenekleri (☰ menüsü): kapalıyken Görünüş, Dene, Test ve duraklat gizlenir; ayarları çalışmaya devam eder.
+  const [gelistirici, setGelistirici] = useKayitli('gelistirici', false)
   const [desteAcik, setDesteAcik] = useState(false)
   const [mutZemini, setMutZemini] = useKayitli<MutZemini>('mutZemini', 'Yuva')
   const [bakisGorunusu, setBakisGorunusu] = useKayitli<BakisGorunusu>('bakisGorunusu', 'Ortada')
@@ -978,6 +980,8 @@ export function Masa() {
           <button className="test-satir" onClick={() => sonrakiSecenek(BAKIS_GORUNUSLERI, bakisGorunusu, setBakisGorunusu)}>
             Yığına bakış <span className="test-deger">{bakisGorunusu}</span>
           </button>
+          {/* Kapatınca duraklatma da kalkar: gizli düğmeyle oyun duraklı kalmasın. */}
+          <TestSecenegi ad="Geliştirici seçenekleri" acik={gelistirici} degistir={v => { setGelistirici(v); if (!v) setDuraklatildi(false) }} />
         </div>
       )}
       {menu === 'bitir' && (
@@ -1078,20 +1082,24 @@ export function Masa() {
         </svg>
       </button>
 
-      <button className={'test-dugme gorunus-dugme' + (menu === 'gorunus' ? ' acik' : '')} onClick={() => setMenu(menu === 'gorunus' ? null : 'gorunus')}>
-        Görünüş
-      </button>
-      <button className={'test-dugme duraklat-dugme' + (duraklatildi ? ' acik' : '')} aria-label={duraklatildi ? 'Devam' : 'Duraklat'} onClick={() => setDuraklatildi(!duraklatildi)}>
-        <svg viewBox="0 0 24 24" width="14" height="14">
-          <path d={duraklatildi ? 'M7 4l13 8-13 8z' : 'M6 4h4v16H6zM14 4h4v16h-4z'} fill="currentColor" />
-        </svg>
-      </button>
-      <button className={'test-dugme dene-dugme' + (menu === 'dene' ? ' acik' : '')} onClick={() => setMenu(menu === 'dene' ? null : 'dene')}>
-        Dene
-      </button>
-      <button className={'test-dugme' + (menu === 'test' ? ' acik' : '')} onClick={() => setMenu(menu === 'test' ? null : 'test')}>
-        Test
-      </button>
+      {gelistirici && (
+        <>
+          <button className={'test-dugme gorunus-dugme' + (menu === 'gorunus' ? ' acik' : '')} onClick={() => setMenu(menu === 'gorunus' ? null : 'gorunus')}>
+            Görünüş
+          </button>
+          <button className={'test-dugme duraklat-dugme' + (duraklatildi ? ' acik' : '')} aria-label={duraklatildi ? 'Devam' : 'Duraklat'} onClick={() => setDuraklatildi(!duraklatildi)}>
+            <svg viewBox="0 0 24 24" width="14" height="14">
+              <path d={duraklatildi ? 'M7 4l13 8-13 8z' : 'M6 4h4v16H6zM14 4h4v16h-4z'} fill="currentColor" />
+            </svg>
+          </button>
+          <button className={'test-dugme dene-dugme' + (menu === 'dene' ? ' acik' : '')} onClick={() => setMenu(menu === 'dene' ? null : 'dene')}>
+            Dene
+          </button>
+          <button className={'test-dugme' + (menu === 'test' ? ' acik' : '')} onClick={() => setMenu(menu === 'test' ? null : 'test')}>
+            Test
+          </button>
+        </>
+      )}
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">

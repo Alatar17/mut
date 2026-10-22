@@ -48,8 +48,8 @@ type PuanYeri = keyof typeof PUAN_YERLERI
 // Deste penceresinde kendi avucumdaki kartlar.
 const KARTLARIM: Record<KartlarimGorunusu, true> = { Soluk: true, Çerçeveli: true }
 const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: true }
-// Avucun yukarı kayması (masa değişkeni --el-kayma, stil.css). Kullanıcı Görünüş menüsünde seçecek.
-const EL_YUKSEKLIKLERI = { Şimdiki: '0px', '+10 px': '10px', '+20 px': '20px' }
+// Avucun yukarı kayması (masa değişkeni --el-kayma, stil.css). Varsayılan +10 px (kullanıcı kararı, 2026-10-22).
+const EL_YUKSEKLIKLERI = { Eski: '0px', '+10 px': '10px', '+20 px': '20px' }
 type ElYuksekligi = keyof typeof EL_YUKSEKLIKLERI
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
@@ -440,8 +440,8 @@ export function Masa() {
   const [cezaDizilisi, setCezaDizilisi] = useKayitli<CezaDizilisi>('cezaDizilisi', 'Varsayılan')
   const [puanYeri, setPuanYeri] = useKayitli<PuanYeri>('puanYeri', 'Yanında')
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
-  const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', 'Şimdiki')
-  const elYuksekligi: ElYuksekligi = elYuksekligiKayit in EL_YUKSEKLIKLERI ? elYuksekligiKayit : 'Şimdiki'
+  const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', '+10 px')
+  const elYuksekligi: ElYuksekligi = elYuksekligiKayit in EL_YUKSEKLIKLERI ? elYuksekligiKayit : '+10 px'
   // Deste penceresi ayarı ("Kaç el?" penceresinde) ve açık olup olmadığı.
   const [destePenceresi, setDestePenceresi] = useKayitli('destePenceresi', true)
   const [desteAcik, setDesteAcik] = useState(false)

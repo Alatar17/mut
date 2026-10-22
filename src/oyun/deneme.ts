@@ -212,3 +212,4 @@ export const bakisDenemesi = (d: Durum) => {
   const sirali = Array.from({ length: 52 }, (_, i) => hepsi[(i * 7) % 52])
   return denemeKur(d, { avucum: [], orta: sirali.slice(30, 36), cezalar: [sirali.slice(26, 30), sirali.slice(0, 20), sirali.slice(20, 26)] })
 }
+

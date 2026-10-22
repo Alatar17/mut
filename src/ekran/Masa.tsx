@@ -7,7 +7,7 @@ import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBotDenemes
 import { Kart } from './Kart'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, patlamaOncesi, patlamaOrtada, UcanKart, type Konum, type Ucus } from './animasyon'
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
-import { BombaYigini, CezaYigini, Deste, OrtaYigin } from './Yiginlar'
+import { BombaYigini, CezaYigini, Deste, OrtaYigin, type CezaDizilisi } from './Yiginlar'
 import { useYiginBakisi, YiginYelpazesi, type BakisGorunusu } from './YiginBakisi'
 import { puanKagidiniKaydet } from './puanResmi'
 
@@ -39,6 +39,8 @@ type YiginZemini = keyof typeof YIGIN_ZEMINLERI
 // Mut kutusunun zemini; ilk seçenek yuva (kullanıcı kararı, şimdilik). Kullanıcı Görünüş menüsünde seçecek.
 const MUT_ZEMINLERI = { Yuva: 'mut-yuva', 'Koyu kutu': 'mut-kutu', Kesikli: 'mut-kesikli', Çerçeve: 'mut-cerceve', Yok: 'mut-yok' }
 type MutZemini = keyof typeof MUT_ZEMINLERI
+// Ceza yığınındaki kartların dizilişi (Yiginlar). Kullanıcı Görünüş menüsünde seçecek.
+const CEZA_DIZILISLERI: Record<CezaDizilisi, true> = { Varsayılan: true, Dağınık: true }
 const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: true }
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
@@ -136,7 +138,7 @@ function rakipKartDuzeni(sira: number, adet: number, taraf: 'sol' | 'sag', duz: 
 // sec: Kız ile çekmede ters kartlardan birine dokunmak.
 // secilebilir: serbest elde yakalanan kartların gönderilebileceği oyuncu (isim etiketi hafifçe parlar).
 // sureUyari: hamle süresinin son saniyeleri, isim etiketinin çevresinde azalan halka.
-function Rakip({ oyuncu, koltuk, kalkik, birak, sec, sirada, secilebilir, sureUyari, taraf, carpan, kapali, duz, kirpik, cezaAralik }: { oyuncu: Oyuncu; koltuk: number; kalkik: string | null; birak: (kart: number, hedef: string) => Birakma; sec: (kart: number) => void; sirada: boolean; secilebilir: boolean; sureUyari: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean; cezaAralik: number }) {
+function Rakip({ oyuncu, koltuk, kalkik, birak, sec, sirada, secilebilir, sureUyari, taraf, carpan, kapali, duz, kirpik, cezaAralik, dizilis }: { oyuncu: Oyuncu; koltuk: number; kalkik: string | null; birak: (kart: number, hedef: string) => Birakma; sec: (kart: number) => void; sirada: boolean; secilebilir: boolean; sureUyari: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean; cezaAralik: number; dizilis: CezaDizilisi }) {
   const avucBoyu = RAKIP_KART_EN + (oyuncu.avuc.length - 1) * (RAKIP_KART_EN - RAKIP_KART_BINME)
   return (
     <>
@@ -155,7 +157,7 @@ function Rakip({ oyuncu, koltuk, kalkik, birak, sec, sirada, secilebilir, sureUy
         ))}
       </div>
       <div className={`rakip-ceza ${taraf}`}>
-        <CezaYigini kartlar={oyuncu.ceza} carpan={carpan} puanTarafi={taraf === 'sol' ? 'sag' : 'sol'} donuk={taraf} hedef={`ceza:${koltuk}`} aralik={cezaAralik} />
+        <CezaYigini kartlar={oyuncu.ceza} carpan={carpan} puanTarafi={taraf === 'sol' ? 'sag' : 'sol'} donuk={taraf} hedef={`ceza:${koltuk}`} aralik={cezaAralik} dizilis={dizilis} />
       </div>
     </>
   )
@@ -422,6 +424,7 @@ export function Masa() {
   const [yiginZeminiKayit, setYiginZemini] = useKayitli<YiginZemini>('yiginZemini', 'Kesikli')
   // Kaldırılan seçenekler kayıtlıysa varsayılana döner.
   const yiginZemini: YiginZemini = yiginZeminiKayit in YIGIN_ZEMINLERI ? yiginZeminiKayit : 'Kesikli'
+  const [cezaDizilisi, setCezaDizilisi] = useKayitli<CezaDizilisi>('cezaDizilisi', 'Varsayılan')
   const [mutZemini, setMutZemini] = useKayitli<MutZemini>('mutZemini', 'Yuva')
   const [bakisGorunusu, setBakisGorunusu] = useKayitli<BakisGorunusu>('bakisGorunusu', 'Ortada')
   const sure = HAMLE_SURELERI[hamleSuresi] ?? 0
@@ -971,11 +974,11 @@ export function Masa() {
       <OrtaYigin kartlar={gorunen.orta} carpan={d.bombaEli ? puanCarpani : undefined} />
       {gorunen.bomba && <BombaYigini kartlar={gorunen.bomba.kartlar} sahip={gorunen.bomba.sahip} cikan={cikanOnlar(gorunen)} />}
 
-      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={botKartlariKapali || ters === 2} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} />
-      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={botKartlariKapali || ters === 1} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} />
+      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={botKartlariKapali || ters === 2} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} dizilis={cezaDizilisi} />
+      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={botKartlariKapali || ters === 1} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} dizilis={cezaDizilisi} />
 
       <div className="benim-ceza">
-        <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} />
+        <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} dizilis={cezaDizilisi} />
       </div>
 
       <div className="benim-avuc" data-yer="avuc:0" data-hedef="avuc:0">
@@ -1084,6 +1087,9 @@ export function Masa() {
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(MUT_ZEMINLERI, mutZemini, setMutZemini)}>
             Mut zemini <span className="test-deger">{mutZemini}</span>
+          </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_DIZILISLERI, cezaDizilisi, setCezaDizilisi)}>
+            Ceza dizilişi <span className="test-deger">{cezaDizilisi}</span>
           </button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />

@@ -74,8 +74,19 @@ interface CezaProps {
   donuk?: 'sol' | 'sag'
   // Kart bırakılabilen yer işareti (bkz. Masa).
   hedef?: string
-  // Üstteki kartlar arası kaydırma (piksel); Test menüsünden seçiliyor.
+  // Üstteki kartlar arası kaydırma (piksel); Görünüş menüsünden seçiliyor.
   aralik: number
+  dizilis: CezaDizilisi
+}
+
+// Ceza dizilişi (Görünüş menüsü): Varsayılan = son 3 kart kaydırılmış; Dağınık = kartlar hafif yamuk (kahvedeki gibi).
+export type CezaDizilisi = 'Varsayılan' | 'Dağınık'
+
+// Dağınık dizilişte kartın sabit küçük açısı ve kayması (kart kimliğinden; her çizimde aynı).
+const RENK_SIRASI = { maca: 0, kupa: 1, karo: 2, sinek: 3 }
+function daginik(k: KartTipi) {
+  const t = k.deger * 7 + RENK_SIRASI[k.renk] * 13
+  return `translate(${(t % 5) - 2}px, ${((t >> 1) % 5) - 2}px) rotate(${((t % 9) - 4) * 0.9}deg)`
 }
 
 // Puan değişince kısa bir an büyüyüp parlar; kimin puan yediği fark edilsin.
@@ -93,7 +104,7 @@ function Puan({ deger, bos }: { deger: number; bos: boolean }) {
 const CIZILEN_UST_KART = 5
 
 // Orta yığın gibi son 3 kart kaydırılmış görünür (daha dar); alttakilerin köşe sayısı görünsün diye sola kayar (stil.css).
-export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik }: CezaProps) {
+export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, dizilis }: CezaProps) {
   const gizliler = useGizliKartlar()
   // Puan, yerine varmış kartlardan hesaplanır (uçan kart inince artar).
   const varanlar = kartlar.filter(k => !gizliler.has(kartKimligi(k)))
@@ -110,7 +121,7 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik }
           {kartlar.slice(-CIZILEN_UST_KART).map((k, i, ust) => {
             const yukaridan = ust.length - 1 - i
             return (
-              <div key={kartKimligi(k)} className={'yigin-kart' + (yukaridan > 0 ? ' alt' : '')} style={{ left: Math.max(0, gorunen - 1 - yukaridan) * aralik }}>
+              <div key={kartKimligi(k)} className={'yigin-kart' + (yukaridan > 0 ? ' alt' : '')} style={{ left: Math.max(0, gorunen - 1 - yukaridan) * aralik, transform: dizilis === 'Dağınık' ? daginik(k) : undefined }}>
                 <Kart kart={k} genislik={KART_EN} kapali={kilitli(kartlar.length - 1 - yukaridan)} />
               </div>
             )

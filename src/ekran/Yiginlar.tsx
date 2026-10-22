@@ -132,17 +132,24 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, 
       )}
     </div>
   )
+  // Puan yeri (Görünüş menüsü, masa sınıfı puan-*): yanında = akıştaki puan; kenarda / rozet = yığının üstündeki
+  // puan gösterilir, akıştaki görünmez ama yer tutar (yerleşim kaymasın).
+  const puan = <Puan deger={yiginPuani(varanlar) * carpan} bos={varanlar.length === 0} />
   return (
     <div className={'ceza-yigini puan-' + puanTarafi} data-hedef={hedef} data-bak={hedef}>
-      {donuk ? <div className={'yan-yigin ' + donuk} style={{ width: boy, height: en }}>{govde}</div> : govde}
-      <Puan deger={yiginPuani(varanlar) * carpan} bos={varanlar.length === 0} />
+      <div className="yigin-sarici">
+        {donuk ? <div className={'yan-yigin ' + donuk} style={{ width: boy, height: en }}>{govde}</div> : govde}
+        <span className="puan-ustte">{puan}</span>
+      </div>
+      <span className="puan-akista">{puan}</span>
     </div>
   )
 }
 
-export function Deste({ kalan }: { kalan: number }) {
+// ac: deste penceresini açar (ayar kapalıysa verilmez).
+export function Deste({ kalan, ac }: { kalan: number; ac?: () => void }) {
   return (
-    <div className="deste" data-yer="deste">
+    <div className={'deste' + (ac ? ' acilir' : '')} data-yer="deste" onClick={ac}>
       <div className="yigin-govde" style={{ width: 42, height: kartBoyu(42) }}>
         <Kalinlik adet={kalan} genislik={42} />
         <div className="yigin-kart"><Kart kapali genislik={42} /></div>

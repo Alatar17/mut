@@ -245,9 +245,9 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .test-dugme { right: 82px; }
 .dene-dugme { right: 140px; }
 .duraklat-dugme { right: 206px; display: grid; place-items: center; height: 28px; }
-.test-panel.dene-panel { right: 140px; width: 340px; }
+.test-panel.dene-panel { right: 140px; width: 480px; grid-template-columns: 1fr 1fr 1fr; }
 .gorunus-dugme { left: 66px; right: auto; }
-.test-panel.gorunus-panel { left: 66px; right: auto; width: 300px; grid-template-columns: 1fr; }
+.test-panel.gorunus-panel { left: 66px; right: auto; width: 480px; }
 .test-arka { position: absolute; inset: 0; z-index: 9; }
 .test-panel {
   position: absolute; right: 82px; bottom: 62px; z-index: 10; width: 480px; padding: 6px;
@@ -324,3 +324,34 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .mut-cerceve .mut-alani { background: none; border: 1.5px solid var(--yigin-cerceve); }
 .mut-yuva .mut-alani { background: var(--yuva-zemin); box-shadow: inset 0 3px 7px var(--yuva-golge), 0 1px 0 var(--yuva-isik); }
 .mut-yok .mut-alani { background: none; }
+
+/* Puan yeri (Görünüş menüsü): yanında (akışta) / kenarda (zeminin üst çizgisinde) / rozet (köşede). */
+.yigin-sarici { position: relative; }
+.puan-ustte { display: none; }
+.masa:not(.puan-yaninda) .puan-akista { visibility: hidden; }
+.puan-kenarda .puan-ustte, .puan-rozette .puan-ustte {
+  display: grid; place-items: center; position: absolute; z-index: 2; pointer-events: none;
+  background: var(--rozet); border-radius: 10px;
+}
+.puan-kenarda .puan-ustte { left: 50%; top: -16px; transform: translateX(-50%); padding: 0 6px; height: 20px; }
+.puan-rozette .puan-ustte { right: -12px; top: -12px; min-width: 26px; height: 22px; padding: 0 5px; border-radius: 11px; }
+.puan-ustte .puan { font-size: 12px; min-width: 0; }
+
+/* Deste penceresi: 13 sütun, her sütunda o sayının 4 kartı; altta kaç bilinmeyen kaldığı. */
+.deste.acilir { cursor: pointer; }
+.deste-penceresi {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  display: flex; gap: 6px; padding: 12px 14px 10px; border-radius: 12px; background: var(--bakis-arka);
+}
+.deste-sutun { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 44px; }
+.deste-kartlar { position: relative; width: 44px; }
+.deste-kart { position: absolute; left: 0; border-radius: 4px; }
+.deste-kart.soluk .kart { filter: brightness(0.42) saturate(0.4); }
+.deste-kart.bende { outline: 2px solid var(--vurgu); outline-offset: -1px; border-radius: 5px; }
+.deste-kalan { font-size: 15px; font-weight: 800; color: var(--vurgu); }
+.deste-kalan.bitti { color: var(--yazi-soluk); opacity: 0.5; }
+.kagit-ayar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%;
+  margin-top: 14px; padding: 6px 4px 0; border-top: 1px solid var(--kagit-cizgi); font-size: 14px; color: var(--kagit-yazi);
+}
+.pencere-arka.karartmasiz { background: none; }

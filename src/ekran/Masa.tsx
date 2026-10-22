@@ -9,6 +9,7 @@ import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc,
 import { SAHNE_BOY, SAHNE_EN } from './Sahne'
 import { BombaYigini, CezaYigini, Deste, OrtaYigin, type CezaDizilisi } from './Yiginlar'
 import { useYiginBakisi, YiginYelpazesi, type BakisGorunusu } from './YiginBakisi'
+import { DestePenceresi, type KartlarimGorunusu } from './DestePenceresi'
 import { puanKagidiniKaydet } from './puanResmi'
 
 const AVUC_KART_EN = 60
@@ -41,6 +42,14 @@ const MUT_ZEMINLERI = { Yuva: 'mut-yuva', 'Koyu kutu': 'mut-kutu', Kesikli: 'mut
 type MutZemini = keyof typeof MUT_ZEMINLERI
 // Ceza yığınındaki kartların dizilişi (Yiginlar). Kullanıcı Görünüş menüsünde seçecek.
 const CEZA_DIZILISLERI: Record<CezaDizilisi, true> = { Varsayılan: true, Dağınık: true }
+// Ceza yığınının puanı: yanında / zeminin üst kenarında / köşede rozet (masa sınıfı). Kullanıcı Görünüş menüsünde seçecek.
+const PUAN_YERLERI = { Yanında: 'puan-yaninda', Kenarda: 'puan-kenarda', Rozet: 'puan-rozette' }
+type PuanYeri = keyof typeof PUAN_YERLERI
+// Deste penceresinde kendi avucumdaki kartlar.
+const KARTLARIM: Record<KartlarimGorunusu, true> = { Soluk: true, Çerçeveli: true }
+// Deste penceresi açıkken masa kararsın mı.
+const DESTE_ARKASI = { Karartılmış: true, Karartmasız: false }
+type DesteArkasi = keyof typeof DESTE_ARKASI
 const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: true }
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
@@ -208,7 +217,8 @@ function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun }: { d: Durum; kapat: () 
 }
 
 // "Kaç el?": hazır sayılardan biri ya da yazılan sayı. Oyun ortasında oynanan elden azı seçilemez (enAz).
-function ElSayisiPenceresi({ enAz, sec, kapat }: { enAz: number; sec: (n: number) => void; kapat: () => void }) {
+// destePenceresi: oyun başında açılıp kapatılan ayar (9.2); degistir verilmezse satır görünmez.
+function ElSayisiPenceresi({ enAz, sec, kapat, destePenceresi, degistir }: { enAz: number; sec: (n: number) => void; kapat: () => void; destePenceresi: boolean; degistir: (v: boolean) => void }) {
   const [yazi, setYazi] = useState('')
   const n = Number(yazi)
   const gecerli = yazi !== '' && Number.isInteger(n) && n >= enAz && n <= EN_COK_EL
@@ -235,6 +245,9 @@ function ElSayisiPenceresi({ enAz, sec, kapat }: { enAz: number; sec: (n: number
           />
           <button className="kagit-dugme" disabled={!gecerli} onClick={() => sec(n)}>Tamam</button>
         </div>
+        <button className="kagit-ayar" onClick={() => degistir(!destePenceresi)}>
+          Deste penceresi <span className={'anahtar' + (destePenceresi ? ' acik' : '')} />
+        </button>
       </div>
     </div>
   )
@@ -425,6 +438,12 @@ export function Masa() {
   // Kaldırılan seçenekler kayıtlıysa varsayılana döner.
   const yiginZemini: YiginZemini = yiginZeminiKayit in YIGIN_ZEMINLERI ? yiginZeminiKayit : 'Kesikli'
   const [cezaDizilisi, setCezaDizilisi] = useKayitli<CezaDizilisi>('cezaDizilisi', 'Varsayılan')
+  const [puanYeri, setPuanYeri] = useKayitli<PuanYeri>('puanYeri', 'Yanında')
+  const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
+  const [desteArkasi, setDesteArkasi] = useKayitli<DesteArkasi>('desteArkasi', 'Karartılmış')
+  // Deste penceresi ayarı ("Kaç el?" penceresinde) ve açık olup olmadığı.
+  const [destePenceresi, setDestePenceresi] = useKayitli('destePenceresi', true)
+  const [desteAcik, setDesteAcik] = useState(false)
   const [mutZemini, setMutZemini] = useKayitli<MutZemini>('mutZemini', 'Yuva')
   const [bakisGorunusu, setBakisGorunusu] = useKayitli<BakisGorunusu>('bakisGorunusu', 'Ortada')
   const sure = HAMLE_SURELERI[hamleSuresi] ?? 0
@@ -921,7 +940,7 @@ export function Masa() {
   return (
     <GizliKartlar.Provider value={gizli}>
     <div
-      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '')}
+      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '')}
       ref={masaRef}
       // Oyunda sağ tık menüsü yok (sürüklemeyi bölüyordu).
       onContextMenu={e => e.preventDefault()}
@@ -1091,6 +1110,15 @@ export function Masa() {
           <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_DIZILISLERI, cezaDizilisi, setCezaDizilisi)}>
             Ceza dizilişi <span className="test-deger">{cezaDizilisi}</span>
           </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(PUAN_YERLERI, puanYeri, setPuanYeri)}>
+            Puan yeri <span className="test-deger">{puanYeri}</span>
+          </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(KARTLARIM, kartlarim, setKartlarim)}>
+            Destede kartlarım <span className="test-deger">{kartlarim}</span>
+          </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(DESTE_ARKASI, desteArkasi, setDesteArkasi)}>
+            Deste arkası <span className="test-deger">{desteArkasi}</span>
+          </button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
@@ -1116,7 +1144,8 @@ export function Masa() {
           </button>
         </div>
       )}
-      <Deste kalan={gorunen.deste.length} />
+      <Deste kalan={gorunen.deste.length} ac={destePenceresi ? () => setDesteAcik(true) : undefined} />
+      {desteAcik && destePenceresi && <DestePenceresi d={gorunen} kartlarim={kartlarim} karart={DESTE_ARKASI[desteArkasi] ?? true} kapat={() => setDesteAcik(false)} />}
 
       {puanlarAcik && (
         <PuanPenceresi
@@ -1138,6 +1167,8 @@ export function Masa() {
         <ElSayisiPenceresi
           enAz={elPenceresi === 'yeni' ? 1 : Math.max(d.el, 1)}
           kapat={() => setElPenceresi(null)}
+          destePenceresi={destePenceresi}
+          degistir={setDestePenceresi}
           sec={n => {
             setElPenceresi(null)
             if (elPenceresi === 'degistir') return elSayisiDegistir(n)

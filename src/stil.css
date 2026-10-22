@@ -220,12 +220,17 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 @property --kalan { syntax: '<angle>'; inherits: false; initial-value: 360deg; }
 .rakip-ad.sure-uyari::after {
   content: ""; position: absolute; inset: -5px; padding: 3px; border-radius: 17px; pointer-events: none;
-  background: conic-gradient(var(--yazi) var(--kalan), transparent 0);
+  background: conic-gradient(var(--halka-renk) var(--kalan), transparent 0);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor; mask-composite: exclude;
-  animation: hamle-halka 10s linear forwards;
+  animation: hamle-halka 10s linear forwards, halka-kirmizi 10s linear forwards;
 }
 @keyframes hamle-halka { to { --kalan: 0deg; } }
+/* Son 3 saniyede (10 sn'nin %70'i) yarım saniyede kırmızıya döner. */
+@property --halka-renk { syntax: '<color>'; inherits: false; initial-value: #f3f0e6; }
+@keyframes halka-kirmizi { 0%, 65% { --halka-renk: var(--yazi); } 70%, 100% { --halka-renk: var(--sure-bitiyor); } }
+.blok-sure.bitiyor { animation-name: blok-sure, sure-kirmizi; }
+@keyframes sure-kirmizi { 0%, 65% { background: var(--vurgu); } 70%, 100% { background: var(--sure-bitiyor); } }
 .uzakta {
   position: absolute; left: 50%; bottom: 130px; transform: translateX(-50%); z-index: 16;
   padding: 5px 12px; border-radius: 14px; font-size: 13px; font-weight: 700; white-space: nowrap;

@@ -983,7 +983,7 @@ export function Masa() {
       {/* Hamle süresinin son saniyeleri ve Kız'da kart seçme süresi: avucun üstünde eriyen çubuk. */}
       {(kizSuresi || (sureUyari && d.sira === 0)) && (
         <div className="blok-penceresi" key={kizSuresi ? 'kiz' : 'hamle'}>
-          <div className="blok-sure" style={{ animationDuration: `${kizSuresi ? KIZ_SURESI : UYARI_SURESI}ms` }} />
+          <div className="blok-sure bitiyor" style={{ animationDuration: `${kizSuresi ? KIZ_SURESI : UYARI_SURESI}ms` }} />
         </div>
       )}
       {uzakta && <div className="uzakta">Senin yerine bot oynuyor · dokun</div>}

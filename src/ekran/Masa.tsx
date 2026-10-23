@@ -53,7 +53,7 @@ const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: 
 const EL_YUKSEKLIKLERI = { Eski: '0px', '+10 px': '10px', '+20 px': '20px' }
 type ElYuksekligi = keyof typeof EL_YUKSEKLIKLERI
 // Masadaki bütün kartlar bu oranda büyür (boyut.ts). Kullanıcı Görünüş menüsünde seçecek.
-const KART_BOYUTLARI = { '%100': 1, '%110': 1.1, '%120': 1.2 }
+const KART_BOYUTLARI = { '%100': 1, '%110': 1.1, '%115': 1.15, '%120': 1.2 }
 type KartBoyutu = keyof typeof KART_BOYUTLARI
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.

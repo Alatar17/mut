@@ -23,18 +23,22 @@ function Kalinlik({ adet, genislik }: { adet: number; genislik: number }) {
   )
 }
 
-// Bomba yığını (6.8): sahibinin ceza yığınının yanında yanıp söner; tek kart görünür (tahta dar), rozette çıkan 10 sayısı.
-// Uçuş sırasında üstteki kart gizlenince alttaki görünsün diye en üstteki iki kart çizilir.
+// Bomba yığını (6.8): sahibinin ceza yığınının yanında, hafif parlak; tek kart görünür (tahta dar), rozette çıkan 10 sayısı.
+// Botlarda kartları gibi yan döner. Uçuş sırasında üstteki kart gizlenince alttaki görünsün diye en üstteki iki kart çizilir.
 export function BombaYigini({ kartlar, sahip, cikan }: { kartlar: KartTipi[]; sahip: number; cikan: number }) {
+  const en = kartEni(BOMBA_KART_EN)
+  const govde = (
+    <div className="yigin-govde" style={{ width: en, height: kartBoyu(en) }}>
+      {kartlar.slice(-2).map(k => (
+        <div key={kartKimligi(k)} className="yigin-kart">
+          <Kart kart={k} genislik={en} />
+        </div>
+      ))}
+    </div>
+  )
   return (
     <div className={`bomba bomba-${sahip}`} data-hedef={`bomba:${sahip}`} data-yer={`bomba:${sahip}`} data-bak="bomba">
-      <div className="yigin-govde" style={{ width: kartEni(BOMBA_KART_EN), height: kartBoyu(kartEni(BOMBA_KART_EN)) }}>
-        {kartlar.slice(-2).map(k => (
-          <div key={kartKimligi(k)} className="yigin-kart">
-            <Kart kart={k} genislik={kartEni(BOMBA_KART_EN)} />
-          </div>
-        ))}
-      </div>
+      {sahip === 0 ? govde : <div className={'yan-yigin ' + (sahip === 1 ? 'sag' : 'sol')} style={{ width: kartBoyu(en), height: en }}>{govde}</div>}
       <span className="rozet">{cikan}</span>
     </div>
   )

@@ -65,7 +65,7 @@ type Duraklama = keyof typeof DURAKLAMALAR
 // Serbest elde yakalanan kartların hedefi nasıl seçilir: rakibe dokunarak ya da inen kartı ona sürükleyerek.
 // Kullanıcı Test menüsünde deneyip seçecek.
 // donus: dağıtımda benim kartlarımın inince dönerek açılma süresi.
-const SURE = { kalkma: 250, ucus: 380, dagitimAraligi: 70, donus: 260 }
+const SURE = { kalkma: 250, ucus: 380, dagitimAraligi: 70, donus: 380 }
 // Blok penceresi süresi (6.5.1); kahve testinde ayarlanacak.
 const BLOK_SURESI = 3000
 // Kurulu kalkan bloklamadan önce parladığı görülsün diye kısa bekleme (ms).
@@ -436,7 +436,8 @@ export function Masa() {
   const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)
   const [cezaAraligi, setCezaAraligi] = useKayitli<CezaAraligi>('cezaAraligi', '10 px')
   const [botHizi, setBotHizi] = useKayitli<BotHizi>('botHizi', 'Orta')
-  const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi', 'Orta')
+  // Kayıt adı değişti (2026-10-23): telefondaki eski seçim silinsin, herkes varsayılan Orta'dan başlasın.
+  const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi2', 'Orta')
   const [duraklama, setDuraklama] = useKayitli<Duraklama>('duraklama', 'Kısa')
   const [hamleSuresi, setHamleSuresi] = useKayitli<HamleSuresi>('hamleSuresi', '30 sn')
   const [yiginZeminiKayit, setYiginZemini] = useKayitli<YiginZemini>('yiginZemini', 'Kesikli')

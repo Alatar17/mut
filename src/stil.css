@@ -352,7 +352,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .deste-sutun { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 44px; }
 .deste-kartlar { position: relative; width: 44px; }
 .deste-kart { position: absolute; left: 0; border-radius: 4px; }
-.deste-kart.soluk .kart { filter: brightness(0.42) saturate(0.4); }
+.deste-kart.soluk .kart { filter: brightness(0.3) saturate(0.3); }
 .deste-kart.bende { outline: 2px solid var(--vurgu); outline-offset: -1px; border-radius: 5px; }
 .deste-kalan { font-size: 15px; font-weight: 800; color: var(--vurgu); }
 .deste-kalan.bitti { color: var(--yazi-soluk); opacity: 0.5; }

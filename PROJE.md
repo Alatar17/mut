@@ -507,7 +507,8 @@ Blok sıra dışı oynandığı, Kız ve 8 de avuçları değiştirdiği için a
 ### 9.3 Sosyal özellikler (kahve havası)
 - **Konuşma butonu:** Dokununca küçük bir panel açılır: serbest yazı yazılabilir ya da hazır sözlerden biri tek dokunuşla gönderilir. Mesaj, gönderenin yanında balon olarak kısa süre görünür; herkes görür.
   - Mesajlar oyunun kendi telefonlar arası bağlantısından gider; ek sunucu gerekmez.
-- **Hazır sözler:** Kahvede sürekli söylenen laflar butonlarla gönderilebilir (yazı ve/veya ses kaydı). Örn. "Beton dök!", "Kapat kapat!" (liste ❓)
+- **Hazır sözler:** Kahvede sürekli söylenen laflar butonlarla gönderilebilir (yazı ve/veya ses kaydı). Örn. "Beton dök!", "Kapat kapat!". Sol alttaki konuşma düğmesinde, 2. aşamada (tek telefonda botlara karşı okuyan yok).
+  - **Kullanıcının listesi (2026-10-23, kahvenin kendi lafları, aynen kalsın):** "Çok saçma kendime sokamıyom!", "Tost oldu.", "Beton döktü.", "Şimdi ben kızı aldım {isim} soktum." (isim seçilir: Tahir'e / Uğur'a / Mert'e; basınca masadaki oyunculardan biri seçilir, ek doğru çekilir), "Üstüne kapatma göt!". Liste büyüyecek.
 - **Hediyeler:** Okey'deki gibi küçük animasyonlu ikonlar, bir oyuncudan diğerine süzülerek gider: **çay**, **kazan** (kazan muhabbeti), vb.
 - Basit tutulacak; oyunu yavaşlatmamalı.
 

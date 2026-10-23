@@ -1,7 +1,7 @@
 // Kart animasyonları: her geçişte kartların eski ve yeni yeri ölçülür, yer değiştirenler
 // masanın üstünde "uçan kart" olarak eski yerinden yenisine kayar. Uçuş bitene kadar
 // kartın asıl yeri görünmez tutulur (yerini korur, böylece hedef konumu ölçülebilir).
-import { createContext, useContext, useLayoutEffect, useRef } from 'react'
+import { createContext, useContext, useLayoutEffect, useRef, useState } from 'react'
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import type { Durum } from '../oyun/motor'
 import { Kart } from './Kart'
@@ -78,20 +78,40 @@ export interface Ucus {
   sure: number
   gecikme: number
   kapali: boolean
+  // Kapalı uçan kart inince bu sürede dönerek açılır (dağıtımda benim kartlarım).
+  donus?: number
 }
 
 export function UcanKart({ ucus }: { ucus: Ucus }) {
   const ref = useRef<HTMLDivElement>(null)
-  const { kaynak, hedef } = ucus
+  const { kaynak, hedef, donus } = ucus
+  const [acildi, setAcildi] = useState(false)
   useLayoutEffect(() => {
-    const animasyon = ref.current!.animate(
+    const el = ref.current!
+    const animasyon = el.animate(
       [
         { transform: `translate(${kaynak.x - hedef.x}px, ${kaynak.y - hedef.y}px) rotate(${kaynak.aci}deg) scale(${kaynak.en / hedef.en})` },
         { transform: `rotate(${hedef.aci}deg)` },
       ],
       { duration: ucus.sure, delay: ucus.gecikme, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)', fill: 'both' },
     )
-    return () => animasyon.cancel()
+    // Dönerek açılma: kart yarıya kadar daralır, yüzü çevrilir, geri genişler.
+    let donme: Animation | undefined
+    const zamanlayici = donus
+      ? setTimeout(() => {
+          const yari = (x: number) => ({ transform: `rotate(${hedef.aci}deg) scaleX(${x})` })
+          donme = el.animate([yari(1), yari(0)], { duration: donus / 2, easing: 'ease-in', fill: 'forwards' })
+          donme.finished.then(() => {
+            setAcildi(true)
+            donme = el.animate([yari(0), yari(1)], { duration: donus / 2, easing: 'ease-out', fill: 'forwards' })
+          }, () => {})
+        }, ucus.gecikme + ucus.sure)
+      : undefined
+    return () => {
+      clearTimeout(zamanlayici)
+      animasyon.cancel()
+      donme?.cancel()
+    }
   }, [ucus])
   return (
     <div
@@ -99,7 +119,7 @@ export function UcanKart({ ucus }: { ucus: Ucus }) {
       className="ucan-kart"
       style={{ left: hedef.x - hedef.en / 2, top: hedef.y - kartBoyu(hedef.en) / 2 }}
     >
-      <Kart kart={ucus.kart} genislik={hedef.en} kapali={ucus.kapali} ucan />
+      <Kart kart={ucus.kart} genislik={hedef.en} kapali={ucus.kapali && !acildi} ucan />
     </div>
   )
 }

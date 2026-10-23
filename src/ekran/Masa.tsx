@@ -52,8 +52,8 @@ const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: 
 // Avucun yukarı kayması (masa değişkeni --el-kayma, stil.css). Varsayılan +10 px (kullanıcı kararı, 2026-10-22).
 const EL_YUKSEKLIKLERI = { Eski: '0px', '+10 px': '10px', '+20 px': '20px' }
 type ElYuksekligi = keyof typeof EL_YUKSEKLIKLERI
-// Masadaki bütün kartlar bu oranda büyür (boyut.ts). Kullanıcı Görünüş menüsünde seçecek.
-const KART_BOYUTLARI = { '%100': 1, '%110': 1.1, '%115': 1.15, '%120': 1.2 }
+// Masadaki bütün kartlar bu oranda büyür (boyut.ts). Varsayılan %110 (kullanıcı kararı, 2026-10-23, telefonda denendi).
+const KART_BOYUTLARI = { '%110': 1.1, '%115': 1.15 }
 type KartBoyutu = keyof typeof KART_BOYUTLARI
 
 // Animasyon süreleri bu çarpanla uzar/kısalır. Kullanıcı Test menüsünde seçecek.
@@ -64,7 +64,8 @@ const DURAKLAMALAR = { Kısa: 250, Uzun: 600 }
 type Duraklama = keyof typeof DURAKLAMALAR
 // Serbest elde yakalanan kartların hedefi nasıl seçilir: rakibe dokunarak ya da inen kartı ona sürükleyerek.
 // Kullanıcı Test menüsünde deneyip seçecek.
-const SURE = { kalkma: 250, ucus: 380, dagitimAraligi: 70 }
+// donus: dağıtımda benim kartlarımın inince dönerek açılma süresi.
+const SURE = { kalkma: 250, ucus: 380, dagitimAraligi: 70, donus: 260 }
 // Blok penceresi süresi (6.5.1); kahve testinde ayarlanacak.
 const BLOK_SURESI = 3000
 // Kurulu kalkan bloklamadan önce parladığı görülsün diye kısa bekleme (ms).
@@ -446,8 +447,8 @@ export function Masa() {
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
   const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', '+10 px')
   const elYuksekligi: ElYuksekligi = elYuksekligiKayit in EL_YUKSEKLIKLERI ? elYuksekligiKayit : '+10 px'
-  const [kartBoyutuKayit, setKartBoyutu] = useKayitli<KartBoyutu>('kartBoyutu', '%100')
-  const kartBoyutu: KartBoyutu = kartBoyutuKayit in KART_BOYUTLARI ? kartBoyutuKayit : '%100'
+  const [kartBoyutuKayit, setKartBoyutu] = useKayitli<KartBoyutu>('kartBoyutu', '%110')
+  const kartBoyutu: KartBoyutu = kartBoyutuKayit in KART_BOYUTLARI ? kartBoyutuKayit : '%110'
   // Alt bileşenler bu çizimde yeni çarpanı okusun diye çizimin başında.
   kartOlcegi.carpan = KART_BOYUTLARI[kartBoyutu]
   // Deste penceresi ayarı ("Kaç el?" penceresinde) ve açık olup olmadığı.
@@ -519,18 +520,19 @@ export function Masa() {
     if (!b) return
     bekleyenGecis.current = null
     const kartlar = new Map([...gorunen.oyuncular.flatMap(o => [...o.avuc, ...o.ceza]), ...gorunen.orta, ...gorunen.mut, ...gorunen.deste, ...(gorunen.bomba?.kartlar ?? [])].map(k => [kartKimligi(k), k]))
-    const yeniUcuslar = b.tasinan.map(([id, yer]) => ({
+    const yeniUcuslar: Ucus[] = b.tasinan.map(([id, yer]) => ({
       kart: kartlar.get(id)!,
       kaynak: b.kaynak.get(id)!,
       hedef: konumOlc(masaRef.current!, id, yer),
       sure: ucusSuresi,
       gecikme: b.gecikme.get(id) ?? 0,
-      // Desteye giden ve desteden dağıtılan kartlar kapalı uçar; Mut kartları açık iner.
+      // Desteye giden ve desteden dağıtılan kartlar kapalı uçar; Mut kartları açık iner, benim kartlarım inince dönerek açılır.
       kapali: yer === 'deste' || (b.gecikme.has(id) && yer !== 'mut') || (botKartlariKapali && yer.startsWith('avuc:') && yer !== 'avuc:0'),
+      donus: b.gecikme.has(id) && yer === 'avuc:0' ? SURE.donus * carpan : undefined,
     }))
     if (b.ekUcus) yeniUcuslar.unshift(b.ekUcus)
     setUcuslar(yeniUcuslar)
-    const toplam = Math.max(...yeniUcuslar.map(u => u.gecikme + u.sure))
+    const toplam = Math.max(...yeniUcuslar.map(u => u.gecikme + u.sure + (u.donus ?? 0)))
     setTimeout(() => {
       setGizli(new Set())
       if (!b.ekUcus) setUcuslar([])
@@ -1022,7 +1024,7 @@ export function Masa() {
             sira={i}
             adet={ben.avuc.length}
             kalkik={kalkikKart === i}
-            kapali={ters === 0}
+            kapali={false}
             dokun={() => (ters === 0 ? sec(0, i) : setKalkikKart(kalkikKart === i ? null : i))}
             tut={() => sec(0, i)}
             birak={hedef => kartBirak(0, i, hedef)}

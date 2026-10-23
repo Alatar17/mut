@@ -97,6 +97,15 @@ function oyuncuAltinda(x: number, y: number): number | null {
 const yeniOyunKur = (toplamEl: number) => yeniOyun({ isimler: ['Sen', 'Bot B', 'Bot C'], toplamEl })
 const RAKIP_KART_EN = 56
 
+// Hazır sözler (kaba ilk sürüm; asıl hali 2. aşamada herkes kendi telefonundan). Kahvenin kendi lafları, aynen.
+const HAZIR_SOZLER = ['Çok saçma kendime sokamıyom!', 'Tost oldu.', 'Beton döktü.', 'Şimdi ben kızı aldım … soktum.', 'Üstüne kapatma göt!']
+const KIZ_SOZU = HAZIR_SOZLER[3]
+const KIZ_ISIMLERI = ["Tahir'e", "Uğur'a", "Mert'e"]
+const kizSozu = (isim: string) => `Şimdi ben kızı aldım ${isim} soktum.`
+// Botlar arada bir konuşur: ceza yığınına 3+ kart gelince ya da benden Kız ile kart çekince.
+const BOT_CEZA_SOZLERI = ['Çok saçma kendime sokamıyom!', 'Tost oldu.']
+const BALON_SURESI = 3000
+
 // Elde tutulan kartlar gibi hafif yelpaze: kenardaki kartlar biraz döner ve alçalır.
 function yelpaze(sira: number, adet: number) {
   const fark = sira - (adet - 1) / 2
@@ -422,7 +431,20 @@ export function Masa() {
   const [puanlarAcik, setPuanlarAcik] = useState(false)
   // Menüler: geliştirme menüleri Test (ayarlar), Dene (hazır kurulmuş eller) ve sol alttaki Görünüş (görsel seçenekler); sağ üstte oyun menüsü
   // (☰) ve onun "Oyunu bitir" onayı. Aynı anda biri açık.
-  const [menu, setMenu] = useState<'test' | 'dene' | 'gorunus' | 'oyun' | 'bitir' | null>(null)
+  const [menu, setMenu] = useState<'test' | 'dene' | 'gorunus' | 'oyun' | 'bitir' | 'soz' | 'sozIsim' | null>(null)
+  // Konuşma balonları (oyuncu → söz); her söz BALON_SURESI kadar görünür.
+  const [balonlar, setBalonlar] = useState<Record<number, { yazi: string; no: number }>>({})
+  const balonNo = useRef(0)
+  const soyle = (oyuncu: number, yazi: string) => {
+    const no = ++balonNo.current
+    setBalonlar(b => ({ ...b, [oyuncu]: { yazi, no } }))
+    setTimeout(() => setBalonlar(b => (b[oyuncu]?.no === no ? (({ [oyuncu]: _, ...kalan }) => kalan)(b) : b)), BALON_SURESI)
+  }
+  const sozSec = (yazi: string) => {
+    if (yazi === KIZ_SOZU) return setMenu('sozIsim')
+    setMenu(null)
+    soyle(0, yazi)
+  }
   // "Kaç el?" penceresi: yeni oyun için ya da oyun ortasında el sayısını değiştirmek için.
   const [elPenceresi, setElPenceresi] = useState<'yeni' | 'degistir' | null>(null)
   // Animasyon sürerken istenen el sayısı / oyunu bitirme: hamle bitince uygulanır (bitir).
@@ -540,6 +562,18 @@ export function Masa() {
       b.bitti()
     }, toplam)
   }, [gorunen])
+
+  const oncekiCeza = useRef<number[]>([])
+  useEffect(() => {
+    const once = oncekiCeza.current
+    oncekiCeza.current = d.oyuncular.map(o => o.ceza.length)
+    d.oyuncular.forEach((o, i) => {
+      if (i > 0 && once[i] !== undefined && o.ceza.length - once[i] >= 3 && Math.random() < 0.4)
+        soyle(i, BOT_CEZA_SOZLERI[Math.floor(Math.random() * BOT_CEZA_SOZLERI.length)])
+    })
+    const s = d.sonHamle
+    if (s?.cekme && s.oyuncu > 0 && s.cekme.hedef === 0 && Math.random() < 0.6) soyle(s.oyuncu, kizSozu("Tahir'e"))
+  }, [d])
 
   const basla = () => {
     mesgulRef.current = true
@@ -1087,7 +1121,7 @@ export function Masa() {
         </>
       )}
 
-      <button className="yuvarlak-dugme konusma" aria-label="Konuşma">
+      <button className={'yuvarlak-dugme konusma' + (menu === 'soz' || menu === 'sozIsim' ? ' acik' : '')} aria-label="Konuşma" onClick={() => setMenu(menu === 'soz' || menu === 'sozIsim' ? null : 'soz')}>
         <svg viewBox="0 0 24 24" width="22" height="22">
           <path d="M4 4h16v11H8l-4 4V4Z" fill="currentColor" />
         </svg>
@@ -1120,6 +1154,17 @@ export function Masa() {
           ))}
         </div>
       )}
+      {(menu === 'soz' || menu === 'sozIsim') && (
+        <div className="oyun-menu soz-menu">
+          {menu === 'soz'
+            ? HAZIR_SOZLER.map(s => <button key={s} className="test-satir" onClick={() => sozSec(s)}>{s}</button>)
+            : KIZ_ISIMLERI.map(i => <button key={i} className="test-satir" onClick={() => { setMenu(null); soyle(0, kizSozu(i)) }}>{kizSozu(i)}</button>)}
+        </div>
+      )}
+      {Object.entries(balonlar).map(([oyuncu, b]) => (
+        <div key={b.no} className={`balon balon-${oyuncu}`}>{b.yazi}</div>
+      ))}
+
       {menu === 'gorunus' && (
         <div className="test-panel gorunus-panel">
           <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>

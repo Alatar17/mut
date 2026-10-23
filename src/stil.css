@@ -198,6 +198,19 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 }
 .puan-dugme { left: 12px; top: 12px; }
 .konusma { left: 14px; bottom: 14px; }
+.konusma.acik { background: var(--vurgu); color: var(--rozet); }
+
+/* Hazır sözler (sol alttaki konuşma düğmesi) ve konuşma balonları. */
+.oyun-menu.soz-menu { left: 12px; right: auto; top: auto; bottom: 62px; width: 280px; }
+.balon {
+  position: absolute; z-index: 17; max-width: 240px; padding: 7px 12px; border-radius: 14px; pointer-events: none;
+  font-size: 14px; font-weight: 700; background: #fffdf5; color: #1d2a22; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  animation: balon-gel 0.2s ease-out;
+}
+@keyframes balon-gel { from { opacity: 0; scale: 0.7; } }
+.balon-0 { left: 120px; bottom: 100px; border-bottom-left-radius: 3px; }
+.balon-1 { right: 100px; top: 70px; border-top-right-radius: 3px; }
+.balon-2 { left: 100px; top: 70px; border-top-left-radius: 3px; }
 
 .el-tur {
   position: absolute; right: 66px; top: 20px;

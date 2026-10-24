@@ -81,13 +81,11 @@ interface CezaProps {
   hedef?: string
   // Üstteki kartlar arası kaydırma (piksel); Görünüş menüsünden seçiliyor.
   aralik: number
-  dizilis: CezaDizilisi
+  // Gruba yapışık kartların adları (Durum.yapisik): blokta 2, Kral'da Papaz (6.5).
+  yapisik: string[]
 }
 
-// Ceza dizilişi (Görünüş menüsü): Varsayılan = son 3 kart kaydırılmış; Dağınık = kartlar hafif yamuk (kahvedeki gibi).
-export type CezaDizilisi = 'Varsayılan' | 'Dağınık'
-
-// Dağınık dizilişte kartın sabit küçük açısı ve kayması (kart kimliğinden; her çizimde aynı).
+// Ceza yığınında kartlar hafif yamuk durur, kahvedeki gibi (kullanıcı 2026-10-24: tek diziliş bu). Kartın sabit küçük açısı ve kayması (kart kimliğinden; her çizimde aynı).
 const RENK_SIRASI = { maca: 0, kupa: 1, karo: 2, sinek: 3 }
 function daginik(k: KartTipi) {
   const t = k.deger * 7 + RENK_SIRASI[k.renk] * 13
@@ -105,32 +103,55 @@ function Puan({ deger, bos }: { deger: number; bos: boolean }) {
   return <span key={vurgu} className={'puan' + (vurgu ? ' vurgu' : '')}>{deger}</span>
 }
 
+// Yapışık kart işareti (Görünüş → Yapışık kart → İşaret).
+function ZincirIkonu() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+      <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+      <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+    </svg>
+  )
+}
+
 // Uçuş sırasında üstteki kartlar gizlenince alttakiler görünsün diye en üstteki birkaç kart çizilir.
 const CIZILEN_UST_KART = 5
 
 // Orta yığın gibi son 3 kart kaydırılmış görünür (daha dar); alttakilerin köşe sayısı görünsün diye sola kayar (stil.css).
-export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, dizilis }: CezaProps) {
+export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, yapisik }: CezaProps) {
   const gizliler = useGizliKartlar()
   // Puan, yerine varmış kartlardan hesaplanır (uçan kart inince artar).
   const varanlar = kartlar.filter(k => !gizliler.has(kartKimligi(k)))
   const boy = kartBoyu(kartEn())
   const en = kartEn() + 2 * aralik
-  const gorunen = Math.min(3, kartlar.length)
+  // Yapışık kartlar grubun altında kalsa da yığından taşar (görünüşü masa sınıfı yapisik-*, Görünüş menüsü).
+  // Gerçek kart çizilir; grup uçarken 2 de taştığı yerden uçar.
+  const yapisikMi = (i: number) => i < kartlar.length - 1 && yapisik.includes(kartKimligi(kartlar[i]))
+  const sira = kartlar.map((_, i) => i)
+  const tasanlar = sira.filter(yapisikMi)
+  const duzler = sira.filter(i => !yapisikMi(i))
+  const gorunen = Math.min(3, duzler.length)
   // Kilitli dörtlü (6.9.1): aynı sayıdan dört kart art arda gelince en üstteki ters çizilir.
   const kilitli = (i: number) => i >= 3 && kartlar.slice(i - 3, i).every(k => k.deger === kartlar[i].deger)
   const govde = (
-    <div className="yigin-govde" style={{ width: en, height: boy, ...zeminOlcusu(kartEn() + Math.max(0, gorunen - 1) * aralik, kartlar.length - gorunen) }} data-yer={hedef}>
+    <div className="yigin-govde" style={{ width: en, height: boy, ...zeminOlcusu(kartEn() + Math.max(0, gorunen - 1) * aralik, duzler.length - gorunen) }} data-yer={hedef}>
       {kartlar.length > 0 ? (
         <>
-          <Kalinlik adet={kartlar.length - gorunen} genislik={kartEn()} />
-          {kartlar.slice(-CIZILEN_UST_KART).map((k, i, ust) => {
-            const yukaridan = ust.length - 1 - i
+          {tasanlar.map((i, j) => (
+            <div key={kartKimligi(kartlar[i])} className="yigin-kart yapisik" style={{ '--j': j } as CSSProperties}>
+              <Kart kart={kartlar[i]} genislik={kartEn()} />
+            </div>
+          ))}
+          <Kalinlik adet={duzler.length - gorunen} genislik={kartEn()} />
+          {duzler.slice(-CIZILEN_UST_KART).map((i, s, ust) => {
+            const yukaridan = ust.length - 1 - s
+            const k = kartlar[i]
             return (
-              <div key={kartKimligi(k)} className={'yigin-kart' + (yukaridan > 0 ? ' alt' : '')} style={{ left: Math.max(0, gorunen - 1 - yukaridan) * aralik, transform: dizilis === 'Dağınık' ? daginik(k) : undefined }}>
-                <Kart kart={k} genislik={kartEn()} kapali={kilitli(kartlar.length - 1 - yukaridan)} />
+              <div key={kartKimligi(k)} className={'yigin-kart' + (yukaridan > 0 ? ' alt' : '')} style={{ left: Math.max(0, gorunen - 1 - yukaridan) * aralik, transform: daginik(k) }}>
+                <Kart kart={k} genislik={kartEn()} kapali={kilitli(i)} />
               </div>
             )
           })}
+          {tasanlar.length > 0 && <span className="yapisik-isaret-rozet"><ZincirIkonu />{tasanlar.length > 1 && tasanlar.length}</span>}
         </>
       ) : (
         <div className="bos-yer" style={{ width: kartEn(), height: boy }} />

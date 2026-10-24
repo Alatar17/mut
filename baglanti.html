@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mut · Bağlantı denemesi</title>
+    <style>
+      body { margin: 0; padding: 16px; font-family: system-ui, sans-serif; background: #0b2a1c; color: #f3f0e6; }
+      h1 { font-size: 20px; margin: 0 0 12px; }
+      .kutu { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+      button, input { font-size: 18px; padding: 12px 16px; border-radius: 12px; border: none; }
+      button { background: #f2c14e; color: #10241a; font-weight: 700; }
+      button:disabled { opacity: 0.4; }
+      input { text-transform: uppercase; letter-spacing: 4px; text-align: center; width: 100%; box-sizing: border-box; }
+      .satir { display: flex; gap: 8px; }
+      .satir > * { flex: 1; }
+      .kod { font-size: 44px; font-weight: 800; letter-spacing: 10px; text-align: center; color: #f2c14e; }
+      .durum { font-size: 18px; font-weight: 700; padding: 12px; border-radius: 12px; background: rgba(0, 0, 0, 0.28); text-align: center; }
+      .durum.iyi { background: #1f6b45; }
+      .durum.kotu { background: #8e1b24; }
+      .kayit { font-size: 13px; line-height: 1.5; background: rgba(0, 0, 0, 0.28); border-radius: 12px; padding: 10px; max-height: 40vh; overflow: auto; }
+      .gizli { display: none; }
+    </style>
+  </head>
+  <body>
+    <div class="kutu">
+      <h1>Mut · Bağlantı denemesi</h1>
+      <div id="secim" class="satir">
+        <button id="kur">Masa kur</button>
+        <button id="katilAc">Katıl</button>
+      </div>
+      <div id="katilKutusu" class="gizli satir">
+        <input id="kodGir" maxlength="4" placeholder="KOD" autocomplete="off" />
+        <button id="katil">Bağlan</button>
+      </div>
+      <div id="kod" class="kod gizli"></div>
+      <div id="durum" class="durum">Masa kur ya da Katıl'a bas</div>
+      <button id="merhaba" class="gizli">Merhaba gönder</button>
+      <div id="kayit" class="kayit"></div>
+    </div>
+    <script type="module" src="/src/baglanti.ts"></script>
+  </body>
+</html>

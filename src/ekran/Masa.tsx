@@ -47,6 +47,14 @@ type JqkGorunusu = keyof typeof JQK_GORUNUSLERI
 // Gruba yapışık 2 / Papaz'ın görünüşü (masa sınıfı, stil.css). Varsayılan = eskisi gibi ayrı görünüş yok (kullanıcı 2026-10-24).
 const YAPISIK_GORUNUSLERI = { Varsayılan: '', 'Taşan köşe': 'yapisik-kose', Çapraz: 'yapisik-capraz', İşaret: 'yapisik-isaret' }
 type YapisikGorunusu = keyof typeof YAPISIK_GORUNUSLERI
+// El başında aktif kuralların duyurusu: ortada belirip söner (kullanıcı 2026-10-24; Uçarak ve Kapalı denendi, kalktı).
+const DUYURU_SURESI = 1700
+// Sıranın bende olduğunu gösteren işaret (eski: avucun altında sarı çizgi; kullanıcı beğenmemişti). Görünüş menüsünde seçilecek.
+const SIRA_GOSTERGELERI = { Işık: 'sira-isik', Kenar: 'sira-kenar', Çizgi: 'sira-cizgi' }
+type SiraGostergesi = keyof typeof SIRA_GOSTERGELERI
+// Elin aktif kuralları (sol üstteki etiketler); duyuruda daha uzun adları.
+const aktifKurallarOf = (d: Durum) => [...(d.kralEli ? ['Kral'] : []), ...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.bombaEli ? ['Bomba'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
+const DUYURU_ADI: Record<string, string> = { Kral: 'Kral eli', Bomba: 'Bomba eli' }
 // Ceza yığınının puanı: yanında / zeminin üst kenarında / köşede rozet (masa sınıfı). Kullanıcı Görünüş menüsünde seçecek.
 const PUAN_YERLERI = { Yanında: 'puan-yaninda', Kenarda: 'puan-kenarda', Rozet: 'puan-rozette' }
 type PuanYeri = keyof typeof PUAN_YERLERI
@@ -501,6 +509,9 @@ export function Masa() {
   const [yapisikGorunusu, setYapisikGorunusu] = useKayitli<YapisikGorunusu>('yapisikGorunusu2', 'Varsayılan')
   // Varsayılanda yapışık kartlar sıradan kart gibi çizilir.
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
+  const [duyuru, setDuyuru] = useState<string[] | null>(null)
+  const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi', 'Işık')
+  const [siraTitresim, setSiraTitresim] = useKayitli('siraTitresim', true)
   const [puanYeri, setPuanYeri] = useKayitli<PuanYeri>('puanYeri', 'Yanında')
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
   const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', '+10 px')
@@ -845,8 +856,21 @@ export function Masa() {
     basla()
     await gec(dagitimOncesi(yeni, true))
     await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
+    // Dağıtımdan sonra elin kuralları duyurulur; bu sırada kimse oynamaz.
+    const kurallar = aktifKurallarOf(yeni)
+    if (kurallar.length > 0) {
+      setDuyuru(kurallar.map(k => DUYURU_ADI[k] ?? k))
+      await bekle(DUYURU_SURESI)
+      setDuyuru(null)
+    }
     bitir(yeni)
   }
+
+  // Sıra bana geçince telefon kısaca titrer (Android; iPhone'da titreşim yok).
+  const siraBende = d.asama === 'oyun' && d.sira === 0 && !d.blok
+  useEffect(() => {
+    if (siraBende && siraTitresim) navigator.vibrate?.(70)
+  }, [siraBende])
 
   useEffect(() => {
     const b = bekleyenOyun.current
@@ -995,7 +1019,7 @@ export function Masa() {
     return 'red'
   }
 
-  const aktifKurallar = [...(d.kralEli ? ['Kral'] : []), ...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.bombaEli ? ['Bomba'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
+  const aktifKurallar = aktifKurallarOf(d)
   // Ceza yığınlarında görünen puan çarpanı: eksi elde puanlar eksi görünür.
   const puanCarpani = d.eksi ? -d.carpan : d.carpan
   // Test menüsünde bir seçeneğe her basışta sıradaki değere geçer.
@@ -1131,6 +1155,7 @@ export function Masa() {
         <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
       </div>
 
+      {siraBende && siraGostergesi !== 'Çizgi' && <div className={'benim-sira ' + SIRA_GOSTERGELERI[siraGostergesi]} />}
       <div className="benim-avuc" data-yer="avuc:0" data-hedef="avuc:0">
         {ben.avuc.map((k, i) => (
           <AvucKart
@@ -1157,7 +1182,12 @@ export function Masa() {
           />
         )}
       </div>
-      {d.asama === 'oyun' && d.sira === 0 && !d.blok && <div className="benim-sira" />}
+      {siraBende && siraGostergesi === 'Çizgi' && <div className="benim-sira sira-cizgi" />}
+      {duyuru && (
+        <div className="el-duyurusu">
+          {duyuru.map(k => <span key={k}>{k}</span>)}
+        </div>
+      )}
       {blokBende && (
         <div className="blok-penceresi" key={d.oyuncular[d.blok!.hedef].ceza.length + '-' + d.blok!.gonderen}>
           <div className="blok-sure" style={{ animationDuration: `${BLOK_SURESI}ms` }} />
@@ -1308,6 +1338,10 @@ export function Masa() {
           <button className="test-satir" onClick={() => sonrakiSecenek(KARTLARIM, kartlarim, setKartlarim)}>
             Destede kartlarım <span className="test-deger">{kartlarim}</span>
           </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
+            Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
+          </button>
+          <TestSecenegi ad="Sıramda titreşim" acik={siraTitresim} degistir={setSiraTitresim} />
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />

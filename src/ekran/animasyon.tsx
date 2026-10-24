@@ -13,7 +13,7 @@ export const kartKimligi = (k: KartTipi) => `${k.renk}-${k.deger}`
 export const GizliKartlar = createContext<ReadonlySet<string>>(new Set())
 export const useGizliKartlar = () => useContext(GizliKartlar)
 
-// Her kartın yeri: "avuc:<oyuncu>", "ceza:<oyuncu>", "orta", "mut", "deste".
+// Her kartın yeri: "avuc:<oyuncu>", "ceza:<oyuncu>", "orta", "mut", "deste", "bomba:<oyuncu>", "kral".
 // Sıra, yığınlarda alttan üste doğrudur (uçan kartlar da bu sırayla üst üste biner).
 export function kartYerleri(d: Durum): Map<string, string> {
   const yerler = new Map<string, string>()
@@ -26,6 +26,7 @@ export function kartYerleri(d: Durum): Map<string, string> {
     ekle(o.avuc, `avuc:${i}`)
   })
   if (d.bomba) ekle(d.bomba.kartlar, `bomba:${d.bomba.sahip}`)
+  if (d.kral) ekle(d.kral.papazlar, 'kral')
   return yerler
 }
 

@@ -44,8 +44,16 @@ export interface Durum {
   // Blok penceresi (6.5.1): bir ceza yığınına kart gönderildi, hedef 2 ile blok yapabilir ya da kabul eder.
   // Açıkken sıra hedeftedir; kapanınca normal sıra (6.6) devam eder. adet = gönderilen, yığının üstündeki kart sayısı.
   // Eksi elde ters: gonderen hedefin yığınından kart almıştır, kartlar gonderenin yığınının üstündedir.
-  // bomba: gönderilen bombadır (blokta bomba geri gider).
-  blok?: { hedef: number; gonderen: number; adet: number; bomba?: true }
+  // bomba: gönderilen bombadır (blokta bomba geri gider). bombaIle: bomba sahibi yığınını boşaltırken bomba
+  // kartlarla birlikte gitti (6.8 madde 7); blokta kartlarla birlikte geri döner.
+  blok?: { hedef: number; gonderen: number; adet: number; bomba?: true; bombaIle?: true }
+  // Blokta atılan 2'ler ve Kral'da grubun altına giren Papaz'lar (kartAdi): grubun en alttaki kartına yapışık sayılır,
+  // grup yakalanınca onunla gider (6.5, 6.9.1).
+  yapisik: string[]
+  // Kral eli (Mut kartlarında Papaz, 6.9): avuçtaki Papaz yığınların içinden kart alır.
+  kralEli: boolean
+  // Kullanılmakta olan Kral gücü: oynanan Papaz ve Mut'tan alınan Papaz'lar, her biri bir güç. Bitene kadar sıra oyuncuda.
+  kral?: { oyuncu: number; papazlar: Kart[] }
 }
 
 // Yer: "orta", "mut", "ceza:<oyuncu>", "bomba:<oyuncu>".
@@ -61,6 +69,8 @@ export interface HamleSonucu {
   takas?: number
   // Kız ile çekme: kartı alınan oyuncu ve çekilen kart (çekenin avucunun sonuna eklenir).
   cekme?: { hedef: number; kart: Kart }
+  // Kral hamlesi (kral, kralAl, kralBitir): ekran yakalama inişi yapmaz, kartlar doğrudan uçar.
+  kral?: true
 }
 
 export type HamleTipi =
@@ -74,12 +84,19 @@ export type HamleTipi =
   | 'takas' // 8 ortaya düşer (eşleşme/seri yok), avucunu hedefle değiştirirsin (7)
   | 'cek' // Kız ortaya düşer (eşleşme/seri yok), hedefin avucundan rastgele bir kart çekersin (7)
   | 'bomba' // bomba elinde 10: bomba sendeyse 10'unu ekleyip sıradakine gönderirsin, değilse 10 sahibindeki bombaya eklenir
+  | 'kral' // Kral elinde Papaz: Mut'taki Papaz'ları da alır, her Papaz bir güç (6.9); yigin verilirse ilk güç hemen kullanılır
+  | 'kralAl' // Kral gücü: bir yığının içinden grup (bas, adet) alınır, Papaz altına girer, gonder'e gider (kart = -1)
+  | 'kralBitir' // kalan güçler kullanılmaz: kalan Papaz'lar gonder'in yığınına (kart = -1)
 
 // kart = avuçtaki sırası; hedef = kartın eklendiği oyuncu (ekle), avucu alınan oyuncu (takas, cek) ya da eksi/serbest elde yığını alınan oyuncu (alIlerlet)
 export interface Hamle {
   tip: HamleTipi
   kart: number
   hedef?: number
+  // Kral: kartların alındığı yığın ("orta" ya da "ceza:<i>") ve yığındaki yeri (alttan sıra, kart sayısı).
+  yigin?: string
+  bas?: number
+  adet?: number
   // Sadece cek: hedefin avucundan çekilecek kartın sırası. Yoksa rastgele (ters dönmüş karılmış karttan seçmek gibi).
   // Testler ve botun hesabı için; geçerlilik kontrolünde bakılmaz.
   cekilen?: number
@@ -105,6 +122,45 @@ function seriUzunlugu(yigin: Kart[], k: Kart): number {
   let n = 0
   while (n < yigin.length && yigin[yigin.length - 1 - n].deger === k.deger - 1 - n) n++
   return n >= 2 ? n : 0
+}
+
+const kartAdi = (k: Kart) => `${k.renk}-${k.deger}`
+
+// Ceza yığınından yakalama: yakalanan grubun altında yapışık 2 kaldıysa (blok, 6.5) o da grupla birlikte gider.
+function cezadanYakala(d: Durum, yigin: Kart[], k: Kart): Kart[] {
+  const alinan = yakala(yigin, k)
+  while (yigin.length > 0 && d.yapisik.includes(kartAdi(ust(yigin)!))) alinan.unshift(yigin.pop()!)
+  return alinan
+}
+
+// Kral'ın bir yığından alabileceği gruplar (6.9.1): yan yana duran aynı sayılı kartların tamamı (tek kart da olur) ya da
+// en az 3 kartlık serinin tamamı. Yapışık kartlar (2, Papaz) üstlerindeki karta bağlıdır, tek başına alınmaz.
+export function kralGruplari(d: Durum, yigin: Kart[]): { bas: number; adet: number }[] {
+  const birimler: { bas: number; son: number; deger: number }[] = []
+  let bas = 0
+  yigin.forEach((k, i) => {
+    if (d.yapisik.includes(kartAdi(k)) && i < yigin.length - 1) return
+    birimler.push({ bas, son: i, deger: k.deger })
+    bas = i + 1
+  })
+  const gruplar: { bas: number; adet: number }[] = []
+  const ekle = (i: number, j: number) => {
+    const g = { bas: birimler[i].bas, adet: birimler[j].son - birimler[i].bas + 1 }
+    if (!gruplar.some((x) => x.bas === g.bas && x.adet === g.adet)) gruplar.push(g)
+  }
+  for (let i = 0; i < birimler.length; ) {
+    let j = i
+    while (j + 1 < birimler.length && birimler[j + 1].deger === birimler[i].deger) j++
+    ekle(i, j)
+    i = j + 1
+  }
+  for (let i = 0; i < birimler.length; ) {
+    let j = i
+    while (j + 1 < birimler.length && birimler[j + 1].deger === birimler[j].deger + 1) j++
+    if (j - i >= 2) ekle(i, j)
+    i = j + 1
+  }
+  return gruplar
 }
 
 // Yığının üstündeki aynı sayılı kartları çıkarıp döndürür.
@@ -141,9 +197,11 @@ export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?:
     eksi: false,
     serbest: false,
     bombaEli: false,
+    kralEli: false,
     asama: 'oyun',
     puanKagidi: [],
     dagitim: [],
+    yapisik: [],
     tohum: secenek.tohum ?? Math.floor(Math.random() * 2 ** 31),
   }
   d.elBaslatani = Math.floor(rastgele(d) * d.oyuncular.length)
@@ -165,9 +223,12 @@ function elKur(d: Durum) {
   d.blok = undefined
   d.bomba = undefined
   d.patlama = undefined
+  d.yapisik = []
+  d.kral = undefined
   avuclariDagit(d, true)
   d.carpan = valeCarpani(d.mut)
   Object.assign(d, acilisKurallari(d.mut))
+  d.kralEli = d.mut.some((k) => k.deger === 13)
   d.sira = d.elBaslatani
 }
 
@@ -224,6 +285,17 @@ export function gecerliHamleler(d: Durum): Hamle[] {
   const siradaki = d.oyuncular[sonraki(d, d.sira)]
   const hamleler: Hamle[] = []
   const rakipler = d.oyuncular.map((_, i) => i).filter((i) => i !== d.sira)
+  if (d.kral) {
+    // Kral gücü: orta ya da herhangi bir ceza yığınından grup alınır, istenen oyuncuya gider (serbest el olsun olmasın),
+    // kendine olmaz; eksi elde hep kendine (kendi yığınından almak anlamsız). Ya da kalan güçler bırakılır.
+    const hedefler = d.eksi ? [d.sira] : rakipler
+    const yiginlar = ['orta', ...d.oyuncular.map((_, i) => `ceza:${i}`).filter((y) => !(d.eksi && y === `ceza:${d.sira}`))]
+    for (const yigin of yiginlar)
+      for (const g of kralGruplari(d, yiginKartlari(d, yigin)))
+        for (const gonder of hedefler) hamleler.push({ tip: 'kralAl', kart: -1, yigin, bas: g.bas, adet: g.adet, gonder })
+    for (const gonder of hedefler) hamleler.push({ tip: 'kralBitir', kart: -1, gonder })
+    return hamleler
+  }
   // Serbest elde yakalanan kartlar istenen rakibe gider (6.2): her hedef ayrı hamle. haric: kartların alındığı rakip.
   const yakalama = (h: Hamle, haric?: number) =>
     d.serbest ? rakipler.filter((g) => g !== haric).forEach((gonder) => hamleler.push({ ...h, gonder })) : hamleler.push(h)
@@ -234,7 +306,10 @@ export function gecerliHamleler(d: Durum): Hamle[] {
     // Mut kartlarıyla eşleşen kart orta yığına boşa atılamaz; ortada eşleşme ya da seri varsa oyuncu seçer (5.2).
     if (yakalar(d.orta, k)) yakalama({ tip: 'ortayaAt', kart })
     else if (!mutVar && !bombaVar) hamleler.push({ tip: 'ortayaAt', kart })
-    if (mutVar) yakalama({ tip: 'mutEslestir', kart })
+    // Kral elinde Papaz Mut Papaz'larıyla normal eşleşmez, Kral hamlesi olur (güç kullanılmasa da, 6.9.1).
+    const papaz = d.kralEli && k.deger === 13
+    if (papaz) hamleler.push({ tip: 'kral', kart })
+    if (mutVar && !papaz) yakalama({ tip: 'mutEslestir', kart })
     if (bombaVar) {
       if (d.bomba!.sahip === d.sira) yakalama({ tip: 'bomba', kart })
       else hamleler.push({ tip: 'bomba', kart })
@@ -261,13 +336,27 @@ export function gecerliHamleler(d: Durum): Hamle[] {
   return hamleler
 }
 
-export const hamleGecerliMi = (d: Durum, h: Hamle) =>
-  gecerliHamleler(d).some((g) => g.tip === h.tip && g.kart === h.kart && g.hedef === h.hedef && g.gonder === h.gonder)
+const yiginKartlari = (d: Durum, yigin: string) => (yigin === 'orta' ? d.orta : d.oyuncular[Number(yigin.split(':')[1])].ceza)
 
-// Hamleyi uygular, yeni durumu döndürür (eski durum değişmez).
-export function hamleYap(eski: Durum, h: Hamle): Durum {
-  if (!hamleGecerliMi(eski, h)) throw new Error(`Geçersiz hamle: ${JSON.stringify(h)}`)
+// Kral hamlesinde ilk güç hemen kullanılabilir (yigin verilirse): kral + kralAl, geçerliliğine ayrı ayrı bakılır.
+export const hamleGecerliMi = (d: Durum, h: Hamle): boolean =>
+  h.tip === 'kral' && h.yigin !== undefined
+    ? hamleGecerliMi(d, { tip: 'kral', kart: h.kart }) && hamleGecerliMi(hamleYap(d, { tip: 'kral', kart: h.kart }), { ...h, tip: 'kralAl', kart: -1 })
+    : gecerliHamleler(d).some(
+        (g) => g.tip === h.tip && g.kart === h.kart && g.hedef === h.hedef && g.gonder === h.gonder && g.yigin === h.yigin && g.bas === h.bas && g.adet === h.adet,
+      )
+
+// Hamleyi uygular, yeni durumu döndürür (eski durum değişmez). dogrula: false sadece gecerliHamleler'den gelen hamle
+// için (bot her adayı denerken geçerlilik listesini her seferinde yeniden kurmasın).
+export function hamleYap(eski: Durum, h: Hamle, dogrula = true): Durum {
+  if (dogrula && !hamleGecerliMi(eski, h)) throw new Error(`Geçersiz hamle: ${JSON.stringify(h)}`)
+  if (h.tip === 'kral' && h.yigin !== undefined)
+    return hamleYap(hamleYap(eski, { tip: 'kral', kart: h.kart }, false), { ...h, tip: 'kralAl', kart: -1 }, false)
   const d = structuredClone(eski)
+  if (h.tip === 'kral' || h.tip === 'kralAl' || h.tip === 'kralBitir') {
+    kralHamlesi(d, h)
+    return d
+  }
   if (h.tip === 'kabul') {
     d.blok = undefined
     d.sonHamle = undefined
@@ -284,6 +373,8 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
   let nereye = `ceza:${d.eksi ? oyuncu : h.gonder ?? s1}`
   let cekilen: Kart | undefined
   const eskiSahip = d.bomba?.sahip
+  // Bomba sahibi kendi yığınından kart gönderirse bomba da kartlarla gider; blokta kartlarla geri döner (6.8 madde 7).
+  const bombaIle = (h.tip === 'cezaBosalt' && eskiSahip === oyuncu) || (h.tip === 'blok' && !!d.blok!.bombaIle)
 
   switch (h.tip) {
     case 'ortayaAt':
@@ -308,7 +399,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       } else nereye = `bomba:${d.bomba!.sahip}`
       break
     case 'cezaBosalt':
-      eslesen = yakala(ben.ceza, k)
+      eslesen = cezadanYakala(d, ben.ceza, k)
       nereden = `ceza:${oyuncu}`
       break
     case 'ekle':
@@ -316,7 +407,7 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
       break
     case 'alIlerlet': {
       const kimden = d.eksi || d.serbest ? h.hedef! : s1
-      eslesen = yakala(d.oyuncular[kimden].ceza, k)
+      eslesen = cezadanYakala(d, d.oyuncular[kimden].ceza, k)
       nereden = `ceza:${kimden}`
       if (!d.eksi) nereye = `ceza:${h.gonder ?? sonraki(d, s1)}`
       break
@@ -359,9 +450,12 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
     d.bomba.sahip = hedef!
     yigin = d.bomba.kartlar
   } else if (hedef !== null) yigin = d.oyuncular[hedef].ceza
-  // Blokta 2 gönderilen kartların altına girer, en üstte asıl kartlar kalır.
-  if (h.tip === 'blok') yigin.push(k, ...eslesen)
-  else yigin.push(...eslesen, k)
+  if (bombaIle) d.bomba!.sahip = hedef!
+  // Blokta 2 gönderilen kartların altına girer, en üstte asıl kartlar kalır; ceza yığınında gruba yapışır.
+  if (h.tip === 'blok') {
+    yigin.push(k, ...eslesen)
+    if (yer === 'ceza') d.yapisik.push(kartAdi(k))
+  } else yigin.push(...eslesen, k)
   d.sonHamle = { oyuncu, kart: k, eslesen, nereden, nereye }
   if (h.tip === 'takas') d.sonHamle.takas = h.hedef
   if (cekilen) d.sonHamle.cekme = { hedef: h.hedef!, kart: cekilen }
@@ -378,9 +472,44 @@ export function hamleYap(eski: Durum, h: Hamle): Durum {
   if (magdur !== null && d.oyuncular[magdur].avuc.some((x) => x.deger === 2)) {
     d.blok = { hedef: magdur, gonderen: oyuncu, adet: eslesen.length + 1 }
     if (yer === 'bomba') d.blok.bomba = true
+    if (bombaIle) d.blok.bombaIle = true
     d.sira = magdur
   } else ilerle(d)
   return d
+}
+
+// Kral (6.9, 6.9.1). kral: Papaz avuçtan, Mut'taki Papaz'lar da güce katılır; sıra oyuncuda kalır.
+// kralAl: gruptan önce bir Papaz altına girip gruba yapışır, hepsi gonder'in yığınına; bloklanamaz. Bomba sahibi kendi
+// yığınından gönderirse bomba da gider (6.8 madde 7). kralBitir: kalan Papaz'lar gonder'e. Güç bitince sıra 6.6 ile.
+function kralHamlesi(d: Durum, h: Hamle) {
+  const oyuncu = d.sira
+  d.blok = undefined
+  if (h.tip === 'kral') {
+    const [k] = d.oyuncular[oyuncu].avuc.splice(h.kart, 1)
+    const mutPapaz = d.mut.filter((m) => m.deger === 13)
+    d.mut = d.mut.filter((m) => m.deger !== 13)
+    d.kral = { oyuncu, papazlar: [k, ...mutPapaz] }
+    d.sonHamle = { oyuncu, kart: k, eslesen: mutPapaz, nereden: mutPapaz.length ? 'mut' : null, nereye: 'kral', kral: true }
+    return
+  }
+  const papazlar = d.kral!.papazlar
+  const hedef = d.oyuncular[h.gonder!].ceza
+  if (h.tip === 'kralAl') {
+    const papaz = papazlar.shift()!
+    const alinan = yiginKartlari(d, h.yigin!).splice(h.bas!, h.adet!)
+    hedef.push(papaz, ...alinan)
+    d.yapisik.push(kartAdi(papaz))
+    if (h.yigin === `ceza:${oyuncu}` && d.bomba?.sahip === oyuncu) d.bomba.sahip = h.gonder!
+    d.sonHamle = { oyuncu, kart: papaz, eslesen: alinan, nereden: h.yigin!, nereye: `ceza:${h.gonder}`, kral: true }
+  } else {
+    const [papaz, ...kalan] = papazlar.splice(0)
+    hedef.push(...kalan, papaz)
+    d.sonHamle = { oyuncu, kart: papaz, eslesen: kalan, nereden: 'kral', nereye: `ceza:${h.gonder}`, kral: true }
+  }
+  if (papazlar.length === 0) {
+    d.kral = undefined
+    ilerle(d)
+  }
 }
 
 // 6.6: avucunda en çok kart olan oynar; eşitlikte elin başlatanından sağa doğru ilk olan.
@@ -448,6 +577,7 @@ export function oyunuBitir(eski: Durum): Durum {
   d.toplamEl = d.el
   d.asama = 'oyunSonu'
   d.blok = undefined
+  d.kral = undefined
   return d
 }
 

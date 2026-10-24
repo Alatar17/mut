@@ -22,7 +22,7 @@ export function akilliBotHamlesi(d: Durum, rastgele: () => number = Math.random)
   const enIyi = Math.max(...adaylar.map(x => x.puan))
   // Güçten sonra sıra yine bendeymiş gibi dene (hamleYap yeni durum döndürür, takas/çekme blok açmaz).
   const sonrasi = (h: Hamle) => {
-    const t = hamleYap(d, h)
+    const t = hamleYap(d, h, false)
     t.sira = d.sira
     return Math.max(...puanlanmis(t).map(x => x.puan))
   }
@@ -49,15 +49,29 @@ function puanlanmis(d: Durum, hamleler = gecerliHamleler(d)) {
   // Serbest elde rakiplere giden puan aynıysa kartlar kazanmakta olana (oyun toplamı + bu el en az olan) gider.
   const toplam = toplamPuanlar(d).map((t, i) => t + elPuanlari(d)[i])
   const lider = d.oyuncular.map((_, i) => i).filter(i => i !== ben).sort((a, b) => toplam[a] - toplam[b])[0]
+  // Eksi elde ters: kendi yığınına gelen iyi, rakiplere giden kötü.
+  const isaret = d.eksi ? -1 : 1
+  // Kral gücünde Papaz'lar sonunda zaten gidecek: bir grubu almak ancak kartlar kazandırıyorsa değer (Papaz puanı düşülür).
+  const papazPuani = (h: Hamle) =>
+    !d.kral ? 0 : h.tip === 'kralAl' ? kartPuani(d.kral.papazlar[0]) : h.tip === 'kralBitir' ? yiginPuani(d.kral.papazlar) : 0
   return hamleler
     .filter(h => h.tip !== 'takas' && h.tip !== 'cek')
     .map(h => {
-      const fark = cezalar(hamleYap(d, h)).map((p, i) => p - once[i])
+      const sonra = h.tip === 'kral' ? kraliBitir(hamleYap(d, h, false)) : hamleYap(d, h, false)
+      const fark = cezalar(sonra).map((p, i) => p - once[i])
       const rakiplere = fark.reduce((t, f, i) => (i === ben ? t : t + f), 0)
       const kart = d.oyuncular[ben].avuc[h.kart]
-      // Eksi elde ters: kendi yığınına gelen iyi, rakiplere giden kötü.
-      const isaret = d.eksi ? -1 : 1
       const lidere = h.gonder === lider ? 0.005 : 0
-      return { h, puan: isaret * (rakiplere - fark[ben]) - (kart ? kartPuani(kart) / 100 : 0) + lidere }
+      return { h, puan: isaret * (rakiplere - fark[ben] - papazPuani(h)) - (kart ? kartPuani(kart) / 100 : 0) + lidere }
     })
+}
+
+// Kral hamlesinden sonra güçleri en iyi adımlarla (her adımda en kârlısı) bitirir; Kral hamlesinin değeri buradan ölçülür.
+function kraliBitir(d: Durum): Durum {
+  while (d.kral) {
+    const adaylar = puanlanmis(d)
+    const enIyi = Math.max(...adaylar.map(x => x.puan))
+    d = hamleYap(d, adaylar.find(x => x.puan === enIyi)!.h, false)
+  }
+  return d
 }

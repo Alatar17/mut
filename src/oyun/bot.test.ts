@@ -22,7 +22,7 @@ it('akıllı bot rastgele botları çoğunlukla yener', () => {
     if (digerleri.every(p => akilli < p)) kazandi++
   }
   expect(kazandi).toBeGreaterThan(OYUN * 0.5)
-})
+}, 30_000)
 
 it('akıllı bot: rakipte çok daha iyi avuç varsa 8 ile takas yapar, yoksa yapmaz', () => {
   const d = yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum: 1 })

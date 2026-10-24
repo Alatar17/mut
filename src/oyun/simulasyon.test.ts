@@ -15,6 +15,7 @@ const tumKartlar = (d: Durum): Kart[] => [
   ...d.orta,
   ...d.oyuncular.flatMap((o) => [...o.avuc, ...o.ceza]),
   ...(d.bomba?.kartlar ?? []),
+  ...(d.kral?.papazlar ?? []),
 ]
 
 function denetle(d: Durum, onceki: Durum, h: Hamle) {
@@ -29,9 +30,11 @@ function denetle(d: Durum, onceki: Durum, h: Hamle) {
   }
   // Mut kartları sadece Mut eşleştirmesiyle azalır.
   // (El sonunda bomba patlarsa Mut'ta kalanlar da gider.)
-  if (h.tip !== 'mutEslestir' && !d.patlama) expect(d.mut.length).toBe(onceki.mut.length)
+  if (h.tip !== 'mutEslestir' && h.tip !== 'kral' && !d.patlama) expect(d.mut.length).toBe(onceki.mut.length)
 
-  if (d.asama === 'oyun') {
+  // Kral gücü kullanılırken sıra Papaz'ı oynayanda kalır.
+  if (d.kral) expect(d.sira).toBe(d.kral.oyuncu)
+  else if (d.asama === 'oyun') {
     // 6.6: en çok kartı olanlardan, elin başlatanından sağa doğru ilk olan.
     const n = d.oyuncular.length
     const enCok = Math.max(...d.oyuncular.map((o) => o.avuc.length))
@@ -57,8 +60,8 @@ function oyunOyna(oyuncuSayisi: number, tohum: number, istatistik: Record<string
       denetle(yeni, d, h)
       istatistik[h.tip] = (istatistik[h.tip] ?? 0) + 1
       d = yeni
-      // Kabulde kart oynanmaz; her elde tam 48 kart oynanır.
-      if (h.tip !== 'kabul' && ++hamleSayisi > 48) throw new Error('El 48 hamlede bitmedi')
+      // Kabulde ve Kral güçlerinde avuçtan kart oynanmaz; her elde tam 48 kart oynanır.
+      if (h.tip !== 'kabul' && h.tip !== 'kralAl' && h.tip !== 'kralBitir' && ++hamleSayisi > 48) throw new Error('El 48 hamlede bitmedi')
     }
     expect(hamleSayisi).toBe(48)
     expect(d.tur).toBe(d.toplamTur)

@@ -1,9 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react'
 import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
-import { cikanOnlar, elPuanlari, elSayisiAyarla, gecerliHamleler, hamleGecerliMi, hamleYap, oyunuBitir, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
+import { cikanOnlar, elPuanlari, kralGruplari, elSayisiAyarla, gecerliHamleler, hamleGecerliMi, hamleYap, oyunuBitir, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
 import { karistir } from '../oyun/rastgele'
-import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
+import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBosaltmaDenemesi, yapisikDenemesi, kralDenemesi, kralBotDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { kartEni, kartOlcegi } from './boyut'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, patlamaOncesi, patlamaOrtada, UcanKart, type Konum, type Ucus } from './animasyon'
@@ -48,7 +48,7 @@ const PUAN_YERLERI = { Yanında: 'puan-yaninda', Kenarda: 'puan-kenarda', Rozet:
 type PuanYeri = keyof typeof PUAN_YERLERI
 // Deste penceresinde kendi avucumdaki kartlar.
 const KARTLARIM: Record<KartlarimGorunusu, true> = { Soluk: true, Çerçeveli: true }
-const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Ortada: true, Yerinde: true }
+const BAKIS_GORUNUSLERI: Record<BakisGorunusu, true> = { Yerinde: true, Ortada: true }
 // Avucun yukarı kayması (masa değişkeni --el-kayma, stil.css). Varsayılan +10 px (kullanıcı kararı, 2026-10-22).
 const EL_YUKSEKLIKLERI = { Eski: '0px', '+10 px': '10px', '+20 px': '20px' }
 type ElYuksekligi = keyof typeof EL_YUKSEKLIKLERI
@@ -102,8 +102,7 @@ const HAZIR_SOZLER = ['Çok saçma kendime sokamıyom!', 'Tost oldu.', 'Beton d�
 const KIZ_SOZU = HAZIR_SOZLER[3]
 const KIZ_ISIMLERI = ["Tahir'e", "Uğur'a", "Mert'e"]
 const kizSozu = (isim: string) => `Şimdi ben kızı aldım ${isim} soktum.`
-// Botlar arada bir konuşur: ceza yığınına 3+ kart gelince ya da benden Kız ile kart çekince.
-const BOT_CEZA_SOZLERI = ['Çok saçma kendime sokamıyom!', 'Tost oldu.']
+// Botlar ve bota düşen oyuncu konuşmaz (kullanıcı kararı 2026-10-24); söz sadece elle seçilir.
 const BALON_SURESI = 3000
 
 // Elde tutulan kartlar gibi hafif yelpaze: kenardaki kartlar biraz döner ve alçalır.
@@ -420,6 +419,36 @@ function Kalkan({ aktif, kurulu, bas }: { aktif: boolean; kurulu: boolean; bas: 
   )
 }
 
+// Kral seçim penceresi: yığının bütün kartları ortada (en alttaki solda); dokunulan grup havalanır.
+function KralPenceresi({ kartlar, secili, dokun, children }: { kartlar: KartTipi[]; secili?: { bas: number; adet: number }; dokun: (i: number) => void; children: ReactNode }) {
+  const en = kartEni(60)
+  const boy = kartBoyu(en)
+  const n = Math.max(kartlar.length, 1)
+  const siraBasi = n <= 18 ? n : Math.ceil(n / 2)
+  const adim = siraBasi > 1 ? Math.min(40, (760 - en) / (siraBasi - 1)) : 0
+  const siralar = Math.ceil(n / siraBasi)
+  return (
+    <div className="kral-penceresi">
+      {kartlar.length === 0 && <div className="kral-ipucu">Yığın boş</div>}
+      {kartlar.length > 0 && (
+        <div style={{ position: 'relative', width: en + adim * (siraBasi - 1), height: siralar * boy + (siralar - 1) * 14 + 12 }}>
+          {kartlar.map((k, i) => (
+            <div
+              key={i}
+              className={'kral-secim-kart' + (secili && i >= secili.bas && i < secili.bas + secili.adet ? ' secili' : '')}
+              style={{ left: (i % siraBasi) * adim, top: 12 + Math.floor(i / siraBasi) * (boy + 14) }}
+              onClick={() => dokun(i)}
+            >
+              <Kart kart={k} genislik={en} ucan />
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="kral-dugmeler">{children}</div>
+    </div>
+  )
+}
+
 export function Masa() {
   // d: oyunun gerçek durumu. gorunen: ekranda çizilen durum (animasyon sürerken d'nin gerisinde kalır).
   // Yeni oyunda kaç el oynanacağı ("Kaç el?" penceresinde son seçilen).
@@ -480,11 +509,20 @@ export function Masa() {
   const [gelistirici, setGelistirici] = useKayitli('gelistirici', false)
   const [desteAcik, setDesteAcik] = useState(false)
   const [mutZemini, setMutZemini] = useKayitli<MutZemini>('mutZemini', 'Yuva')
-  const [bakisGorunusu, setBakisGorunusu] = useKayitli<BakisGorunusu>('bakisGorunusu', 'Ortada')
+  const [bakisGorunusu, setBakisGorunusu] = useKayitli<BakisGorunusu>('bakisGorunusu2', 'Yerinde')
   const sure = HAMLE_SURELERI[hamleSuresi] ?? 0
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
   // Önceden kurulmuş kalkan (otomatik blok). Sadece benim ekranımda görünür.
   const [kalkanKurulu, setKalkanKurulu] = useState(false)
+  // Kral seçim penceresi (6.9.1): açılan yığın; kart = henüz oynanmamış Papaz (avuçtaki sırası; pencere kapanırsa hamle
+  // olmaz), yoksa süren Kral gücü. dokunulan/sira: dokunulan kart ve onu içeren gruplardan seçilen (aynı karta
+  // tekrar dokununca sıradaki grup). bitir: kalan güçleri bırakırken hedef seçiliyor.
+  const [kralPencere, setKralPencere] = useState<{ yigin: string; kart?: number; dokunulan?: number; sira: number } | null>(null)
+  const [kralBitirSecimi, setKralBitirSecimi] = useState(false)
+  useEffect(() => {
+    setKralPencere(null)
+    setKralBitirSecimi(false)
+  }, [d])
   // Rakibin ceza yığınına bırakılan kart: "Ekle" mi "İlerlet" mi seçilecek.
   const [cezaSecimi, setCezaSecimi] = useState<{ kart: number; yigin: number } | null>(null)
   // Kız ile çekme: avucu ters dönmüş (karılmış) oyuncu ve kullanıcının seçimini bekleyen çekme
@@ -542,7 +580,7 @@ export function Masa() {
     const b = bekleyenGecis.current
     if (!b) return
     bekleyenGecis.current = null
-    const kartlar = new Map([...gorunen.oyuncular.flatMap(o => [...o.avuc, ...o.ceza]), ...gorunen.orta, ...gorunen.mut, ...gorunen.deste, ...(gorunen.bomba?.kartlar ?? [])].map(k => [kartKimligi(k), k]))
+    const kartlar = new Map([...gorunen.oyuncular.flatMap(o => [...o.avuc, ...o.ceza]), ...gorunen.orta, ...gorunen.mut, ...gorunen.deste, ...(gorunen.bomba?.kartlar ?? []), ...(gorunen.kral?.papazlar ?? [])].map(k => [kartKimligi(k), k]))
     const yeniUcuslar: Ucus[] = b.tasinan.map(([id, yer]) => ({
       kart: kartlar.get(id)!,
       kaynak: b.kaynak.get(id)!,
@@ -562,18 +600,6 @@ export function Masa() {
       b.bitti()
     }, toplam)
   }, [gorunen])
-
-  const oncekiCeza = useRef<number[]>([])
-  useEffect(() => {
-    const once = oncekiCeza.current
-    oncekiCeza.current = d.oyuncular.map(o => o.ceza.length)
-    d.oyuncular.forEach((o, i) => {
-      if (i > 0 && once[i] !== undefined && o.ceza.length - once[i] >= 3 && Math.random() < 0.4)
-        soyle(i, BOT_CEZA_SOZLERI[Math.floor(Math.random() * BOT_CEZA_SOZLERI.length)])
-    })
-    const s = d.sonHamle
-    if (s?.cekme && s.oyuncu > 0 && s.cekme.hedef === 0 && Math.random() < 0.6) soyle(s.oyuncu, kizSozu("Tahir'e"))
-  }, [d])
 
   const basla = () => {
     mesgulRef.current = true
@@ -783,7 +809,7 @@ export function Masa() {
       setBotKalkik(id)
       await bekle(SURE.kalkma * carpan)
     }
-    const inis = inisYeri(sonuc)
+    const inis = sonuc.kral ? null : inisYeri(sonuc)
     if (sonuc.takas !== undefined) {
       // Takas: önce 8 ortaya düşer, sonra iki avuç yer değiştirir.
       const ara = kartsiz()
@@ -924,6 +950,15 @@ export function Masa() {
     const t = kabulSonrasi(d, { tip: 'ortayaAt', kart })
     if (t.sira !== oyuncu || d.blok && d.blok.hedef !== oyuncu) return 'red'
     const siradaki = sonraki(t, oyuncu)
+    // Kral elinde Papaz: Mut Papaz'ına bırakmak gücü başlatır; bir yığına bırakmak o yığının seçim penceresini açar.
+    if (ayniHamleler(t, { tip: 'kral', kart }).length > 0) {
+      if (yer === 'mut') return Number(deger) === 13 ? dene('kral') : 'red'
+      if (yer === 'orta' || yer === 'ceza') {
+        setKralPencere({ yigin: hedef, kart, sira: 0 })
+        if (oyuncu === 0) setKalkikKart(kart)
+        return 'bekle'
+      }
+    }
     if (yer === 'orta') {
       // Mut kartlarıyla eşleşen kart ortaya atılamaz: neden olmadığını eşleşen Mut kartı sallanarak gösterir.
       const deger = t.oyuncular[oyuncu].avuc[kart].deger
@@ -953,7 +988,7 @@ export function Masa() {
     return 'red'
   }
 
-  const aktifKurallar = [...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.bombaEli ? ['Bomba'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
+  const aktifKurallar = [...(d.kralEli ? ['Kral'] : []), ...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.bombaEli ? ['Bomba'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
   // Ceza yığınlarında görünen puan çarpanı: eksi elde puanlar eksi görünür.
   const puanCarpani = d.eksi ? -d.carpan : d.carpan
   // Test menüsünde bir seçeneğe her basışta sıradaki değere geçer.
@@ -984,6 +1019,35 @@ export function Masa() {
   const bakilanKartlar = (yer: string): KartTipi[] =>
     yer === 'orta' ? gorunen.orta : yer === 'bomba' ? gorunen.bomba?.kartlar ?? [] : gorunen.oyuncular[Number(yer.split(':')[1])].ceza
   const gosterilenToplamEl = bitirIstendi.current ? d.puanKagidi.length : istenenEl.current ?? d.toplamEl
+
+  // ---- Kral (6.9.1) ----
+  // Gücü elle kullanan: ben ya da botlar kapalıyken sırası gelen bot.
+  const kralBende = !!d.kral && d.asama === 'oyun' && !mesgul && (d.kral.oyuncu === 0 || !botlarOtomatik)
+  // Pencere Papaz oynanmadan açıldıysa kartlara Papaz oynanmış gibi bakılır (Mut Papaz'ları da güçte).
+  // (Hamle yapılınca pencere kapanır; o arada çizilirse eski Papaz sırası geçersiz kalabilir, o zaman d.)
+  const papazHamlesi: Hamle | null = kralPencere?.kart !== undefined ? { tip: 'kral', kart: kralPencere.kart } : null
+  const papazTabani = papazHamlesi && kabulSonrasi(d, papazHamlesi)
+  const kralTaban = papazHamlesi && papazTabani && hamleGecerliMi(papazTabani, papazHamlesi) ? hamleYap(papazTabani, papazHamlesi) : d
+  const kralKartlari = !kralPencere ? [] : kralPencere.yigin === 'orta' ? kralTaban.orta : kralTaban.oyuncular[Number(kralPencere.yigin.split(':')[1])].ceza
+  const dokunulan = kralPencere?.dokunulan
+  const kralAdaylari = dokunulan === undefined ? [] : kralGruplari(kralTaban, kralKartlari).filter(g => g.bas <= dokunulan && dokunulan < g.bas + g.adet).sort((a, b) => b.adet - a.adet)
+  const kralSecili = kralAdaylari.length > 0 ? kralAdaylari[kralPencere!.sira % kralAdaylari.length] : undefined
+  const kralAl = (gonder: number): Hamle => ({ tip: 'kralAl', kart: -1, yigin: kralPencere!.yigin, bas: kralSecili!.bas, adet: kralSecili!.adet, gonder })
+  // Seçilen grubun gidebileceği oyuncular (eksi elde sadece kendisi; kendi yığınından almak yok).
+  const kralHedefleri = !kralSecili || !kralTaban.kral ? [] : kralTaban.oyuncular.map((_, i) => i).filter(i => hamleGecerliMi(kralTaban, kralAl(i)))
+  const kralGonder = (gonder: number) => {
+    const p = kralPencere!
+    setKralPencere(null)
+    oyna(p.kart !== undefined ? { ...kralAl(gonder), tip: 'kral', kart: p.kart } : kralAl(gonder))
+  }
+  const kralKapat = () => {
+    setKralPencere(null)
+    setKalkikKart(null)
+  }
+  const kralDokun = (i: number) => setKralPencere(p => p && { ...p, dokunulan: i, sira: p.dokunulan === i ? p.sira + 1 : 0 })
+  const papazOrtayaAt = kralPencere?.kart !== undefined && kralPencere.yigin === 'orta' && ayniHamleler(kabulSonrasi(d, { tip: 'ortayaAt', kart: kralPencere.kart }), { tip: 'ortayaAt', kart: kralPencere.kart }).length > 0
+  const kralBitirHedefleri = d.kral ? gecerliHamleler(d).filter(h => h.tip === 'kralBitir').map(h => h.gonder!) : []
+  const hedefAdi = (i: number) => (i === (kralTaban.kral?.oyuncu ?? d.sira) ? 'Al' : `→ ${d.oyuncular[i].ad}`)
 
   return (
     <GizliKartlar.Provider value={gizli}>
@@ -1043,6 +1107,15 @@ export function Masa() {
 
       <OrtaYigin kartlar={gorunen.orta} carpan={d.bombaEli ? puanCarpani : undefined} />
       {gorunen.bomba && <BombaYigini kartlar={gorunen.bomba.kartlar} sahip={gorunen.bomba.sahip} cikan={cikanOnlar(gorunen)} />}
+      {gorunen.kral && (
+        <div className="kral-alani" data-yer="kral" style={{ width: kartEni(56) + 14 * (gorunen.kral.papazlar.length - 1), height: kartBoyu(kartEni(56)) }}>
+          {gorunen.kral.papazlar.map((k, i) => (
+            <div key={kartKimligi(k)} className="yigin-kart" style={{ left: i * 14 }}>
+              <Kart kart={k} genislik={kartEni(56)} />
+            </div>
+          ))}
+        </div>
+      )}
 
       <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={botKartlariKapali || ters === 2} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} dizilis={cezaDizilisi} />
       <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={botKartlariKapali || ters === 1} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} dizilis={cezaDizilisi} />
@@ -1111,6 +1184,43 @@ export function Masa() {
         />
       )}
 
+      {/* Kral gücü sürerken: bir yığına dokununca penceresi açılır; Bitir kalan Papaz'ları bırakır. */}
+      {kralBende && !kralPencere && (
+        <>
+          <div
+            className="secim-arka"
+            onClick={e => {
+              const yer = document.elementsFromPoint(e.clientX, e.clientY).map(el => el.closest<HTMLElement>('[data-hedef]')).find(el => el)?.dataset.hedef
+              if (yer === 'orta' || yer?.startsWith('ceza:')) setKralPencere({ yigin: yer, sira: 0 })
+            }}
+          />
+          <div className="blok-penceresi kral-cubugu">
+            <span className="kral-yazi">Kral · {d.kral!.papazlar.length} güç · bir yığına dokun</span>
+            <div className="kral-dugmeler">
+              {kralBitirSecimi || kralBitirHedefleri.length === 1
+                ? kralBitirHedefleri.map(i => (
+                    <button key={i} onClick={() => oyna({ tip: 'kralBitir', kart: -1, gonder: i })}>
+                      {kralBitirHedefleri.length === 1 ? 'Bitir' : `Bitir ${hedefAdi(i)}`}
+                    </button>
+                  ))
+                : <button onClick={() => setKralBitirSecimi(true)}>Bitir</button>}
+            </div>
+          </div>
+        </>
+      )}
+      {kralPencere && (
+        <>
+          <div className="secim-arka" onClick={kralKapat} />
+          <KralPenceresi kartlar={kralKartlari} secili={kralSecili} dokun={kralDokun}>
+            {kralSecili
+              ? kralHedefleri.map(i => <button key={i} className="vurgulu" onClick={() => kralGonder(i)}>{hedefAdi(i)}</button>)
+              : <span className="kral-ipucu">Almak istediğin kartlara dokun</span>}
+            {papazOrtayaAt && <button onClick={() => oyna({ tip: 'ortayaAt', kart: kralPencere.kart! })}>Ortaya at</button>}
+            <button onClick={kralKapat}>Vazgeç</button>
+          </KralPenceresi>
+        </>
+      )}
+
       {cezaSecimi !== null && (
         <>
           <div className="secim-arka" onClick={() => { setCezaSecimi(null); setKalkikKart(null) }} />
@@ -1148,7 +1258,7 @@ export function Masa() {
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">
-          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
+          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Bomba boşaltma dene', bombaBosaltmaDenemesi], ['2 yapışma dene', yapisikDenemesi], ['Kral dene', kralDenemesi], ['Bot Kral dene', kralBotDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
             // "Bot 8 dene" kalkan kurulu başlar: takas gelince sökülmesi görülsün.
             <button key={ad} className="test-satir" onClick={() => { setMenu(null); if (!deneme) return setElPenceresi('yeni'); yeniOyunBaslat(deneme); setKalkanKurulu(ad === 'Bot 8 dene') }}>{ad}</button>
           ))}

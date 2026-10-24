@@ -27,6 +27,7 @@ function denemeKur(d: Durum, p: { avucum: Kart[]; digerAvuclar?: Kart[][]; orta?
   d.mut = [...mut, ...normal.splice(normal.length - (4 - mut.length))]
   d.carpan = valeCarpani(d.mut)
   Object.assign(d, acilisKurallari(d.mut))
+  d.kralEli = d.mut.some(k => k.deger === 13)
   d.orta = [...orta]
   d.deste = normal
   d.elBaslatani = 0
@@ -180,6 +181,53 @@ export const bombaBotDenemesi = (d: Durum) =>
     ],
     orta: [kart(9, 'maca')],
     mut: [kart(10, 'maca'), kart(13, 'kupa'), kart(13, 'karo'), kart(13, 'sinek')],
+    sira: 2,
+  })
+
+// Bomba bende (iki 10), ceza yığınımın üstünde 5. Avucumdaki 5'i kendi yığınıma bırakınca kartlar bombayla birlikte
+// sağdaki B'ye gider (6.8 madde 7). B'de 2 var: bloklarsa kartlar ve bomba bana döner; bende de 2 var, geri bloklayabilirim.
+// Kalan iki 10 soldaki C'nin yığınının altında (bomba devri araya girmesin).
+export const bombaBosaltmaDenemesi = (d: Durum) => {
+  denemeKur(d, {
+    avucum: [kart(5, 'maca'), kart(2, 'sinek'), kart(4, 'sinek'), kart(6, 'sinek')],
+    digerAvuclar: [[kart(2, 'kupa'), kart(4, 'kupa'), kart(6, 'kupa'), kart(7, 'kupa')]],
+    cezalar: [[kart(9, 'karo'), kart(10, 'maca'), kart(10, 'kupa'), kart(5, 'kupa')], [], [kart(10, 'karo'), kart(10, 'sinek'), kart(3, 'sinek')]],
+    mut: [kart(13, 'kupa'), kart(13, 'karo'), kart(13, 'sinek'), kart(12, 'kupa')],
+  })
+  d.bombaEli = true
+  d.bomba = { sahip: 0, kartlar: d.oyuncular[0].ceza.splice(1, 2) }
+  return d
+}
+
+// 2 gruba yapışır (6.5). Ceza yığınımda 7 üstünde iki 5, avucumda iki 5. 5'imi kendi yığınıma bırakınca üç 5 sağdaki
+// B'ye gider; B 2 ile bloklar, üç 5 altlarındaki 2 ile bana döner (7'nin üstüne). Sıra bana gelince öbür 5'imi de
+// bırakırsam dört 5 ve 2 birlikte B'ye gider, 7 bende kalır.
+export const yapisikDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(5, 'maca'), kart(5, 'sinek'), kart(4, 'kupa'), kart(6, 'kupa')],
+    digerAvuclar: [[kart(2, 'kupa'), kart(4, 'karo'), kart(6, 'karo'), kart(9, 'karo')]],
+    cezalar: [[kart(7, 'sinek'), kart(5, 'kupa'), kart(5, 'karo')]],
+    mut: [kart(13, 'kupa'), kart(13, 'karo'), kart(13, 'sinek'), kart(12, 'kupa')],
+  })
+
+// Kral eli (Mut kartlarında Papaz). Avucumda Papaz: Mut Papaz'ıyla iki güç. Sağdaki B'nin yığınında dört 3 (kilitli),
+// üstü 9 ile kapatılmış; soldaki C'nin yığınında 4-5-6 serisi, üstünde 10; ortada Vale'nin üstünde 7.
+// Papaz'ı bir yığına bırak → pencere açılır, gruba dokun, hedefe gönder; sonra ikinci güç ya da Bitir.
+export const kralDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(13, 'maca'), kart(4, 'sinek'), kart(5, 'sinek'), kart(9, 'karo')],
+    orta: [kart(11, 'kupa'), kart(7, 'karo')],
+    cezalar: [[], [kart(3, 'maca'), kart(3, 'kupa'), kart(3, 'karo'), kart(3, 'sinek'), kart(9, 'kupa')], [kart(4, 'kupa'), kart(5, 'kupa'), kart(6, 'kupa'), kart(10, 'sinek')]],
+    mut: [kart(13, 'kupa'), kart(6, 'sinek'), kart(7, 'kupa'), kart(8, 'kupa')],
+  })
+
+// Kral eli; soldaki C (sırası onda) Papaz'ıyla Mut Papaz'ını alır, benim yığınımdaki gömülü dört 3'ü çekip gönderir.
+export const kralBotDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(4, 'sinek'), kart(5, 'sinek'), kart(9, 'karo'), kart(2, 'maca')],
+    digerAvuclar: [[], [kart(13, 'maca'), kart(4, 'karo'), kart(5, 'karo'), kart(9, 'maca')]],
+    cezalar: [[kart(3, 'maca'), kart(3, 'kupa'), kart(3, 'karo'), kart(3, 'sinek'), kart(9, 'kupa')]],
+    mut: [kart(13, 'kupa'), kart(6, 'sinek'), kart(7, 'kupa'), kart(8, 'kupa')],
     sira: 2,
   })
 

@@ -64,10 +64,14 @@ export function konumOlc(masa: HTMLElement, id: string, yer: string): Konum {
   // Sayfa görünmezken masa 0 ölçülür; 0'a bölünüp NaN çıkmasın.
   const olcek = masaKutusu.width / SAHNE_EN || 1
   const kutu = el?.getBoundingClientRect() ?? masaKutusu
+  // Avuçlardaki yelpaze eğimi de açıya katılır (yoksa kart düz iner, sonra eğik yerine sıçrar). Geçiş (transition)
+  // sürerken ara değer ölçülmesin diye hesaplanan stil değil, yazılan transform okunur.
+  const yelpaze = el?.closest<HTMLElement>('.avuc-kart, .yan-kart')?.style.transform
+  const m = yelpaze ? new DOMMatrix(yelpaze) : null
   return {
     x: (kutu.left + kutu.width / 2 - masaKutusu.left) / olcek,
     y: (kutu.top + kutu.height / 2 - masaKutusu.top) / olcek,
-    aci: yerinAcisi(yer),
+    aci: yerinAcisi(yer) + (m ? (Math.atan2(m.b, m.a) * 180) / Math.PI : 0),
     en: yerinKartEni(yer),
   }
 }

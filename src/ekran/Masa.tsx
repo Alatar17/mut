@@ -50,7 +50,7 @@ type YapisikGorunusu = keyof typeof YAPISIK_GORUNUSLERI
 // El başında aktif kuralların duyurusu: ortada belirip söner (kullanıcı 2026-10-24; Uçarak ve Kapalı denendi, kalktı).
 const DUYURU_SURESI = 1700
 // Sıranın bende olduğunu gösteren işaret (eski: avucun altında sarı çizgi; kullanıcı beğenmemişti). Görünüş menüsünde seçilecek.
-const SIRA_GOSTERGELERI = { Işık: 'sira-isik', Kenar: 'sira-kenar', Çizgi: 'sira-cizgi' }
+const SIRA_GOSTERGELERI = { Işık: 'sira-isik', Kenar: 'sira-kenar', Çizgi: 'sira-cizgi', Yok: '' }
 type SiraGostergesi = keyof typeof SIRA_GOSTERGELERI
 // Elin aktif kuralları (sol üstteki etiketler); duyuruda daha uzun adları.
 const aktifKurallarOf = (d: Durum) => [...(d.kralEli ? ['Kral'] : []), ...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.bombaEli ? ['Bomba'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
@@ -866,7 +866,7 @@ export function Masa() {
     bitir(yeni)
   }
 
-  // Sıra bana geçince telefon kısaca titrer (Android; iPhone'da titreşim yok).
+  // Titreşim (Android; iPhone'da yok): sıra bana geçince bir kez kısa, blok penceresi bana açılınca sert üç kez.
   const siraBende = d.asama === 'oyun' && d.sira === 0 && !d.blok
   useEffect(() => {
     if (siraBende && siraTitresim) navigator.vibrate?.(70)
@@ -932,6 +932,12 @@ export function Masa() {
       : setTimeout(() => hamleOyna({ tip: 'kabul', kart: -1 }, true), BLOK_SURESI)
     return () => clearTimeout(zamanlayici)
   }, [d, blokBende, kalkanKurulu])
+  // Blok penceresi bana açılınca titreşim; kalkan kuruluysa 2 kendiliğinden oynanır, tek titreşim "bloklandı" der.
+  // Zincir blokta her yeni pencere yeniden titretir.
+  const banaBlok = blokBende && d.blok!.hedef === 0 ? d.blok : null
+  useEffect(() => {
+    if (banaBlok && siraTitresim) navigator.vibrate?.(kalkanKurulu ? 90 : [90, 70, 90, 70, 240])
+  }, [banaBlok])
   // Avucumda 2 kalmayınca kalkan da kalkar. Avucum takasla değişince de (6.5.1); kaldırılmış kart da iner.
   useEffect(() => {
     if (!d.oyuncular[0].avuc.some(k => k.deger === 2)) setKalkanKurulu(false)
@@ -1155,7 +1161,7 @@ export function Masa() {
         <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
       </div>
 
-      {siraBende && siraGostergesi !== 'Çizgi' && <div className={'benim-sira ' + SIRA_GOSTERGELERI[siraGostergesi]} />}
+      {siraBende && (siraGostergesi === 'Işık' || siraGostergesi === 'Kenar') && <div className={'benim-sira ' + SIRA_GOSTERGELERI[siraGostergesi]} />}
       <div className="benim-avuc" data-yer="avuc:0" data-hedef="avuc:0">
         {ben.avuc.map((k, i) => (
           <AvucKart
@@ -1341,7 +1347,7 @@ export function Masa() {
           <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
             Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
           </button>
-          <TestSecenegi ad="Sıramda titreşim" acik={siraTitresim} degistir={setSiraTitresim} />
+          <TestSecenegi ad="Titreşim" acik={siraTitresim} degistir={setSiraTitresim} />
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />

@@ -1,5 +1,6 @@
 import { kartKimligi, useGizliKartlar } from './animasyon'
-import { degerYazisi, kartBoyu, kirmiziMi, renkSembolu, resimliMi, type Kart as KartTipi } from '../oyun/kart'
+import { Isaret } from './Isaret'
+import { degerYazisi, kartBoyu, kirmiziMi, resimliMi, type Kart as KartTipi } from '../oyun/kart'
 
 interface Props {
   kart?: KartTipi
@@ -9,7 +10,7 @@ interface Props {
   ucan?: boolean
 }
 
-// Kodla çizilen klasik iskambil kartı. Tema resimleri gelince burası resim gösterecek.
+// Kodla çizilen klasik iskambil kartı; işaretler SVG, yazı oyunla gelen yazı tipi (her cihazda aynı görünür).
 export function Kart({ kart, genislik, kapali, ucan }: Props) {
   const gizliler = useGizliKartlar()
   const kimlik = kart && !ucan ? kartKimligi(kart) : undefined
@@ -21,7 +22,6 @@ export function Kart({ kart, genislik, kapali, ucan }: Props) {
   }
   if (kapali || !kart) return <div className="kart kart-arka" style={stil} data-kart={kimlik} />
 
-  const sembol = renkSembolu(kart.renk)
   const yazi = degerYazisi(kart.deger)
   const sinif = 'kart ' + (kirmiziMi(kart.renk) ? 'kirmizi' : 'siyah')
 
@@ -29,18 +29,19 @@ export function Kart({ kart, genislik, kapali, ucan }: Props) {
     return (
       <div className={sinif + ' kucuk'} style={stil} data-kart={kimlik}>
         <span>{yazi}</span>
-        <span>{sembol}</span>
+        <Isaret renk={kart.renk} />
       </div>
     )
   }
 
+  // Vale / Kız / Papaz: ortası Görünüş → "J/Q/K" ayarına göre (masa sınıfı jqk-*): sayılı kart gibi ya da çerçeveli.
+  const resimli = resimliMi(kart.deger)
   return (
-    <div className={sinif} style={stil} data-kart={kimlik}>
-      <span className="kose">{yazi}<br />{sembol}</span>
-      <span className={resimliMi(kart.deger) ? 'orta-sembol resimli' : 'orta-sembol'}>
-        {resimliMi(kart.deger) ? yazi : sembol}
-      </span>
-      <span className="kose ters">{yazi}<br />{sembol}</span>
+    <div className={sinif + (resimli ? ' resimli' : '')} style={stil} data-kart={kimlik}>
+      <span className="kose">{yazi}<Isaret renk={kart.renk} /></span>
+      {resimli && <span className="yuz-cerceve" />}
+      <span className="orta-sembol"><Isaret renk={kart.renk} /></span>
+      <span className="kose ters">{yazi}<Isaret renk={kart.renk} /></span>
     </div>
   )
 }

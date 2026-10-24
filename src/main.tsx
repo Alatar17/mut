@@ -1,4 +1,5 @@
 import { createRoot } from 'react-dom/client'
+import '@fontsource/barlow-condensed/latin-700.css'
 import './tema/varsayilan.css'
 import './stil.css'
 import { Sahne } from './ekran/Sahne'

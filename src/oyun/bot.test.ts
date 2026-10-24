@@ -83,3 +83,16 @@ it('akıllı bot bombayı kurar, gelen bombayı 2 ile bloklar, 10 gelince devred
   expect(b.sira).toBe(1)
   expect(akilliBotHamlesi(b, () => 0)).toEqual({ tip: 'bomba', kart: 0 })
 })
+
+it('akıllı bot: eksi elde Kral gücüyle küçük bir grubu da kendine alır (gücü boşa bırakmaz)', () => {
+  const d = yeniOyun({ isimler: ['A', 'B', 'C'], toplamEl: 1, tohum: 1 })
+  d.sira = 0
+  d.eksi = true
+  d.serbest = false
+  d.blok = undefined
+  d.bomba = undefined
+  d.orta = []
+  d.oyuncular.forEach((o, i) => (o.ceza = i === 1 ? [kart(5, 'karo')] : []))
+  d.kral = { oyuncu: 0, papazlar: [kart(13, 'maca'), kart(13, 'kupa')] }
+  expect(akilliBotHamlesi(d, () => 0).tip).toBe('kralAl')
+})

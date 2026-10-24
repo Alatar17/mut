@@ -1,0 +1,106 @@
+/* Kart tasarımı deneme sayfası. */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100vh; color: #f3f0e6; font-family: system-ui, "Segoe UI", sans-serif;
+  background: radial-gradient(ellipse at 50% 30%, #1f6b45 0%, #12452c 100%) fixed, #0b2a1c;
+}
+button { font: inherit; color: inherit; border: none; background: none; cursor: pointer; }
+
+.sayfa { padding: 0 16px 40px; }
+.ust {
+  position: sticky; top: 0; z-index: 10; display: flex; flex-wrap: wrap; gap: 8px 20px;
+  padding: 10px 0; background: rgba(11, 42, 28, 0.92);
+}
+.secici { display: flex; align-items: center; gap: 4px; font-size: 14px; }
+.secici > span { margin-right: 4px; opacity: 0.7; }
+.secici button { padding: 4px 10px; border-radius: 6px; background: rgba(0, 0, 0, 0.3); }
+.secici button.secili { background: #f2c14e; color: #10241a; font-weight: 700; }
+h2 { font-size: 13px; font-weight: 500; opacity: 0.7; margin: 22px 0 10px; }
+.sira { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.avuc { display: flex; }
+.avuc-yer + .avuc-yer { margin-left: -16px; }
+.ceza { position: relative; }
+.ceza-yer { position: absolute; top: 0; }
+
+/* ---- Şimdiki kart (oyunun stil.css'inden kopya) ---- */
+.kart {
+  position: relative; flex: none; border-radius: 6px;
+  background: var(--kart-yuz); border: 1px solid var(--kart-kenar);
+  box-shadow: 0 1px 3px var(--kart-golge);
+  font-weight: 700; line-height: 1;
+}
+.kart.kirmizi { color: var(--kart-kirmizi); }
+.kart.siyah { color: var(--kart-siyah); }
+.kart { font-family: "Barlow Condensed", sans-serif; }
+.kart .isaret { display: block; }
+.kart .kose { position: absolute; top: 4%; left: 6%; display: flex; flex-direction: column; align-items: center; gap: 0.08em; font-size: 0.85em; }
+.kart .kose .isaret { width: 0.62em; height: 0.62em; }
+.kart .kose.ters { top: auto; left: auto; bottom: 4%; right: 6%; transform: rotate(180deg); }
+.kart .orta-sembol { position: absolute; inset: 0; display: grid; place-items: center; }
+.kart .orta-sembol .isaret { width: 1.25em; height: 1.25em; }
+.kart .yuz-cerceve { display: none; }
+.tk .isaret { display: block; width: 100%; height: 100%; }
+.kart-arka {
+  background: repeating-linear-gradient(45deg, var(--kart-arka-1) 0 4px, var(--kart-arka-2) 4px 8px);
+  border: 2px solid var(--kart-yuz);
+}
+
+/* ---- Yeni tarzlar (1em = kart eninin onda biri) ---- */
+.tk {
+  --maca: #1a1a1a; --kupa: #c8102e; --karo: #1c5ec4; --sinek: #19813a; --guc: #c77700;
+  position: relative; flex: none; overflow: hidden; line-height: 1;
+  background: #fff; border: 1px solid #cfcabd; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+.tk.r-maca { color: var(--maca); }
+.tk.r-kupa { color: var(--kupa); }
+.tk.r-karo { color: var(--karo); }
+.tk.r-sinek { color: var(--sinek); }
+.tk .guc { color: var(--guc); }
+.tk .kose { position: absolute; display: flex; flex-direction: column; align-items: center; }
+.tk .kose-sayi.iki { letter-spacing: -0.08em; margin-left: -0.08em; }
+
+/* Sade: köşede büyük sayı, altında işaret; ortada büyük işaret ya da güç ikonu. */
+.t-sade { border-radius: 0.9em; font-family: Nunito, sans-serif; font-weight: 800; }
+.t-sade .kose { top: 0.45em; left: 0.35em; width: 2.6em; gap: 0.25em; }
+.t-sade .kose-sayi { font-size: 3.2em; }
+.t-sade :is(.kose-isaret, .kose-ikon) { width: 2em; height: 2em; }
+.t-sade .orta { position: absolute; left: 3.4em; top: 4.6em; width: 5.4em; height: 5.4em; }
+.t-sade .plaka {
+  position: absolute; left: 3.2em; right: 0.6em; top: 3em; bottom: 0.8em; border-radius: 0.7em;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4em;
+  background: color-mix(in srgb, currentColor 10%, white);
+}
+.t-sade .plaka-harf { font-size: 5em; }
+.t-sade.arka { background: #24467a; border: 0.35em solid #fff; display: grid; place-items: center; }
+.t-sade .arka-harf { font-size: 5em; color: rgba(255, 255, 255, 0.85); }
+
+/* Klasik: krem kart, serif köşe (iki köşede), ortada geleneksel dizilmiş işaretler. */
+.t-klasik { border-radius: 0.7em; background: #fbf6e9; font-family: "Playfair Display", serif; font-weight: 700; }
+.t-klasik .kose { top: 0.35em; left: 0.3em; width: 2.2em; gap: 0.2em; }
+.t-klasik .kose.alt { top: auto; left: auto; bottom: 0.35em; right: 0.3em; transform: rotate(180deg); }
+.t-klasik .kose-sayi { font-size: 2.7em; }
+.t-klasik :is(.kose-isaret, .kose-ikon) { width: 1.6em; height: 1.6em; }
+.t-klasik .pipler { position: absolute; left: 3.6em; right: 3.6em; top: 2.4em; bottom: 2.4em; }
+.t-klasik .pip { position: absolute; width: 1.9em; height: 1.9em; }
+.t-klasik .as-isaret { position: absolute; left: 2.6em; top: 4.6em; width: 4.8em; height: 4.8em; }
+.t-klasik .cerceve {
+  position: absolute; left: 2.6em; right: 2.6em; top: 1.6em; bottom: 1.6em;
+  border: 0.12em solid currentColor; outline: 0.12em solid currentColor; outline-offset: 0.25em; border-radius: 0.3em;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5em;
+}
+.t-klasik .cerceve-harf { font-size: 4.4em; }
+.t-klasik.arka {
+  background: repeating-linear-gradient(45deg, #8e1b24 0 0.6em, #b3303a 0.6em 1.2em);
+  border: 0.35em solid #fbf6e9;
+}
+
+/* Dar: dar yazıyla çok büyük sayı (sol şeritte bile okunur), sağ altta büyük işaret ya da güç ikonu. */
+.t-dar { border-radius: 0.8em; font-family: "Barlow Condensed", sans-serif; font-weight: 700; }
+.t-dar .kose { top: 0.2em; left: 0.25em; width: 3em; gap: 0.1em; align-items: flex-start; }
+.t-dar .kose-sayi { font-size: 5.6em; }
+.t-dar :is(.kose-isaret, .kose-ikon) { width: 2.2em; height: 2.2em; margin-left: 0.15em; }
+.t-dar .buyuk { position: absolute; right: 0.6em; bottom: 0.6em; width: 4.6em; height: 4.6em; }
+.t-dar.arka {
+  background: linear-gradient(135deg, #222 0 42%, #c77700 42% 48%, #222 48% 52%, #c77700 52% 58%, #222 58%);
+  border: 0.35em solid #fff;
+}

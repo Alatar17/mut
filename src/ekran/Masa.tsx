@@ -41,6 +41,9 @@ type YiginZemini = keyof typeof YIGIN_ZEMINLERI
 // Mut kutusunun zemini; ilk seçenek yuva (kullanıcı kararı, şimdilik). Kullanıcı Görünüş menüsünde seçecek.
 const MUT_ZEMINLERI = { Yuva: 'mut-yuva', 'Koyu kutu': 'mut-kutu', Kesikli: 'mut-kesikli', Çerçeve: 'mut-cerceve', Yok: 'mut-yok' }
 type MutZemini = keyof typeof MUT_ZEMINLERI
+// Vale / Kız / Papaz'ın ortası (kullanıcı 2026-10-24: Harf kalktı, Sade varsayılan, ikisi şimdilik kalsın).
+const JQK_GORUNUSLERI = { Sade: 'jqk-sade', Çerçeve: 'jqk-cerceve' }
+type JqkGorunusu = keyof typeof JQK_GORUNUSLERI
 // Ceza yığınındaki kartların dizilişi (Yiginlar). Kullanıcı Görünüş menüsünde seçecek.
 const CEZA_DIZILISLERI: Record<CezaDizilisi, true> = { Varsayılan: true, Dağınık: true }
 // Ceza yığınının puanı: yanında / zeminin üst kenarında / köşede rozet (masa sınıfı). Kullanıcı Görünüş menüsünde seçecek.
@@ -509,6 +512,7 @@ export function Masa() {
   const [gelistirici, setGelistirici] = useKayitli('gelistirici', false)
   const [desteAcik, setDesteAcik] = useState(false)
   const [mutZemini, setMutZemini] = useKayitli<MutZemini>('mutZemini', 'Yuva')
+  const [jqkGorunusu, setJqkGorunusu] = useKayitli<JqkGorunusu>('jqkGorunusu2', 'Sade')
   const [bakisGorunusu, setBakisGorunusu] = useKayitli<BakisGorunusu>('bakisGorunusu2', 'Yerinde')
   const sure = HAMLE_SURELERI[hamleSuresi] ?? 0
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
@@ -1052,7 +1056,7 @@ export function Masa() {
   return (
     <GizliKartlar.Provider value={gizli}>
     <div
-      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '')}
+      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (JQK_GORUNUSLERI[jqkGorunusu] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '')}
       ref={masaRef}
       style={{ '--el-kayma': EL_YUKSEKLIKLERI[elYuksekligi], '--kart-olcek': KART_BOYUTLARI[kartBoyutu] } as CSSProperties}
       // Oyunda sağ tık menüsü yok (sürüklemeyi bölüyordu).
@@ -1288,6 +1292,9 @@ export function Masa() {
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(MUT_ZEMINLERI, mutZemini, setMutZemini)}>
             Mut zemini <span className="test-deger">{mutZemini}</span>
+          </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(JQK_GORUNUSLERI, jqkGorunusu, setJqkGorunusu)}>
+            J/Q/K <span className="test-deger">{jqkGorunusu}</span>
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_DIZILISLERI, cezaDizilisi, setCezaDizilisi)}>
             Ceza dizilişi <span className="test-deger">{cezaDizilisi}</span>

@@ -62,7 +62,8 @@ function puanlanmis(d: Durum, hamleler = gecerliHamleler(d)) {
       const rakiplere = fark.reduce((t, f, i) => (i === ben ? t : t + f), 0)
       const kart = d.oyuncular[ben].avuc[h.kart]
       const lidere = h.gonder === lider ? 0.005 : 0
-      return { h, puan: isaret * (rakiplere - fark[ben] - papazPuani(h)) - (kart ? kartPuani(kart) / 100 : 0) + lidere }
+      // Papaz puanı işaretin dışında düşülür: eksi elde Papaz kendine gelir, içeride düşülseydi iki kez sayılırdı.
+      return { h, puan: isaret * (rakiplere - fark[ben]) - papazPuani(h) - (kart ? kartPuani(kart) / 100 : 0) + lidere }
     })
 }
 

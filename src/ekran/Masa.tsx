@@ -106,7 +106,7 @@ function oyuncuAltinda(x: number, y: number): number | null {
 }
 
 // 0 = sen (alt), 1 = sağdaki (sıradaki), 2 = soldaki
-const yeniOyunKur = (toplamEl: number) => yeniOyun({ isimler: ['Sen', 'Bot B', 'Bot C'], toplamEl })
+const yeniOyunKur = (isimler: string[], toplamEl: number) => yeniOyun({ isimler, toplamEl })
 const RAKIP_KART_EN = 56
 
 // Hazır sözler (kaba ilk sürüm; asıl hali 2. aşamada herkes kendi telefonundan). Kahvenin kendi lafları, aynen.
@@ -461,11 +461,12 @@ function KralPenceresi({ kartlar, secili, dokun, children }: { kartlar: KartTipi
   )
 }
 
-export function Masa() {
+// isimler: [ben, sağdaki, soldaki] (giriş ekranından). cikis: giriş ekranına dön.
+export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void }) {
   // d: oyunun gerçek durumu. gorunen: ekranda çizilen durum (animasyon sürerken d'nin gerisinde kalır).
   // Yeni oyunda kaç el oynanacağı ("Kaç el?" penceresinde son seçilen).
   const [elSayisi, setElSayisi] = useKayitli('elSayisi', 10)
-  const [d, setD] = useState(() => yeniOyunKur(elSayisi))
+  const [d, setD] = useState(() => yeniOyunKur(isimler, elSayisi))
   const [gorunen, setGorunen] = useState(() => dagitimOncesi(d, true))
   const [ben, sagdaki, soldaki] = gorunen.oyuncular
   const elimdeIkiVar = ben.avuc.some(k => k.deger === 2)
@@ -1040,7 +1041,7 @@ export function Masa() {
     setPuanlarAcik(false)
     istenenEl.current = null
     bitirIstendi.current = false
-    const yeni = yeniOyunKur(toplamEl)
+    const yeni = yeniOyunKur(isimler, toplamEl)
     topluDagit(deneme ? deneme(yeni) : yeni)
   }
   // Oyun ortasında el sayısı ya da oyunu bitirmek: animasyon sürüyorsa hamle bitince uygulanır.
@@ -1123,6 +1124,7 @@ export function Masa() {
       {menu === 'oyun' && (
         <div className="oyun-menu">
           <button className="test-satir" disabled={d.asama === 'oyunSonu'} onClick={() => setMenu('bitir')}>Oyunu bitir</button>
+          <button className="test-satir" onClick={cikis}>Giriş ekranı</button>
           <button className="test-satir" onClick={() => sonrakiSecenek(BAKIS_GORUNUSLERI, bakisGorunusu, setBakisGorunusu)}>
             Yığına bakış <span className="test-deger">{bakisGorunusu}</span>
           </button>

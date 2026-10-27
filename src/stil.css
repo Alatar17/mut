@@ -448,3 +448,25 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .kral-dugmeler button.vurgulu { background: var(--vurgu); color: var(--rozet); }
 .kral-ipucu { font-size: 13px; color: var(--yazi); opacity: 0.8; }
 .kral-yazi { font-size: 13px; font-weight: 700; color: var(--yazi); text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); }
+
+/* ---- Giriş ekranı (masa kur / katıl) ---- */
+.giris { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.giris-baslik { font-family: "Barlow Condensed", sans-serif; font-size: 64px; letter-spacing: 8px; color: var(--vurgu); line-height: 1; }
+.giris-kutu { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 280px; }
+.giris-yazi {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 2px solid var(--masa-cizgi);
+  background: var(--panel); color: var(--yazi); font: inherit; font-size: 18px; text-align: center; outline: none;
+}
+.giris-yazi:focus { border-color: var(--vurgu); }
+.giris-yazi.kod { font-family: "Barlow Condensed", sans-serif; font-size: 28px; letter-spacing: 10px; }
+.giris-dugme { width: 100%; padding: 9px; border-radius: 10px; background: var(--panel); font-size: 16px; }
+.giris-dugme.ana { background: var(--vurgu); color: var(--rozet); font-weight: 800; }
+.giris-dugme:disabled { opacity: 0.4; }
+.giris-kod { font-family: "Barlow Condensed", sans-serif; font-size: 48px; letter-spacing: 12px; line-height: 1; }
+.giris-koltuklar { display: flex; gap: 8px; }
+.giris-koltuk { width: 120px; padding: 8px 4px; border-radius: 8px; background: var(--panel); text-align: center; font-size: 14px; }
+.giris-koltuk.ben { box-shadow: inset 0 0 0 2px var(--vurgu); }
+.giris-koltuk.bos { color: var(--yazi-soluk); font-size: 12px; }
+.giris-koltuklar + .giris-dugme, .giris-koltuklar + .giris-bilgi { margin-top: 4px; }
+.giris-bilgi { color: var(--yazi-soluk); }
+.giris-hata { color: var(--sure-bitiyor); text-align: center; }

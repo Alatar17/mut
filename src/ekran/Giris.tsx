@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { basla, birak, katil, KOLTUK, masaKur, type MasaDurumu } from '../ag'
+import type { AgOyunu } from './Masa'
 
 const BOT_ADLARI = ['Bot B', 'Bot C']
 
@@ -13,7 +14,7 @@ function siraliIsimler(m: MasaDurumu) {
   return tam.map((_, i) => tam[(m.ben + i) % KOLTUK])
 }
 
-export function Giris({ oyna }: { oyna: (isimler: string[]) => void }) {
+export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => void }) {
   const [isim, setIsim] = useState(kayitliIsim)
   const [ekran, setEkran] = useState<'ana' | 'katil' | 'masa'>('ana')
   const [kod, setKod] = useState('')
@@ -24,7 +25,10 @@ export function Giris({ oyna }: { oyna: (isimler: string[]) => void }) {
     try { localStorage.setItem('oyuncuAdi', isim) } catch { /* gizli sekme */ }
   }, [isim])
   useEffect(() => {
-    if (masa?.asama === 'basladi') oyna(siraliIsimler(masa))
+    if (masa?.asama !== 'basladi') return
+    // Uzaktan oynanan koltuklar (masada benim gözümden): kurucuda misafirler, misafirde herkes.
+    const uzak = masa.kurucu ? masa.isimler.map((_, i) => i).slice(1) : [1, 2]
+    oyna(siraliIsimler(masa), { kurucu: masa.kurucu, kod: masa.kod, uzak, ilkDurum: masa.ilkDurum })
   }, [masa, oyna])
 
   const geri = () => {

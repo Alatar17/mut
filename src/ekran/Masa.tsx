@@ -12,6 +12,7 @@ import { BombaYigini, CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 import { useYiginBakisi, YiginYelpazesi, type BakisGorunusu } from './YiginBakisi'
 import { DestePenceresi, type KartlarimGorunusu } from './DestePenceresi'
 import { puanKagidiniKaydet } from './puanResmi'
+import { oyunGonder, oyunuDinle, type OyunMesaji } from '../ag'
 
 const AVUC_KART_EN = 60
 // "Kaç el?" penceresindeki hazır seçenekler; başka sayı da yazılabilir.
@@ -150,7 +151,8 @@ function avucuKar(masa: HTMLElement, koltuk: number, sure: number) {
   const avuc = masa.querySelector<HTMLElement>(`[data-yer="avuc:${koltuk}"]`)
   if (!avuc) return Promise.resolve()
   const kartlar = [...avuc.querySelectorAll<HTMLElement>(':scope > .avuc-kart, :scope > .yan-kart')]
-  return Promise.all(
+  // Sayfa arka plandayken tarayıcı animasyonu durdurur; oyun beklemesin diye süre dolunca devam edilir.
+  const karma = Promise.all(
     kartlar.map((el, i) => {
       const dx = avuc.offsetWidth / 2 - (el.offsetLeft + el.offsetWidth / 2)
       const dy = avuc.offsetHeight / 2 - (el.offsetTop + el.offsetHeight / 2)
@@ -160,6 +162,7 @@ function avucuKar(masa: HTMLElement, koltuk: number, sure: number) {
       return el.animate(x, { duration: sure, easing: 'ease-in-out' }).finished.catch(() => {})
     }),
   )
+  return Promise.race([karma, bekle(sure + 100)])
 }
 
 // Bot oynayacağı kartı önce masaya doğru biraz kaldırır.
@@ -206,7 +209,8 @@ function kazananYazisi(d: Durum) {
   return kazananlar.length > 1 ? 'Berabere' : `Kazanan: ${kazananlar[0].ad}`
 }
 
-function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun }: { d: Durum; kapat: () => void; sonrakiEl: () => void; yeniOyun: () => void }) {
+// sonrakiEl / yeniOyun verilmezse (misafir) yerine "Kurucu başlatacak" yazar.
+function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun }: { d: Durum; kapat: () => void; sonrakiEl?: () => void; yeniOyun?: () => void }) {
   return (
     <div className="pencere-arka" onClick={kapat}>
       <div className="puan-kagidi" onClick={e => e.stopPropagation()}>
@@ -226,13 +230,13 @@ function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun }: { d: Durum; kapat: () 
             </tr>
           </tfoot>
         </table>
-        {d.asama === 'elSonu' && <button className="kagit-dugme" onClick={sonrakiEl}>Sonraki el</button>}
+        {d.asama === 'elSonu' && (sonrakiEl ? <button className="kagit-dugme" onClick={sonrakiEl}>Sonraki el</button> : <div className="kazanan">Kurucu başlatacak</div>)}
         {d.asama === 'oyunSonu' && (
           <>
             <div className="kazanan">{kazananYazisi(d)}</div>
             <div className="kagit-dugmeler">
               {d.puanKagidi.length > 0 && <button className="kagit-dugme" onClick={() => puanKagidiniKaydet(d, kazananYazisi(d))}>Kaydet</button>}
-              <button className="kagit-dugme" onClick={yeniOyun}>Yeni oyun</button>
+              {yeniOyun && <button className="kagit-dugme" onClick={yeniOyun}>Yeni oyun</button>}
             </div>
           </>
         )}
@@ -461,12 +465,30 @@ function KralPenceresi({ kartlar, secili, dokun, children }: { kartlar: KartTipi
   )
 }
 
+// Ağ oyunu (kahve sürümü). uzak: başka telefondan oynanan koltuklar (benim gözümden; kurucuda misafirler,
+// misafirde herkes). ilkDurum: misafirde kurucudan gelen ilk dağıtım.
+export interface AgOyunu {
+  kurucu: boolean
+  kod: string
+  uzak: number[]
+  ilkDurum?: Durum
+}
+
 // isimler: [ben, sağdaki, soldaki] (giriş ekranından). cikis: giriş ekranına dön.
-export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void }) {
+// Ağ oyununda kurucunun telefonu hakemdir: hamleleri o yapar ve herkese yayar; misafir hamlesini kurucuya yollar,
+// sonucu kurucudan gelince gösterir. Botlar kurucuda oynar.
+export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; cikis: () => void }) {
+  const kurucu = !!ag?.kurucu
+  const misafir = !!ag && !ag.kurucu
+  const uzak = ag?.uzak ?? []
+  // Kurucu: herkese gönderir (misafirde bir şey yapmaz).
+  const yayinla = (m: OyunMesaji) => {
+    if (kurucu) oyunGonder(m)
+  }
   // d: oyunun gerçek durumu. gorunen: ekranda çizilen durum (animasyon sürerken d'nin gerisinde kalır).
   // Yeni oyunda kaç el oynanacağı ("Kaç el?" penceresinde son seçilen).
   const [elSayisi, setElSayisi] = useKayitli('elSayisi', 10)
-  const [d, setD] = useState(() => yeniOyunKur(isimler, elSayisi))
+  const [d, setD] = useState(() => ag?.ilkDurum ?? yeniOyunKur(isimler, elSayisi))
   const [gorunen, setGorunen] = useState(() => dagitimOncesi(d, true))
   const [ben, sagdaki, soldaki] = gorunen.oyuncular
   const elimdeIkiVar = ben.avuc.some(k => k.deger === 2)
@@ -496,6 +518,10 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
   const bitirIstendi = useRef(false)
   const [botlarOtomatik, setBotlarOtomatik] = useKayitli('botlarOtomatik', true)
   const [botKartlariKapali, setBotKartlariKapali] = useKayitli('botKartlariKapali', false)
+  // Ağ oyununda başkalarının kartları hep kapalı.
+  const rakipKapali = !!ag || botKartlariKapali
+  // Elle oynanan koltuk: ben; botlar kapalıyken başka telefondan oynanmayan koltuklar.
+  const elleOynanir = (i: number) => i === 0 || (!botlarOtomatik && !uzak.includes(i))
   const [botKartlariDuz, setBotKartlariDuz] = useKayitli('botKartlariDuz', true)
   const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)
   const [cezaAraligi, setCezaAraligi] = useKayitli<CezaAraligi>('cezaAraligi', '10 px')
@@ -524,7 +550,9 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
   // Deste penceresi ayarı ("Kaç el?" penceresinde) ve açık olup olmadığı.
   const [destePenceresi, setDestePenceresi] = useKayitli('destePenceresi', true)
   // Geliştirici seçenekleri (☰ menüsü): kapalıyken Görünüş, Dene, Test ve duraklat gizlenir; ayarları çalışmaya devam eder.
-  const [gelistirici, setGelistirici] = useKayitli('gelistirici', false)
+  const [gelistiriciKayit, setGelistirici] = useKayitli('gelistirici', false)
+  // Misafirde geliştirici seçenekleri yok (oyunu kurucu yönetir).
+  const gelistirici = gelistiriciKayit && !misafir
   const [desteAcik, setDesteAcik] = useState(false)
   const [mutZemini, setMutZemini] = useKayitli<MutZemini>('mutZemini', 'Yuva')
   const [jqkGorunusu, setJqkGorunusu] = useKayitli<JqkGorunusu>('jqkGorunusu2', 'Sade')
@@ -607,7 +635,7 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
       sure: ucusSuresi,
       gecikme: b.gecikme.get(id) ?? 0,
       // Desteye giden ve desteden dağıtılan kartlar kapalı uçar; Mut kartları açık iner, benim kartlarım inince dönerek açılır.
-      kapali: yer === 'deste' || (b.gecikme.has(id) && yer !== 'mut') || (botKartlariKapali && yer.startsWith('avuc:') && yer !== 'avuc:0'),
+      kapali: yer === 'deste' || (b.gecikme.has(id) && yer !== 'mut') || (rakipKapali && yer.startsWith('avuc:') && yer !== 'avuc:0'),
       donus: b.gecikme.has(id) && yer === 'avuc:0' ? SURE.donus * carpan : undefined,
     }))
     if (b.ekUcus) yeniUcuslar.unshift(b.ekUcus)
@@ -625,8 +653,10 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
     setMesgul(true)
   }
   const bitir = (yeni: Durum) => {
+    const degisti = istenenEl.current !== null || bitirIstendi.current
     if (istenenEl.current !== null) yeni = elSayisiAyarla(yeni, istenenEl.current)
     if (bitirIstendi.current) yeni = oyunuBitir(yeni)
+    if (degisti) yayinla({ tip: 'durum', durum: yeni })
     istenenEl.current = null
     bitirIstendi.current = false
     setD(yeni)
@@ -664,27 +694,63 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
     try {
       if (secenekler.length > 1) h = { ...h, gonder: await hedefSec(taban, h, secenekler) }
       // Çekmede hangi kartın alınacağı ekranda seçilir; hamle ondan sonra yapılır.
-      yeni = hamleYap(taban, h.tip === 'cek' ? { ...h, cekilen: await cekilecekKart(taban, h, elle) } : h)
+      if (h.tip === 'cek') h = { ...h, cekilen: await cekilecekKart(taban, h, elle) }
+      // Misafir: hamle kurucuya gider; sonucu kurucudan gelince gösterilir (gelenGoster).
+      if (misafir) {
+        onayBekleniyor.current = { elle }
+        oyunGonder({ tip: 'oyna', hamle: h })
+        return
+      }
+      yeni = hamleYap(taban, h)
+      yayinla({ tip: 'hamle', hamle: h, durum: yeni })
       await hamleyiGoster(eski, yeni, elle)
       bitir(yeni)
     } catch (hata) {
       // Animasyonda beklenmedik bir hata oyunu kilitlemesin: ekran gerçek duruma döner, oyun sürer.
       console.error(hata)
-      yeni ??= hamleYap(taban, h)
-      gorunenRef.current = yeni
-      setGorunen(yeni)
-      setUcuslar([])
-      setGizli(new Set())
-      setBotKalkik(null)
-      setTers(null)
-      setKizSuresi(false)
-      secimRef.current = null
-      cekmeKaynak.current = undefined
-      hedefRef.current = null
-      inenRef.current = undefined
-      setHedefSecimi(null)
-      setKalkikKart(null)
+      if (misafir) return kurtar(eski)
+      if (!yeni) {
+        yeni = hamleYap(taban, h)
+        yayinla({ tip: 'hamle', hamle: h, durum: yeni })
+      }
+      kurtar(yeni)
+    }
+  }
+
+  // Ekran animasyonsuz olarak bu duruma döner, yarım kalan seçimler temizlenir (hata ya da kurucudan düzeltme).
+  const kurtar = (yeni: Durum) => {
+    gorunenRef.current = yeni
+    setGorunen(yeni)
+    setUcuslar([])
+    setGizli(new Set())
+    setBotKalkik(null)
+    setTers(null)
+    setKizSuresi(false)
+    secimRef.current = null
+    cekmeKaynak.current = undefined
+    hedefRef.current = null
+    inenRef.current = undefined
+    setHedefSecimi(null)
+    setKalkikKart(null)
+    bitir(yeni)
+  }
+
+  // Misafir: kurucuya yolladığım hamlenin sonucu bekleniyor (elle: kartı kullanıcı mı oynadı).
+  const onayBekleniyor = useRef<{ elle: boolean } | null>(null)
+  // Ağdan gelen hamle: başka telefonda oynandı (ya da misafirsem benim hamlemin kurucudan gelen sonucu).
+  const gelenGoster = async (h: Hamle, yeni: Durum) => {
+    const benim = onayBekleniyor.current
+    onayBekleniyor.current = null
+    const eski = d
+    basla()
+    try {
+      // Başkasının çekmesi: karma ve seçim botunki gibi gösterilir, sonunda gerçekten çekilen kart kalkar.
+      if (!benim && h.tip === 'cek') await cekilecekKart(kabulSonrasi(eski, h), h, false)
+      await hamleyiGoster(eski, yeni, benim?.elle ?? false)
       bitir(yeni)
+    } catch (hata) {
+      console.error(hata)
+      kurtar(yeni)
     }
   }
 
@@ -739,6 +805,15 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
         sira = (sira + 1 + Math.floor(Math.random() * (avuc.length - 1))) % avuc.length
         kaldir(sira)
         await bekle(BOT_SECIM_SURESI * carpan)
+      }
+      // Hamle başka telefondan geldiyse çekilen kart bellidir: sonunda o kalkar.
+      if (h.cekilen !== undefined) {
+        const gercek = avuc.findIndex(k => kartKimligi(k) === kartKimligi(taban.oyuncular[hedef].avuc[h.cekilen!]))
+        if (gercek !== sira) {
+          sira = gercek
+          kaldir(sira)
+          await bekle(BOT_SECIM_SURESI * carpan)
+        }
       }
       cekmeKaynak.current = konumOlc(masaRef.current!, kartKimligi(avuc[sira]), `avuc:${hedef}`)
     }
@@ -855,6 +930,7 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
   // Yeni el / yeni oyun: kartlar desteye toplanır, sonra dağıtılır.
   const topluDagit = async (yeni: Durum) => {
     basla()
+    yayinla({ tip: 'dagit', durum: yeni })
     await gec(dagitimOncesi(yeni, true))
     await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
     // Dağıtımdan sonra elin kuralları duyurulur; bu sırada kimse oynamaz.
@@ -897,7 +973,7 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
   const [duraklatildi, setDuraklatildi] = useState(false)
   const [uzakta, setUzakta] = useState(false)
   const zamanAsimi = useRef(0)
-  const elleSirada = d.asama === 'oyun' && !d.blok && (d.sira === 0 || !botlarOtomatik)
+  const elleSirada = d.asama === 'oyun' && !d.blok && elleOynanir(d.sira)
   useEffect(() => {
     setSureUyari(false)
     if (!elleSirada || !sure || duraklatildi || (d.sira === 0 && uzakta)) return
@@ -916,7 +992,7 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
 
   // Botlar sırası gelince biraz bekleyip hamle yapar. Benim kartlarımı ben oynarım, uzaktaysam bot.
   useEffect(() => {
-    if (mesgul || duraklatildi || d.asama !== 'oyun' || !(d.sira === 0 ? uzakta : botlarOtomatik)) return
+    if (mesgul || duraklatildi || d.asama !== 'oyun' || !(d.sira === 0 ? uzakta : botlarOtomatik && !uzak.includes(d.sira))) return
     const zamanlayici = setTimeout(() => hamleOyna(akilliBotHamlesi(d), false), BOT_HIZLARI[botHizi])
     return () => clearTimeout(zamanlayici)
   }, [d, mesgul, botlarOtomatik, botHizi, uzakta, duraklatildi])
@@ -924,7 +1000,7 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
   // Blok penceresi: hedef ben isem (ya da botları ben oynuyorsam) süre bitince kendiliğinden kabul edilir.
   // Bot hedefse ve botlar kendi oynuyorsa bot hemen karar verir (yukarıdaki bot hamlesi).
   // Kalkanım kuruluysa kısa bir an parlayıp kendiliğinden bloklar.
-  const blokBende = !!d.blok && !mesgul && (d.blok.hedef === 0 || !botlarOtomatik)
+  const blokBende = !!d.blok && !mesgul && elleOynanir(d.blok.hedef)
   useEffect(() => {
     if (!blokBende) return
     const otomatik = d.blok!.hedef === 0 && kalkanKurulu
@@ -957,6 +1033,32 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
     setKalkikKart(null)
   }, [d.tur, d.el])
 
+  // ---- Ağ ----
+  // Gelen mesajlar sırayla işlenir: animasyon sürerken bekler (misafir kendi hamlesinin sonucunu beklerken hariç).
+  const [gelenler, setGelenler] = useState<[OyunMesaji, number][]>([])
+  useEffect(() => (ag ? oyunuDinle((m, kimden) => setGelenler(g => [...g, [m, kimden]])) : undefined), [])
+  useEffect(() => {
+    const ilk = gelenler[0]
+    if (!ilk || (mesgul && !onayBekleniyor.current)) return
+    setGelenler(g => g.slice(1))
+    const [m, kimden] = ilk
+    if (m.tip === 'oyna') {
+      // Kurucu: misafirin hamlesi. Sırası değilse ya da geçersizse (uyuşmazlık) herkes kurucunun durumuna döner.
+      const t = kabulSonrasi(d, m.hamle)
+      const tam = m.hamle.gonder === undefined ? { ...m.hamle, gonder: ayniHamleler(t, m.hamle)[0]?.gonder } : m.hamle
+      if (d.asama === 'oyun' && t.sira === kimden && (!d.blok || d.blok.hedef === kimden) && hamleGecerliMi(t, tam)) hamleOyna(tam, false)
+      else yayinla({ tip: 'durum', durum: d })
+    } else if (m.tip === 'hamle') gelenGoster(m.hamle, m.durum)
+    else if (m.tip === 'dagit') {
+      setPuanlarAcik(false)
+      topluDagit(m.durum)
+    } else {
+      // El sayısı, oyunu bitirme ya da düzeltme.
+      onayBekleniyor.current = null
+      kurtar(m.durum)
+    }
+  }, [gelenler, mesgul])
+
   // El bitince puan kağıdı kendiliğinden açılır.
   useEffect(() => {
     if (d.asama !== 'oyun') setPuanlarAcik(true)
@@ -973,7 +1075,7 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
   // Sırası gelen oyuncunun kartı oynanır; botlar kendi oynuyorsa sadece benim kartlarım.
   const kartBirak = (oyuncu: number, kart: number, hedef: string): Birakma => {
     if (ters === oyuncu) return cekmeBirak(oyuncu, kart, hedef)
-    if (mesgul || d.asama !== 'oyun' || (oyuncu !== 0 && botlarOtomatik)) return 'red'
+    if (mesgul || d.asama !== 'oyun' || !elleOynanir(oyuncu)) return 'red'
     const [yer, deger] = hedef.split(':')
     const dene = (tip: Hamle['tip'], hedef?: number): Birakma => {
       const h = { tip, kart, hedef }
@@ -1046,12 +1148,16 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
   }
   // Oyun ortasında el sayısı ya da oyunu bitirmek: animasyon sürüyorsa hamle bitince uygulanır.
   const elSayisiDegistir = (n: number) => {
-    if (mesgulRef.current) istenenEl.current = n
-    else setD(elSayisiAyarla(d, n))
+    if (mesgulRef.current) return void (istenenEl.current = n)
+    const yeni = elSayisiAyarla(d, n)
+    setD(yeni)
+    yayinla({ tip: 'durum', durum: yeni })
   }
   const oyunuBitirIste = () => {
-    if (mesgulRef.current) bitirIstendi.current = true
-    else setD(oyunuBitir(d))
+    if (mesgulRef.current) return void (bitirIstendi.current = true)
+    const yeni = oyunuBitir(d)
+    setD(yeni)
+    yayinla({ tip: 'durum', durum: yeni })
   }
   // Basılı tutulan yığının kartları (YiginBakisi).
   const bakilanKartlar = (yer: string): KartTipi[] =>
@@ -1060,7 +1166,7 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
 
   // ---- Kral (6.9.1) ----
   // Gücü elle kullanan: ben ya da botlar kapalıyken sırası gelen bot.
-  const kralBende = !!d.kral && d.asama === 'oyun' && !mesgul && (d.kral.oyuncu === 0 || !botlarOtomatik)
+  const kralBende = !!d.kral && d.asama === 'oyun' && !mesgul && elleOynanir(d.kral.oyuncu)
   // Pencere Papaz oynanmadan açıldıysa kartlara Papaz oynanmış gibi bakılır (Mut Papaz'ları da güçte).
   // (Hamle yapılınca pencere kapanır; o arada çizilirse eski Papaz sırası geçersiz kalabilir, o zaman d.)
   const papazHamlesi: Hamle | null = kralPencere?.kart !== undefined ? { tip: 'kral', kart: kralPencere.kart } : null
@@ -1113,7 +1219,7 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
       </div>
 
       <div className="el-tur">
-        <button className="el-sayaci" onClick={() => setElPenceresi('degistir')}>{d.el}/{gosterilenToplamEl}</button>
+        <button className="el-sayaci" onClick={() => !misafir && setElPenceresi('degistir')}>{d.el}/{gosterilenToplamEl}</button>
         <span>{d.tur}. tur</span>
       </div>
       <button className={'yuvarlak-dugme menu-dugme' + (menu === 'oyun' || menu === 'bitir' ? ' acik' : '')} aria-label="Menü" onClick={() => setMenu(menu === 'oyun' || menu === 'bitir' ? null : 'oyun')}>
@@ -1123,13 +1229,14 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
       </button>
       {menu === 'oyun' && (
         <div className="oyun-menu">
-          <button className="test-satir" disabled={d.asama === 'oyunSonu'} onClick={() => setMenu('bitir')}>Oyunu bitir</button>
+          {ag && <div className="menu-soru">Masa kodu: <b>{ag.kod}</b></div>}
+          {!misafir && <button className="test-satir" disabled={d.asama === 'oyunSonu'} onClick={() => setMenu('bitir')}>Oyunu bitir</button>}
           <button className="test-satir" onClick={cikis}>Giriş ekranı</button>
           <button className="test-satir" onClick={() => sonrakiSecenek(BAKIS_GORUNUSLERI, bakisGorunusu, setBakisGorunusu)}>
             Yığına bakış <span className="test-deger">{bakisGorunusu}</span>
           </button>
           {/* Kapatınca duraklatma da kalkar: gizli düğmeyle oyun duraklı kalmasın. */}
-          <TestSecenegi ad="Geliştirici seçenekleri" acik={gelistirici} degistir={v => { setGelistirici(v); if (!v) setDuraklatildi(false) }} />
+          {!misafir && <TestSecenegi ad="Geliştirici seçenekleri" acik={gelistirici} degistir={v => { setGelistirici(v); if (!v) setDuraklatildi(false) }} />}
         </div>
       )}
       {menu === 'bitir' && (
@@ -1156,8 +1263,8 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
         </div>
       )}
 
-      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={botKartlariKapali || ters === 2} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
-      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={botKartlariKapali || ters === 1} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
+      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
+      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
 
       <div className="benim-ceza">
         <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
@@ -1382,12 +1489,12 @@ export function Masa({ isimler, cikis }: { isimler: string[]; cikis: () => void 
         <PuanPenceresi
           d={d}
           kapat={() => setPuanlarAcik(false)}
-          sonrakiEl={() => {
+          sonrakiEl={misafir ? undefined : () => {
             if (mesgulRef.current) return
             setPuanlarAcik(false)
             topluDagit(sonrakiEl(d))
           }}
-          yeniOyun={() => {
+          yeniOyun={misafir ? undefined : () => {
             setPuanlarAcik(false)
             setElPenceresi('yeni')
           }}

@@ -4,7 +4,7 @@ import '@fontsource/barlow-condensed/latin-700.css'
 import './tema/varsayilan.css'
 import './stil.css'
 import { Sahne } from './ekran/Sahne'
-import { Masa } from './ekran/Masa'
+import { Masa, type AgOyunu } from './ekran/Masa'
 import { Giris } from './ekran/Giris'
 import { birak } from './ag'
 
@@ -21,11 +21,11 @@ function useEkranAcik() {
 }
 
 function Uygulama() {
-  const [oyun, setOyun] = useState<{ isimler: string[]; no: number } | null>(null)
+  const [oyun, setOyun] = useState<{ isimler: string[]; ag?: AgOyunu; no: number } | null>(null)
   useEkranAcik()
-  const oyna = useCallback((isimler: string[]) => setOyun({ isimler, no: Date.now() }), [])
+  const oyna = useCallback((isimler: string[], ag?: AgOyunu) => setOyun({ isimler, ag, no: Date.now() }), [])
   if (!oyun) return <Giris oyna={oyna} />
-  return <Masa key={oyun.no} isimler={oyun.isimler} cikis={() => { birak(); setOyun(null) }} />
+  return <Masa key={oyun.no} isimler={oyun.isimler} ag={oyun.ag} cikis={() => { birak(); setOyun(null) }} />
 }
 
 createRoot(document.getElementById('kok')!).render(

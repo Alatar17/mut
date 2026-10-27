@@ -53,6 +53,9 @@ const DUYURU_SURESI = 1700
 // Sıranın bende olduğunu gösteren işaret (eski: avucun altında sarı çizgi; kullanıcı beğenmemişti). Görünüş menüsünde seçilecek.
 const SIRA_GOSTERGELERI = { Işık: 'sira-isik', Kenar: 'sira-kenar', Çizgi: 'sira-cizgi', Yok: '' }
 type SiraGostergesi = keyof typeof SIRA_GOSTERGELERI
+// Titreşim (☰ menüsü, herkes kendi ayarlar). Tarayıcı gücü ayarlatmıyor; süre çarpılır (kısa = hafif, uzun = güçlü).
+const TITRESIMLER = { Kapalı: 0, Hafif: 0.5, Orta: 1, Güçlü: 2 }
+type Titresim = keyof typeof TITRESIMLER
 // Elin aktif kuralları (sol üstteki etiketler); duyuruda daha uzun adları.
 const aktifKurallarOf = (d: Durum) => [...(d.kralEli ? ['Kral'] : []), ...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.bombaEli ? ['Bomba'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
 const DUYURU_ADI: Record<string, string> = { Kral: 'Kral eli', Bomba: 'Bomba eli' }
@@ -539,7 +542,13 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
   const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi', 'Işık')
-  const [siraTitresim, setSiraTitresim] = useKayitli('siraTitresim', true)
+  const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim', 'Orta')
+  const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Orta'
+  // desen: tek süre ya da titre-dur-titre…; titreme süreleri seviyeyle çarpılır, aralar aynı kalır.
+  const titret = (desen: number | number[]) => {
+    const c = TITRESIMLER[titresim]
+    if (c) navigator.vibrate?.(Array.isArray(desen) ? desen.map((ms, i) => (i % 2 ? ms : Math.round(ms * c))) : Math.round(desen * c))
+  }
   const [puanYeri, setPuanYeri] = useKayitli<PuanYeri>('puanYeri', 'Yanında')
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
   const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', '+10 px')
@@ -947,7 +956,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Titreşim (Android; iPhone'da yok): sıra bana geçince bir kez kısa, blok penceresi bana açılınca sert üç kez.
   const siraBende = d.asama === 'oyun' && d.sira === 0 && !d.blok
   useEffect(() => {
-    if (siraBende && siraTitresim) navigator.vibrate?.(70)
+    if (siraBende) titret(70)
   }, [siraBende])
 
   useEffect(() => {
@@ -1014,7 +1023,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Zincir blokta her yeni pencere yeniden titretir.
   const banaBlok = blokBende && d.blok!.hedef === 0 ? d.blok : null
   useEffect(() => {
-    if (banaBlok && siraTitresim) navigator.vibrate?.(kalkanKurulu ? 90 : [90, 70, 90, 70, 240])
+    if (banaBlok) titret(kalkanKurulu ? 90 : [90, 70, 90, 70, 240])
   }, [banaBlok])
   // Avucumda 2 kalmayınca kalkan da kalkar. Avucum takasla değişince de (6.5.1); kaldırılmış kart da iner.
   useEffect(() => {
@@ -1235,6 +1244,10 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={cikis}>Giriş ekranı</button>
           <button className="test-satir" onClick={() => sonrakiSecenek(BAKIS_GORUNUSLERI, bakisGorunusu, setBakisGorunusu)}>
             Yığına bakış <span className="test-deger">{bakisGorunusu}</span>
+          </button>
+          {/* Seçince yeni seviyede kısa bir titreşim: fark hemen hissedilsin. */}
+          <button className="test-satir" onClick={() => sonrakiSecenek(TITRESIMLER, titresim, v => { setTitresim(v); navigator.vibrate?.(Math.round(70 * TITRESIMLER[v])) })}>
+            Titreşim <span className="test-deger">{titresim}</span>
           </button>
           {/* Kapatınca duraklatma da kalkar: gizli düğmeyle oyun duraklı kalmasın. */}
           {!misafir && <TestSecenegi ad="Geliştirici seçenekleri" acik={gelistirici} degistir={v => { setGelistirici(v); if (!v) setDuraklatildi(false) }} />}
@@ -1457,7 +1470,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
             Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
           </button>
-          <TestSecenegi ad="Titreşim" acik={siraTitresim} degistir={setSiraTitresim} />
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
           <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_ARALIKLARI, cezaAraligi, setCezaAraligi)}>

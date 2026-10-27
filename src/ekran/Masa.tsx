@@ -33,7 +33,7 @@ const BOT_HIZLARI = { 'Çok hızlı': 100, Hızlı: 400, Orta: 1000, Yavaş: 200
 type BotHizi = keyof typeof BOT_HIZLARI
 
 // Ceza yığınında üstteki kartlar arası kaydırma (orta yığında 14). Kullanıcı Test menüsünde seçecek.
-const CEZA_ARALIKLARI = { '8 px': 8, '10 px': 10, '12 px': 12 }
+const CEZA_ARALIKLARI = { '10 px': 10, '12 px': 12 }
 type CezaAraligi = keyof typeof CEZA_ARALIKLARI
 // Yığına bakış (basılı tutunca): ortada büyük şerit ya da yığının yerinde. Oyuncunun ayarı (☰ menüsü).
 // Ceza ve orta yığının altındaki zemin (masa sınıfı, stil.css). Kullanıcı Görünüş menüsünde seçecek.
@@ -522,9 +522,10 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const rakipKapali = !!ag || botKartlariKapali
   // Elle oynanan koltuk: ben; botlar kapalıyken başka telefondan oynanmayan koltuklar.
   const elleOynanir = (i: number) => i === 0 || (!botlarOtomatik && !uzak.includes(i))
-  const [botKartlariDuz, setBotKartlariDuz] = useKayitli('botKartlariDuz', true)
   const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)
-  const [cezaAraligi, setCezaAraligi] = useKayitli<CezaAraligi>('cezaAraligi', '10 px')
+  const [cezaAraligiKayit, setCezaAraligi] = useKayitli<CezaAraligi>('cezaAraligi', '10 px')
+  // 8 px kaldırıldı (2026-10-27); kayıtlıysa varsayılana döner.
+  const cezaAraligi: CezaAraligi = cezaAraligiKayit in CEZA_ARALIKLARI ? cezaAraligiKayit : '10 px'
   const [botHizi, setBotHizi] = useKayitli<BotHizi>('botHizi', 'Orta')
   // Kayıt adı değişti (2026-10-23): telefondaki eski seçim silinsin, herkes varsayılan Orta'dan başlasın.
   const [animasyonHizi, setAnimasyonHizi] = useKayitli<AnimasyonHizi>('animasyonHizi2', 'Orta')
@@ -1263,8 +1264,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         </div>
       )}
 
-      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
-      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={botKartlariDuz} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
+      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
+      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
 
       <div className="benim-ceza">
         <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
@@ -1458,7 +1459,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           </button>
           <TestSecenegi ad="Titreşim" acik={siraTitresim} degistir={setSiraTitresim} />
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
-          <TestSecenegi ad="Bot kartları yelpaze" acik={!botKartlariDuz} degistir={v => setBotKartlariDuz(!v)} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
           <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_ARALIKLARI, cezaAraligi, setCezaAraligi)}>
             Ceza yığını aralığı <span className="test-deger">{cezaAraligi}</span>

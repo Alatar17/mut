@@ -114,7 +114,7 @@ const yeniOyunKur = (isimler: string[], toplamEl: number) => yeniOyun({ isimler,
 const RAKIP_KART_EN = 56
 
 // Hazır sözler (kaba ilk sürüm; asıl hali 2. aşamada herkes kendi telefonundan). Kahvenin kendi lafları, aynen.
-const HAZIR_SOZLER = ['Çok saçma kendime sokamıyom!', 'Tost oldu.', 'Beton döktü.', 'Şimdi ben kızı aldım … soktum.', 'Üstüne kapatma göt!', 'Kapatma göt!', 'Dönme dolap!', 'Şu kartın anasını s.keyim!', 'Son eli atalım, annem kötüleşti.']
+const HAZIR_SOZLER = ['Çok saçma kendime sokamıyom!', 'Tost oldu.', 'Beton döktü.', 'Şimdi ben kızı aldım … soktum.', 'Üstüne kapatma göt!', 'Kapatma göt!', 'Dönme dolap!', 'Şu kartın anasını s.keyim!', 'Son eli atalım, annem kötüleşti.', 'Kakao içiyor musun? Söyle o zaman.']
 const KIZ_SOZU = HAZIR_SOZLER[3]
 const KIZ_ISIMLERI = ["Tahir'e", "Uğur'a", "Mert'e"]
 const kizSozu = (isim: string) => `Şimdi ben kızı aldım ${isim} soktum.`

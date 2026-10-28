@@ -114,12 +114,13 @@ const yeniOyunKur = (isimler: string[], toplamEl: number) => yeniOyun({ isimler,
 const RAKIP_KART_EN = 56
 
 // Hazır sözler (kaba ilk sürüm; asıl hali 2. aşamada herkes kendi telefonundan). Kahvenin kendi lafları, aynen.
-const HAZIR_SOZLER = ['Çok saçma kendime sokamıyom!', 'Tost oldu.', 'Beton döktü.', 'Şimdi ben kızı aldım … soktum.', 'Üstüne kapatma göt!']
+const HAZIR_SOZLER = ['Çok saçma kendime sokamıyom!', 'Tost oldu.', 'Beton döktü.', 'Şimdi ben kızı aldım … soktum.', 'Üstüne kapatma göt!', 'Kapatma göt!', 'Dönme dolap!', 'Şu kartın anasını s.keyim!', 'Son eli atalım, annem kötüleşti.']
 const KIZ_SOZU = HAZIR_SOZLER[3]
 const KIZ_ISIMLERI = ["Tahir'e", "Uğur'a", "Mert'e"]
 const kizSozu = (isim: string) => `Şimdi ben kızı aldım ${isim} soktum.`
 // Botlar ve bota düşen oyuncu konuşmaz (kullanıcı kararı 2026-10-24); söz sadece elle seçilir.
 const BALON_SURESI = 3000
+const YAZI_SINIRI = 40
 
 // Elde tutulan kartlar gibi hafif yelpaze: kenardaki kartlar biraz döner ve alçalır.
 function yelpaze(sira: number, adet: number) {
@@ -491,7 +492,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const sonYayin = useRef<Durum | null>(null)
   const yayinla = (m: OyunMesaji) => {
     if (!kurucu) return
-    if (m.tip !== 'oyna') sonYayin.current = m.durum
+    if ('durum' in m) sonYayin.current = m.durum
     oyunGonder(m)
   }
   // d: oyunun gerçek durumu. gorunen: ekranda çizilen durum (animasyon sürerken d'nin gerisinde kalır).
@@ -513,10 +514,19 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     setBalonlar(b => ({ ...b, [oyuncu]: { yazi, no } }))
     setTimeout(() => setBalonlar(b => (b[oyuncu]?.no === no ? (({ [oyuncu]: _, ...kalan }) => kalan)(b) : b)), BALON_SURESI)
   }
-  const sozSec = (yazi: string) => {
-    if (yazi === KIZ_SOZU) return setMenu('sozIsim')
+  // Ağ oyununda söz herkese gider (misafir kurucuya, kurucu herkese iletir).
+  const sozGonder = (yazi: string) => {
     setMenu(null)
     soyle(0, yazi)
+    if (ag) oyunGonder({ tip: 'soz', oyuncu: 0, yazi })
+  }
+  const sozSec = (yazi: string) => (yazi === KIZ_SOZU ? setMenu('sozIsim') : sozGonder(yazi))
+  const [yazi, setYazi] = useState('')
+  const yaziGonder = () => {
+    const t = yazi.trim()
+    if (!t) return
+    setYazi('')
+    sozGonder(t)
   }
   // "Kaç el?" penceresi: yeni oyun için ya da oyun ortasında el sayısını değiştirmek için.
   const [elPenceresi, setElPenceresi] = useState<'yeni' | 'degistir' | null>(null)
@@ -1059,7 +1069,12 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // ---- Ağ ----
   // Gelen mesajlar sırayla işlenir: animasyon sürerken bekler (misafir kendi hamlesinin sonucunu beklerken hariç).
   const [gelenler, setGelenler] = useState<[OyunMesaji, number][]>([])
-  useEffect(() => (ag ? oyunuDinle((m, kimden) => setGelenler(g => [...g, [m, kimden]])) : undefined), [])
+  // Sözler sıra beklemez; kurucu gelen sözü gönderen dışındaki misafirlere iletir.
+  useEffect(() => (ag ? oyunuDinle((m, kimden) => {
+    if (m.tip !== 'soz') return setGelenler(g => [...g, [m, kimden]])
+    soyle(m.oyuncu, m.yazi)
+    if (kurucu) [1, 2].forEach(k => k !== kimden && oyunGonder(m, k))
+  }) : undefined), [])
   // Kurucu: misafir kopunca yerine bot oynar; geri dönünce oyunun şimdiki hali ona gider, kendisi oynar.
   const dRef = useRef(d)
   dRef.current = d
@@ -1086,7 +1101,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     else if (m.tip === 'dagit') {
       setPuanlarAcik(false)
       topluDagit(m.durum)
-    } else {
+    } else if (m.tip === 'durum') {
       // El sayısı, oyunu bitirme ya da düzeltme.
       onayBekleniyor.current = null
       kurtar(m.durum)
@@ -1460,10 +1475,16 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         </div>
       )}
       {(menu === 'soz' || menu === 'sozIsim') && (
-        <div className="oyun-menu soz-menu">
+        <div className={'oyun-menu soz-menu' + (menu === 'soz' ? ' genis' : '')}>
+          {menu === 'soz' && (
+            <form className="soz-yaz" onSubmit={e => { e.preventDefault(); yaziGonder() }}>
+              <input value={yazi} maxLength={YAZI_SINIRI} placeholder="Yaz…" enterKeyHint="send" onChange={e => setYazi(e.target.value)} />
+              <button className="test-satir" disabled={!yazi.trim()}>Gönder</button>
+            </form>
+          )}
           {menu === 'soz'
             ? HAZIR_SOZLER.map(s => <button key={s} className="test-satir" onClick={() => sozSec(s)}>{s}</button>)
-            : KIZ_ISIMLERI.map(i => <button key={i} className="test-satir" onClick={() => { setMenu(null); soyle(0, kizSozu(i)) }}>{kizSozu(i)}</button>)}
+            : KIZ_ISIMLERI.map(i => <button key={i} className="test-satir" onClick={() => sozGonder(kizSozu(i))}>{kizSozu(i)}</button>)}
         </div>
       )}
       {Object.entries(balonlar).map(([oyuncu, b]) => (

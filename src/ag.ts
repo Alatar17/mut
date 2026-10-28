@@ -35,12 +35,13 @@ export interface MasaDurumu {
 }
 
 // Oyun mesajları. Kurucu → misafir: hamle (yapılan hamle ve sonrası), dagit (yeni el / yeni oyun), durum (el sayısı,
-// oyunu bitirme, uyuşmazlıkta düzeltme). Misafir → kurucu: oyna (benim hamlem).
+// oyunu bitirme, uyuşmazlıkta düzeltme). Misafir → kurucu: oyna (benim hamlem). soz: konuşma balonu (iki yönde; kurucu herkese iletir).
 export type OyunMesaji =
   | { tip: 'hamle'; hamle: Hamle; durum: Durum }
   | { tip: 'dagit'; durum: Durum }
   | { tip: 'durum'; durum: Durum }
   | { tip: 'oyna'; hamle: Hamle }
+  | { tip: 'soz'; oyuncu: number; yazi: string }
 
 type Mesaj =
   | { tip: 'merhaba'; isim: string; kimlik: string }
@@ -104,6 +105,7 @@ function mesajCevir(m: OyunMesaji, k: number): OyunMesaji {
   switch (m.tip) {
     case 'hamle': return { ...m, hamle: hamleCevir(m.hamle, k, KOLTUK), durum: durumCevir(m.durum, k) }
     case 'oyna': return { ...m, hamle: hamleCevir(m.hamle, k, KOLTUK) }
+    case 'soz': return { ...m, oyuncu: (((m.oyuncu - k) % KOLTUK) + KOLTUK) % KOLTUK }
     default: return { ...m, durum: durumCevir(m.durum, k) }
   }
 }

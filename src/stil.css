@@ -264,6 +264,11 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 
 /* Hazır sözler (sol alttaki konuşma düğmesi) ve konuşma balonları. */
 .oyun-menu.soz-menu { left: 12px; right: auto; top: auto; bottom: 62px; width: 280px; }
+/* Hazır sözler iki sütun, üstte yazı kutusu. */
+.oyun-menu.soz-menu.genis { width: 460px; display: grid; grid-template-columns: 1fr 1fr; }
+.soz-yaz { grid-column: 1 / -1; display: flex; gap: 6px; }
+.soz-yaz input { flex: 1; min-width: 0; padding: 6px 10px; border: 0; border-radius: 8px; font: inherit; font-size: 15px; }
+.soz-yaz .test-satir { flex: none; }
 .balon {
   position: absolute; z-index: 17; max-width: 240px; padding: 7px 12px; border-radius: 14px; pointer-events: none;
   font-size: 14px; font-weight: 700; background: #fffdf5; color: #1d2a22; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);

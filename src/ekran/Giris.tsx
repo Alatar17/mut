@@ -67,6 +67,7 @@ export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => voi
   return (
     <div className="masa giris">
       <div className="giris-baslik">MUT</div>
+      <div className="giris-surum">{__SURUM__}</div>
       {ekran === 'ana' && (
         <div className="giris-kutu">
           <input className="giris-yazi" placeholder="Adın" maxLength={12} value={isim} onChange={e => setIsim(e.target.value)} />

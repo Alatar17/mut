@@ -1273,6 +1273,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           </button>
           {/* Kapatınca duraklatma da kalkar: gizli düğmeyle oyun duraklı kalmasın. */}
           {!misafir && <TestSecenegi ad="Geliştirici seçenekleri" acik={gelistirici} degistir={v => { setGelistirici(v); if (!v) setDuraklatildi(false) }} />}
+          <div className="menu-surum">Sürüm {__SURUM__}</div>
         </div>
       )}
       {menu === 'bitir' && (

@@ -283,6 +283,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 }
 .oyun-menu .test-satir:disabled { opacity: 0.4; }
 .menu-soru { padding: 8px; font-size: 13px; }
+.menu-surum { padding: 2px 8px 0; font-size: 10px; color: var(--yazi-soluk); text-align: right; }
 .menu-secenekler { display: flex; gap: 4px; }
 .menu-secenekler .test-satir { flex: 1; justify-content: center; background: var(--panel); }
 .menu-secenekler .menu-onay { background: var(--vurgu); color: var(--rozet); font-weight: 700; }
@@ -472,4 +473,5 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .giris-koltuk.bos { color: var(--yazi-soluk); font-size: 12px; }
 .giris-koltuklar + .giris-dugme, .giris-koltuklar + .giris-bilgi { margin-top: 4px; }
 .giris-bilgi { color: var(--yazi-soluk); }
+.giris-surum { position: absolute; right: 14px; bottom: 10px; font-size: 11px; color: var(--yazi-soluk); }
 .giris-hata { color: var(--sure-bitiyor); text-align: center; }

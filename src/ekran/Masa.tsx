@@ -12,7 +12,7 @@ import { BombaYigini, CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 import { useYiginBakisi, YiginYelpazesi, type BakisGorunusu } from './YiginBakisi'
 import { DestePenceresi, type KartlarimGorunusu } from './DestePenceresi'
 import { puanKagidiniKaydet } from './puanResmi'
-import { oyunGonder, oyunuDinle, type OyunMesaji } from '../ag'
+import { koltuklariDinle, oyunGonder, oyunuDinle, type OyunMesaji } from '../ag'
 
 const AVUC_KART_EN = 60
 // "Kaç el?" penceresindeki hazır seçenekler; başka sayı da yazılabilir.
@@ -54,7 +54,7 @@ const DUYURU_SURESI = 1700
 const SIRA_GOSTERGELERI = { Işık: 'sira-isik', Kenar: 'sira-kenar', Çizgi: 'sira-cizgi', Yok: '' }
 type SiraGostergesi = keyof typeof SIRA_GOSTERGELERI
 // Titreşim (☰ menüsü, herkes kendi ayarlar). Tarayıcı gücü ayarlatmıyor; süre çarpılır (kısa = hafif, uzun = güçlü).
-const TITRESIMLER = { Kapalı: 0, Hafif: 0.5, Orta: 1, Güçlü: 2 }
+export const TITRESIMLER = { Kapalı: 0, Hafif: 1, Orta: 2, Güçlü: 3 }
 type Titresim = keyof typeof TITRESIMLER
 // Elin aktif kuralları (sol üstteki etiketler); duyuruda daha uzun adları.
 const aktifKurallarOf = (d: Durum) => [...(d.kralEli ? ['Kral'] : []), ...(d.serbest ? ['Serbest el'] : []), ...(d.eksi ? ['Eksi el'] : []), ...(d.bombaEli ? ['Bomba'] : []), ...(d.carpan > 1 ? [`×${d.carpan}`] : [])]
@@ -469,12 +469,14 @@ function KralPenceresi({ kartlar, secili, dokun, children }: { kartlar: KartTipi
 }
 
 // Ağ oyunu (kahve sürümü). uzak: başka telefondan oynanan koltuklar (benim gözümden; kurucuda misafirler,
-// misafirde herkes). ilkDurum: misafirde kurucudan gelen ilk dağıtım.
+// misafirde herkes). ilkDurum: misafirde kurucudan gelen ilk dağıtım (devam: oyun sürerken yeniden katıldı,
+// dağıtım yapılmaz).
 export interface AgOyunu {
   kurucu: boolean
   kod: string
   uzak: number[]
   ilkDurum?: Durum
+  devam?: boolean
 }
 
 // isimler: [ben, sağdaki, soldaki] (giriş ekranından). cikis: giriş ekranına dön.
@@ -484,9 +486,12 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const kurucu = !!ag?.kurucu
   const misafir = !!ag && !ag.kurucu
   const uzak = ag?.uzak ?? []
-  // Kurucu: herkese gönderir (misafirde bir şey yapmaz).
+  // Kurucu: herkese gönderir (misafirde bir şey yapmaz). Son gönderilen durum, geri dönen misafire yollanır.
+  const sonYayin = useRef<Durum | null>(null)
   const yayinla = (m: OyunMesaji) => {
-    if (kurucu) oyunGonder(m)
+    if (!kurucu) return
+    if (m.tip !== 'oyna') sonYayin.current = m.durum
+    oyunGonder(m)
   }
   // d: oyunun gerçek durumu. gorunen: ekranda çizilen durum (animasyon sürerken d'nin gerisinde kalır).
   // Yeni oyunda kaç el oynanacağı ("Kaç el?" penceresinde son seçilen).
@@ -542,8 +547,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
   const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi', 'Işık')
-  const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim', 'Orta')
-  const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Orta'
+  const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim2', 'Hafif')
+  const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Hafif'
   // desen: tek süre ya da titre-dur-titre…; titreme süreleri seviyeyle çarpılır, aralar aynı kalır.
   const titret = (desen: number | number[]) => {
     const c = TITRESIMLER[titresim]
@@ -971,7 +976,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   useEffect(() => {
     if (ilkDagitim.current) return
     ilkDagitim.current = true
-    topluDagit(d)
+    if (ag?.devam) kurtar(d)
+    else topluDagit(d)
   }, [])
 
   // ---- Hamle süresi ----
@@ -982,6 +988,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Duraklat (geliştirme düğmesi, Dene'nin solunda): botlar oynamaz, hamle süresi işlemez; kendi kartlarımı oynayabilirim.
   const [duraklatildi, setDuraklatildi] = useState(false)
   const [uzakta, setUzakta] = useState(false)
+  // Kurucu: bağlantısı kopmuş misafirlerin koltukları (yerlerine bot oynar).
+  const [kopuk, setKopuk] = useState<number[]>([])
   const zamanAsimi = useRef(0)
   const elleSirada = d.asama === 'oyun' && !d.blok && elleOynanir(d.sira)
   useEffect(() => {
@@ -1001,11 +1009,13 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   }, [d, elleSirada, sure, uzakta, duraklatildi])
 
   // Botlar sırası gelince biraz bekleyip hamle yapar. Benim kartlarımı ben oynarım, uzaktaysam bot.
+  // Bağlantısı kopan misafirin yerine de bot oynar.
+  const botOynar = (i: number) => (i === 0 ? uzakta : uzak.includes(i) ? kopuk.includes(i) : botlarOtomatik)
   useEffect(() => {
-    if (mesgul || duraklatildi || d.asama !== 'oyun' || !(d.sira === 0 ? uzakta : botlarOtomatik && !uzak.includes(d.sira))) return
+    if (mesgul || duraklatildi || d.asama !== 'oyun' || !botOynar(d.sira)) return
     const zamanlayici = setTimeout(() => hamleOyna(akilliBotHamlesi(d), false), BOT_HIZLARI[botHizi])
     return () => clearTimeout(zamanlayici)
-  }, [d, mesgul, botlarOtomatik, botHizi, uzakta, duraklatildi])
+  }, [d, mesgul, botlarOtomatik, botHizi, uzakta, duraklatildi, kopuk])
 
   // Blok penceresi: hedef ben isem (ya da botları ben oynuyorsam) süre bitince kendiliğinden kabul edilir.
   // Bot hedefse ve botlar kendi oynuyorsa bot hemen karar verir (yukarıdaki bot hamlesi).
@@ -1047,6 +1057,14 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Gelen mesajlar sırayla işlenir: animasyon sürerken bekler (misafir kendi hamlesinin sonucunu beklerken hariç).
   const [gelenler, setGelenler] = useState<[OyunMesaji, number][]>([])
   useEffect(() => (ag ? oyunuDinle((m, kimden) => setGelenler(g => [...g, [m, kimden]])) : undefined), [])
+  // Kurucu: misafir kopunca yerine bot oynar; geri dönünce oyunun şimdiki hali ona gider, kendisi oynar.
+  const dRef = useRef(d)
+  dRef.current = d
+  useEffect(() => (kurucu ? koltuklariDinle((k, bagli) => {
+    setKopuk(x => (bagli ? x.filter(i => i !== k) : x.includes(k) ? x : [...x, k]))
+    if (bagli) oyunGonder({ tip: 'durum', durum: sonYayin.current ?? dRef.current }, k)
+    soyle(k, bagli ? 'Döndü' : 'Koptu · bot oynuyor')
+  }) : undefined), [])
   useEffect(() => {
     const ilk = gelenler[0]
     if (!ilk || (mesgul && !onayBekleniyor.current)) return

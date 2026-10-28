@@ -1,8 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { basla, birak, katil, KOLTUK, masaKur, type MasaDurumu } from '../ag'
-import type { AgOyunu } from './Masa'
+import { TITRESIMLER, type AgOyunu } from './Masa'
 
 const BOT_ADLARI = ['Bot B', 'Bot C']
+
+// Masaya biri katılınca kurucunun telefonu titrer (☰ menüsündeki seviyeyle).
+function titret(ms: number) {
+  let c = 1
+  try { c = TITRESIMLER[JSON.parse(localStorage.getItem('mut.test.titresim2') ?? '"Hafif"') as keyof typeof TITRESIMLER] ?? 1 } catch { /* varsayılan */ }
+  if (c) navigator.vibrate?.(ms * c)
+}
 
 function kayitliIsim() {
   try { return localStorage.getItem('oyuncuAdi') ?? '' } catch { return '' }
@@ -20,15 +27,30 @@ export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => voi
   const [kod, setKod] = useState('')
   const [masa, setMasa] = useState<MasaDurumu | null>(null)
   const ad = isim.trim() || 'Oyuncu'
+  // Kurucu: yeni katılanın koltuğu birkaç kez parlar.
+  const [yeni, setYeni] = useState<number | null>(null)
+  const oturan = useRef(1)
 
   useEffect(() => {
     try { localStorage.setItem('oyuncuAdi', isim) } catch { /* gizli sekme */ }
   }, [isim])
   useEffect(() => {
+    if (!masa?.kurucu || masa.asama !== 'bekleme') return
+    const n = masa.isimler.length
+    if (n > oturan.current) {
+      titret(150)
+      setYeni(n - 1)
+      const t = setTimeout(() => setYeni(null), 2000)
+      oturan.current = n
+      return () => clearTimeout(t)
+    }
+    oturan.current = n
+  }, [masa])
+  useEffect(() => {
     if (masa?.asama !== 'basladi') return
     // Uzaktan oynanan koltuklar (masada benim gözümden): kurucuda misafirler, misafirde herkes.
     const uzak = masa.kurucu ? masa.isimler.map((_, i) => i).slice(1) : [1, 2]
-    oyna(siraliIsimler(masa), { kurucu: masa.kurucu, kod: masa.kod, uzak, ilkDurum: masa.ilkDurum })
+    oyna(siraliIsimler(masa), { kurucu: masa.kurucu, kod: masa.kod, uzak, ilkDurum: masa.ilkDurum, devam: masa.devam })
   }, [masa, oyna])
 
   const geri = () => {
@@ -75,7 +97,7 @@ export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => voi
               <div className="giris-kod">{masa.kod}</div>
               <div className="giris-koltuklar">
                 {Array.from({ length: KOLTUK }, (_, i) => (
-                  <div key={i} className={'giris-koltuk' + (masa.isimler[i] ? '' : ' bos') + (i === masa.ben ? ' ben' : '')}>
+                  <div key={i} className={'giris-koltuk' + (masa.isimler[i] ? '' : ' bos') + (i === masa.ben ? ' ben' : '') + (i === yeni ? ' yeni' : '')}>
                     {masa.isimler[i] ?? 'Boş · bot oturur'}
                   </div>
                 ))}

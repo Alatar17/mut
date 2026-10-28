@@ -3,7 +3,7 @@ import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { cikanOnlar, elPuanlari, kralGruplari, elSayisiAyarla, gecerliHamleler, hamleGecerliMi, hamleYap, oyunuBitir, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
 import { karistir } from '../oyun/rastgele'
-import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBosaltmaDenemesi, bombaEkleDenemesi, yapisikDenemesi, kralDenemesi, kralBotDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
+import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBosaltmaDenemesi, bombaEkleDenemesi, kalabalikDenemesi, yapisikDenemesi, kralDenemesi, kralBotDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { kartEni, kartOlcegi } from './boyut'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, patlamaOncesi, patlamaOrtada, UcanKart, type Konum, type Ucus } from './animasyon'
@@ -124,7 +124,7 @@ const YAZI_SINIRI = 40
 // Hediyeler (deneme): resim gönderenden alıcının önüne uçar ve orada durur.
 const HEDIYELER = ['cay']
 const hediyeResmi = (ad: string) => `${import.meta.env.BASE_URL}hediyeler/${ad}.png`
-const HEDIYE_EN = 40
+const HEDIYE_EN = 36
 
 // Elde tutulan kartlar gibi hafif yelpaze: kenardaki kartlar biraz döner ve alçalır.
 function yelpaze(sira: number, adet: number) {
@@ -1499,7 +1499,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">
-          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Bomba boşaltma dene', bombaBosaltmaDenemesi], ['Bomba ekle dene', bombaEkleDenemesi], ['2 yapışma dene', yapisikDenemesi], ['Kral dene', kralDenemesi], ['Bot Kral dene', kralBotDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
+          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Bomba boşaltma dene', bombaBosaltmaDenemesi], ['Bomba ekle dene', bombaEkleDenemesi], ['Kalabalık masa dene', kalabalikDenemesi], ['2 yapışma dene', yapisikDenemesi], ['Kral dene', kralDenemesi], ['Bot Kral dene', kralBotDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
             // "Bot 8 dene" kalkan kurulu başlar: takas gelince sökülmesi görülsün.
             <button key={ad} className="test-satir" onClick={() => { setMenu(null); if (!deneme) return setElPenceresi('yeni'); yeniOyunBaslat(deneme); setKalkanKurulu(ad === 'Bot 8 dene') }}>{ad}</button>
           ))}

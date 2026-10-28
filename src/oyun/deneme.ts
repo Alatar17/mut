@@ -214,6 +214,22 @@ export const bombaEkleDenemesi = (d: Durum) => {
   return d
 }
 
+// Kalabalık masa (hediyeleri kalabalıkta görmek için): ortada ve ceza yığınlarında çok kart, bomba bende (iki 10).
+// Avucumdaki 6'yı sağdaki B'nin yığınına (üstü 6) ya da 7'yi soldaki C'ninkine (üstü 7) eklersem bomba da gider.
+// Botlarda 2 yok; kalan iki 10 C'nin yığınının altında.
+export const kalabalikDenemesi = (d: Durum) => {
+  denemeKur(d, {
+    avucum: [kart(6, 'sinek'), kart(7, 'sinek'), kart(4, 'sinek'), kart(5, 'sinek')],
+    digerAvuclar: [[kart(4, 'kupa'), kart(5, 'kupa'), kart(9, 'sinek'), kart(7, 'karo')], [kart(4, 'karo'), kart(5, 'karo'), kart(6, 'karo'), kart(9, 'karo')]],
+    orta: [kart(12, 'sinek'), kart(7, 'maca'), kart(8, 'kupa'), kart(11, 'kupa'), kart(13, 'sinek'), kart(13, 'maca')],
+    cezalar: [[kart(10, 'maca'), kart(10, 'kupa'), kart(6, 'maca'), kart(8, 'sinek')], [kart(4, 'maca'), kart(9, 'kupa'), kart(6, 'kupa')], [kart(10, 'karo'), kart(10, 'sinek'), kart(5, 'maca'), kart(9, 'maca'), kart(7, 'kupa')]],
+    mut: [kart(8, 'maca'), kart(8, 'karo'), kart(12, 'kupa'), kart(12, 'karo')],
+  })
+  d.bombaEli = true
+  d.bomba = { sahip: 0, kartlar: d.oyuncular[0].ceza.splice(0, 2) }
+  return d
+}
+
 // 2 gruba yapışır (6.5). Ceza yığınımda 7 üstünde iki 5, avucumda iki 5. 5'imi kendi yığınıma bırakınca üç 5 sağdaki
 // B'ye gider; B 2 ile bloklar, üç 5 altlarındaki 2 ile bana döner (7'nin üstüne). Sıra bana gelince öbür 5'imi de
 // bırakırsam dört 5 ve 2 birlikte B'ye gider, 7 bende kalır.

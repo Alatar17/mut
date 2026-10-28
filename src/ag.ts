@@ -3,6 +3,8 @@
 // Oyunda kurucu hakemdir: kural motoru onda çalışır, misafir hamlesini ona yollar, o da sonucu herkese yayar.
 // Oyunun bütün durumu herkese gider (başkalarının kartlarını ekran gizler). Her telefon masayı kendi gözünden
 // görür (kendisi 0. oyuncu); çevirmeyi kurucu yapar (giden ve gelen), ekran hep kendi gözünden konuşur.
+// Oyun sürerken kopan kendiliğinden yeniden bağlanır: misafir kurucuya yeniden katılır (aynı koltuk), kurucu
+// masa kodunu sunucuda yeniden alır (uygulama arka plana gidip dönünce).
 import Peer, { type DataConnection } from 'peerjs'
 import { durumCevir, hamleCevir } from './oyun/cevir'
 import type { Durum, Hamle } from './oyun/motor'
@@ -15,6 +17,8 @@ const BAGLANMA_SURESI = 15000
 // (bağlantının kapandığı haberi internetten geç geliyor).
 const NABIZ = 2000
 const SESSIZLIK = 8000
+// Oyun sürerken kopunca yeniden deneme aralığı.
+const YENIDEN_DENE = 4000
 export const KOLTUK = 3
 
 export interface MasaDurumu {
@@ -44,6 +48,8 @@ type Mesaj =
   | { tip: 'masa'; isimler: string[]; ben: number }
   | { tip: 'dolu' }
   | { tip: 'oyun'; m: OyunMesaji }
+  // Kurucu → misafir: bağlantısı kopuk koltuklar (kurucunun gözünden).
+  | { tip: 'kopuklar'; koltuklar: number[] }
 
 const HATA_ADI: Record<string, string> = {
   network: 'Sunucuya ulaşılamadı. İnternet açık mı?',
@@ -59,6 +65,11 @@ let peer: Peer | null = null
 let misafirler: { conn: DataConnection | null; isim: string; koltuk: number; kimlik: string; ses: number }[] = []
 let kurucuyla: DataConnection | null = null
 let nabiz = 0
+let sonDeneme = 0
+// Misafir: kurucudan son ses ne zaman geldi, şu an bağlı mı, kurucunun bildirdiği kopuk koltuklar.
+let kurucuSes = 0
+let kurucuBagli = false
+let kurucununKopuklari: number[] = []
 let durum: MasaDurumu
 let dinleyici: (d: MasaDurumu) => void = () => {}
 // Oyun mesajları masa ekranına gider; ekran henüz açılmadıysa biriktirilir. kimden: gönderenin koltuğu (kurucuda).
@@ -66,6 +77,8 @@ let oyunDinleyici: ((m: OyunMesaji, kimden: number) => void) | null = null
 let birikmis: [OyunMesaji, number][] = []
 // Kurucu: oyun sürerken bir misafir koptu / geri döndü (masa ekranına).
 let koltukDinleyici: ((koltuk: number, bagli: boolean) => void) | null = null
+// Masa ekranı: kopuk koltuklar (benim gözümden) ve kurucuya bağlantım yok mu (misafir).
+let kopukDinleyici: ((kopuk: number[], kurucuYok: boolean) => void) | null = null
 
 // Sekmeye özel kimlik: aynı sekmeden yeniden katılan kendi koltuğunu bulur (iki sekmeyle denerken karışmasın).
 function kimligim() {
@@ -98,11 +111,26 @@ function mesajCevir(m: OyunMesaji, k: number): OyunMesaji {
 function peerKur(id?: string) {
   const p = id ? new Peer(id) : new Peer()
   p.on('error', e => {
+    // Oyun sürerken hata gösterilmez: nabız yeniden dener.
+    if (durum.asama === 'basladi') return
     // Kod başkasında: kurucu yeni kodla yeniden dener.
     if (e.type === 'unavailable-id' && durum.kurucu) return void masaKur(durum.isimler[0], dinleyici)
     hata(HATA_ADI[e.type] ?? 'Bağlantı hatası: ' + e.type)
   })
   return p
+}
+
+// Kopuk koltuklar masa ekranına (benim gözümden) ve kurucudan herkese.
+function kopuklariBildir() {
+  if (durum.kurucu) {
+    const koltuklar = misafirler.filter(x => !x.conn).map(x => x.koltuk)
+    misafirler.forEach(x => x.conn?.send({ tip: 'kopuklar', koltuklar } satisfies Mesaj))
+    kopukDinleyici?.(koltuklar, false)
+  } else {
+    const gozumden = (k: number) => (k - durum.ben + KOLTUK) % KOLTUK
+    const kopuk = kurucununKopuklari.map(gozumden)
+    kopukDinleyici?.(kurucuBagli ? kopuk : [...kopuk, gozumden(0)], !kurucuBagli)
+  }
 }
 
 // Kurucu: her misafire koltuğunu da bildirerek oyuncu listesini gönderir.
@@ -121,6 +149,7 @@ function kopar(conn: DataConnection) {
   if (durum.asama === 'basladi') {
     x.conn = null
     koltukDinleyici?.(x.koltuk, false)
+    kopuklariBildir()
   } else {
     misafirler = misafirler.filter(m => m !== x)
     yayinla()
@@ -132,21 +161,11 @@ function eskiKoltuk(isim: string, kimlik: string) {
   return misafirler.find(x => x.kimlik === kimlik) ?? (durum.asama === 'basladi' ? misafirler.find(x => !x.conn && x.isim === isim) : undefined)
 }
 
-export function masaKur(isim: string, dinle: (d: MasaDurumu) => void) {
-  birak()
-  dinleyici = dinle
-  const kod = Array.from({ length: 4 }, () => HARFLER[Math.floor(Math.random() * HARFLER.length)]).join('')
-  guncelle({ asama: 'baglaniyor', kod, isimler: [isim], ben: 0, kurucu: true, hata: undefined, ilkDurum: undefined, devam: undefined })
-  peer = peerKur(ONEK + kod)
-  peer.on('open', () => guncelle({ asama: 'bekleme' }))
-  nabiz = window.setInterval(() => {
-    misafirler.forEach(x => {
-      if (!x.conn) return
-      if (Date.now() - x.ses > SESSIZLIK) kopar(x.conn)
-      else x.conn.send({ tip: 'nabiz' } satisfies Mesaj)
-    })
-  }, NABIZ)
-  peer.on('connection', conn => {
+// Kurucu: masa kodunu sunucuda alır ve gelenleri karşılar (oyun sürerken kod kaybolursa yeniden çağrılır).
+function kurucuPeer(kod: string) {
+  const p = peerKur(ONEK + kod)
+  p.on('open', () => durum.asama === 'baglaniyor' && guncelle({ asama: 'bekleme' }))
+  p.on('connection', conn => {
     conn.on('data', veri => {
       const m = veri as Mesaj
       const ses = misafirler.find(x => x.conn === conn)
@@ -166,7 +185,8 @@ export function masaKur(isim: string, dinle: (d: MasaDurumu) => void) {
         if (durum.asama !== 'basladi') return yayinla()
         conn.send({ tip: 'masa', isimler: durum.isimler, ben: eski.koltuk } satisfies Mesaj)
         // Masa ekranı ona oyunun şimdiki halini yollar.
-        return koltukDinleyici?.(eski.koltuk, true)
+        koltukDinleyici?.(eski.koltuk, true)
+        return kopuklariBildir()
       }
       if (durum.asama !== 'bekleme' || misafirler.length >= KOLTUK - 1) {
         conn.send({ tip: 'dolu' } satisfies Mesaj)
@@ -177,37 +197,59 @@ export function masaKur(isim: string, dinle: (d: MasaDurumu) => void) {
     })
     conn.on('close', () => kopar(conn))
   })
+  return p
 }
 
-export function katil(kod: string, isim: string, dinle: (d: MasaDurumu) => void) {
+export function masaKur(isim: string, dinle: (d: MasaDurumu) => void) {
   birak()
   dinleyici = dinle
-  guncelle({ asama: 'baglaniyor', kod, isimler: [], ben: 0, kurucu: false, hata: undefined, ilkDurum: undefined, devam: undefined })
-  peer = peerKur()
-  peer.on('open', () => {
-    // json: undefined alanlar yolda null'a dönmesin (motor undefined bekliyor).
-    const conn = peer!.connect(ONEK + kod, { reliable: true, serialization: 'json' })
-    kurucuyla = conn
-    const zamanAsimi = setTimeout(() => {
-      if (durum.asama === 'baglaniyor') hata('Masaya bağlanılamadı. Yeniden dene.')
-    }, BAGLANMA_SURESI)
-    let ses = Date.now()
-    conn.on('open', () => {
-      conn.send({ tip: 'merhaba', isim, kimlik: kimligim() } satisfies Mesaj)
-      ses = Date.now()
-      // Kurucu oyun sürerken koparsa ne olacağı sonraki parçada (şimdilik sadece beklerken).
-      nabiz = window.setInterval(() => {
-        if (Date.now() - ses > SESSIZLIK && durum.asama === 'bekleme') hata('Masa kapandı.')
-        else conn.send({ tip: 'nabiz' } satisfies Mesaj)
-      }, NABIZ)
+  const kod = Array.from({ length: 4 }, () => HARFLER[Math.floor(Math.random() * HARFLER.length)]).join('')
+  guncelle({ asama: 'baglaniyor', kod, isimler: [isim], ben: 0, kurucu: true, hata: undefined, ilkDurum: undefined, devam: undefined })
+  peer = kurucuPeer(kod)
+  nabiz = window.setInterval(() => {
+    misafirler.forEach(x => {
+      if (!x.conn) return
+      if (Date.now() - x.ses > SESSIZLIK) kopar(x.conn)
+      else x.conn.send({ tip: 'nabiz' } satisfies Mesaj)
     })
+    // Sunucuyla bağlantı (arka planda) koptuysa masa kodunu yeniden al; kod hâlâ eski bağlantıda görünüyorsa
+    // sunucu reddeder, biraz sonra yine denenir.
+    if (durum.asama !== 'basladi' || !peer || Date.now() - sonDeneme < YENIDEN_DENE) return
+    if (peer.destroyed) {
+      sonDeneme = Date.now()
+      peer = kurucuPeer(durum.kod)
+    } else if (peer.disconnected) {
+      sonDeneme = Date.now()
+      peer.reconnect()
+    }
+  }, NABIZ)
+}
+
+// Misafir: kurucuya bağlanır (ilk katılışta ve oyun sürerken kopunca; kurucu aynı koltuğa oturtur).
+function kurucuyaBaglan(kod: string, isim: string) {
+  peer?.destroy()
+  const p = (peer = peerKur())
+  p.on('open', () => {
+    // json: undefined alanlar yolda null'a dönmesin (motor undefined bekliyor).
+    const conn = p.connect(ONEK + kod, { reliable: true, serialization: 'json' })
+    kurucuyla = conn
+    conn.on('open', () => conn.send({ tip: 'merhaba', isim, kimlik: kimligim() } satisfies Mesaj))
     conn.on('data', veri => {
       const m = veri as Mesaj
-      ses = Date.now()
-      clearTimeout(zamanAsimi)
-      if (m.tip === 'masa') guncelle({ asama: 'bekleme', isimler: m.isimler, ben: m.ben })
-      else if (m.tip === 'dolu') hata('Masa dolu ya da oyun başlamış.')
-      else if (m.tip === 'oyun') {
+      kurucuSes = Date.now()
+      if (!kurucuBagli) {
+        kurucuBagli = true
+        if (durum.asama === 'basladi') kopuklariBildir()
+      }
+      if (m.tip === 'masa') {
+        // Oyun sürerken yeniden katılınca koltuk zaten belli; ardından oyunun şimdiki hali gelir.
+        if (durum.asama !== 'basladi') guncelle({ asama: 'bekleme', isimler: m.isimler, ben: m.ben })
+      } else if (m.tip === 'dolu') {
+        if (durum.asama !== 'basladi') hata('Masa dolu ya da oyun başlamış.')
+      } else if (m.tip === 'kopuklar') {
+        kurucununKopuklari = m.koltuklar
+        kopuklariBildir()
+      } else if (m.tip === 'oyun') {
         const o = m.m
         // İlk dağıtım oyunu başlatır (masa ekranı bu durumla açılır); oyun sürerken yeniden katılınca şimdiki hal gelir.
         if (durum.asama === 'bekleme' && (o.tip === 'dagit' || o.tip === 'durum')) guncelle({ asama: 'basladi', ilkDurum: o.durum, devam: o.tip === 'durum' })
@@ -215,10 +257,53 @@ export function katil(kod: string, isim: string, dinle: (d: MasaDurumu) => void)
       }
     })
     conn.on('close', () => {
+      if (conn !== kurucuyla) return
       if (durum.asama === 'bekleme' || durum.asama === 'baglaniyor') hata('Masa kapandı.')
+      else if (durum.asama === 'basladi') kurucuKoptu()
     })
   })
 }
+
+// Misafir: kurucudan ses kesildi. Masada "Kurucu bekleniyor", nabız hemen yeniden bağlanmayı dener.
+function kurucuKoptu() {
+  if (!kurucuBagli) return
+  kurucuBagli = false
+  sonDeneme = 0
+  kopuklariBildir()
+}
+
+export function katil(kod: string, isim: string, dinle: (d: MasaDurumu) => void) {
+  birak()
+  dinleyici = dinle
+  guncelle({ asama: 'baglaniyor', kod, isimler: [], ben: 0, kurucu: false, hata: undefined, ilkDurum: undefined, devam: undefined })
+  kurucuSes = Date.now()
+  kurucuBagli = false
+  kurucununKopuklari = []
+  kurucuyaBaglan(kod, isim)
+  setTimeout(() => {
+    if (durum.asama === 'baglaniyor' && durum.kod === kod) hata('Masaya bağlanılamadı. Yeniden dene.')
+  }, BAGLANMA_SURESI)
+  nabiz = window.setInterval(() => {
+    const sessiz = Date.now() - kurucuSes > SESSIZLIK
+    if (durum.asama === 'bekleme' && sessiz) return hata('Masa kapandı.')
+    if (durum.asama === 'basladi') {
+      if (kurucuBagli && sessiz) kurucuKoptu()
+      if (!kurucuBagli && Date.now() - sonDeneme > YENIDEN_DENE) {
+        sonDeneme = Date.now()
+        kurucuyaBaglan(kod, isim)
+      }
+    }
+    if (kurucuyla?.open) kurucuyla.send({ tip: 'nabiz' } satisfies Mesaj)
+  }, NABIZ)
+}
+
+// Uygulama arka plandan dönünce: kurucu, misafirlerin sessizliğini kendi uykusuna saymasın (bağlantı
+// sağlamsa nabız sürer, kopmuşsa birazdan anlaşılır); misafir hemen kontrol eder.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible' || durum?.asama !== 'basladi') return
+  if (durum.kurucu) misafirler.forEach(x => (x.ses = Date.now()))
+  else if (Date.now() - kurucuSes > SESSIZLIK) kurucuKoptu()
+})
 
 export function basla() {
   misafirler.forEach((m, i) => (m.koltuk = i + 1))
@@ -229,16 +314,7 @@ export function basla() {
 export function oyunGonder(m: OyunMesaji, kime?: number) {
   if (durum?.kurucu) {
     misafirler.forEach(x => (kime === undefined || x.koltuk === kime) && x.conn?.send({ tip: 'oyun', m: mesajCevir(m, x.koltuk) } satisfies Mesaj))
-  } else kurucuyla?.send({ tip: 'oyun', m } satisfies Mesaj)
-}
-
-// Kurucu: oyun sürerken kopan / geri dönen misafir. Dinlemeye başlarken o an kopuk koltuklar da bildirilir.
-export function koltuklariDinle(dinle: (koltuk: number, bagli: boolean) => void) {
-  koltukDinleyici = dinle
-  misafirler.forEach(x => !x.conn && dinle(x.koltuk, false))
-  return () => {
-    if (koltukDinleyici === dinle) koltukDinleyici = null
-  }
+  } else if (kurucuyla?.open) kurucuyla.send({ tip: 'oyun', m } satisfies Mesaj)
 }
 
 export function oyunuDinle(dinle: (m: OyunMesaji, kimden: number) => void) {
@@ -246,6 +322,23 @@ export function oyunuDinle(dinle: (m: OyunMesaji, kimden: number) => void) {
   birikmis.splice(0).forEach(([m, k]) => dinle(m, k))
   return () => {
     if (oyunDinleyici === dinle) oyunDinleyici = null
+  }
+}
+
+// Kurucu: oyun sürerken kopan / geri dönen misafir.
+export function koltuklariDinle(dinle: (koltuk: number, bagli: boolean) => void) {
+  koltukDinleyici = dinle
+  return () => {
+    if (koltukDinleyici === dinle) koltukDinleyici = null
+  }
+}
+
+// Masa ekranı: kopuk koltuklar (benim gözümden) ve kurucu bekleniyor mu. Dinlemeye başlarken şimdiki hal bildirilir.
+export function kopuklariDinle(dinle: (kopuk: number[], kurucuYok: boolean) => void) {
+  kopukDinleyici = dinle
+  kopuklariBildir()
+  return () => {
+    if (kopukDinleyici === dinle) kopukDinleyici = null
   }
 }
 
@@ -258,4 +351,5 @@ export function birak() {
   birikmis = []
   oyunDinleyici = null
   koltukDinleyici = null
+  kopukDinleyici = null
 }

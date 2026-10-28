@@ -129,6 +129,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   position: absolute; padding: 3px 10px; border-radius: 12px;
   font-size: 12px; font-weight: 700; background: var(--panel);
 }
+.rakip-ad.kopuk { opacity: 0.45; }
 .rakip-ad.sol { left: 10px; }
 .rakip-ad.sag { right: 10px; }
 .rakip-ad.sirada { background: var(--vurgu); color: var(--rozet); box-shadow: 0 0 12px var(--vurgu); }

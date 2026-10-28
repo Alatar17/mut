@@ -14,6 +14,7 @@ function sonucCevir(s: HamleSonucu, f: Cevirici): HamleSonucu {
     nereden: s.nereden && yerCevir(s.nereden, f),
     nereye: yerCevir(s.nereye, f),
     takas: s.takas === undefined ? undefined : f(s.takas),
+    magdur: s.magdur === undefined ? undefined : f(s.magdur),
     cekme: s.cekme && { ...s.cekme, hedef: f(s.cekme.hedef) },
   }
 }
@@ -31,6 +32,7 @@ export function durumCevir(d: Durum, k: number): Durum {
     bomba: d.bomba && { ...d.bomba, sahip: f(d.bomba.sahip) },
     patlama: d.patlama && { ...d.patlama, sahip: f(d.patlama.sahip) },
     blok: d.blok && { ...d.blok, hedef: f(d.blok.hedef), gonderen: f(d.blok.gonderen) },
+    bekleme: d.bekleme && { ...d.bekleme, sira: f(d.bekleme.sira) },
     kral: d.kral && { ...d.kral, oyuncu: f(d.kral.oyuncu) },
     sonHamle: d.sonHamle && sonucCevir(d.sonHamle, f),
   }

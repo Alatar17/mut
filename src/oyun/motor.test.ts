@@ -196,7 +196,7 @@ describe('hamle sonucu (sonHamle) ve dağıtım sırası', () => {
   it('orta yığında eşleşme: eşleşen kartlar ve yerler bildirilir', () => {
     const d = durum({ avuclar: [[k(5)], [k(9)], [k(10)]], orta: [k(4), k(5, 'kupa')] })
     const s = hamleYap(d, { tip: 'ortayaAt', kart: 0 }).sonHamle!
-    expect(s).toEqual({ oyuncu: 0, kart: k(5), eslesen: [k(5, 'kupa')], nereden: 'orta', nereye: 'ceza:1' })
+    expect(s).toEqual({ oyuncu: 0, kart: k(5), eslesen: [k(5, 'kupa')], nereden: 'orta', nereye: 'ceza:1', magdur: 1 })
   })
   it('eşleşmeyen kart: eşleşen yok, kart ortaya gider', () => {
     const d = durum({ avuclar: [[k(6)], [k(9)], [k(10)]], orta: [k(5)] })

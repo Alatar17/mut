@@ -47,6 +47,9 @@ export interface Durum {
   // bomba: gönderilen bombadır (blokta bomba geri gider). bombaIle: bomba sahibi yığınını boşaltırken bomba
   // kartlarla birlikte gitti (6.8 madde 7); blokta kartlarla birlikte geri döner.
   blok?: { hedef: number; gonderen: number; adet: number; bomba?: true; bombaIle?: true }
+  // Sahte bekleme (ağ oyunu, kurucu koyar): zarar gören 2'siz ve sıradaki değilse bazen oyun blok penceresi gibi
+  // durur, kimde 2 olduğu belli olmasın. Bu sürede sıra zarar görende görünür, kimse oynamaz; bitince sıra `sira`ya döner.
+  bekleme?: { sira: number; sure: number }
   // Blokta atılan 2'ler ve Kral'da grubun altına giren Papaz'lar (kartAdi): grubun en alttaki kartına yapışık sayılır,
   // grup yakalanınca onunla gider (6.5, 6.9.1).
   yapisik: string[]
@@ -71,6 +74,8 @@ export interface HamleSonucu {
   cekme?: { hedef: number; kart: Kart }
   // Kral hamlesi (kral, kralAl, kralBitir): ekran yakalama inişi yapmaz, kartlar doğrudan uçar.
   kral?: true
+  // Kartları ceza yığınına gelen (zarar gören) oyuncu; blok penceresi açılmadıysa sahte bekleme için (ekran).
+  magdur?: number
 }
 
 export type HamleTipi =
@@ -463,8 +468,7 @@ export function hamleYap(eski: Durum, h: Hamle, dogrula = true): Durum {
   if (cekilen) d.sonHamle.cekme = { hedef: h.hedef!, kart: cekilen }
 
   // Ceza yığınına kart gelen oyuncunun 2'si varsa blok penceresi açılır (zincir blok da böyle).
-  // Not: PROJE.md'ye göre pencere 2 olmasa da açılır (kimde 2 olduğu belli olmasın); bu, herkesin kendi
-  // telefonundan oynadığı aşamada ekran tarafında yapılacak. Şimdilik sadece 2'si olana açılır.
+  // 2'si yoksa ağ oyununda ekran bazen sahte bekleme koyar (Durum.bekleme; kullanıcı kararı 2026-10-28).
   // Zarar gören: normal elde kartların gittiği yığının sahibi, eksi elde yığınından kart alınan (kendine almak zarar değil).
   // Bomba elinde bomba yeni sahibine gönderildiyse o; sahibindeki bombaya 10 eklemek blok açmaz (kullanıcı kararı).
   const kaynakOyuncu = nereden?.startsWith('ceza:') ? Number(nereden.split(':')[1]) : null
@@ -477,6 +481,7 @@ export function hamleYap(eski: Durum, h: Hamle, dogrula = true): Durum {
     if (bombaIle) d.blok.bombaIle = true
     d.sira = magdur
   } else ilerle(d)
+  if (magdur !== null) d.sonHamle.magdur = magdur
   return d
 }
 

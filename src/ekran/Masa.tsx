@@ -122,7 +122,11 @@ const kizSozu = (isim: string) => `Şimdi ben kızı aldım ${isim} soktum.`
 const BALON_SURESI = 3000
 const YAZI_SINIRI = 40
 // Hediyeler (deneme): resim gönderenden alıcının önüne uçar ve orada durur.
-const HEDIYELER = ['cay']
+const HEDIYELER = ['cay', 'kazan']
+const HEDIYE_BEKLEME = 15000
+// Geçici (kullanıcı seçince kalkacak): bana gelen hediyenin yeri.
+const HEDIYE_YERLERI = { 'Yığın solu': 1, 'Deste solu': 2, Şimdiki: 3 }
+type HediyeYeri = keyof typeof HEDIYE_YERLERI
 const hediyeResmi = (ad: string) => `${import.meta.env.BASE_URL}hediyeler/${ad}.png`
 const HEDIYE_EN = 36
 
@@ -525,31 +529,52 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     if (ag) oyunGonder({ tip: 'soz', oyuncu: 0, yazi })
   }
   const sozSec = (yazi: string) => (yazi === KIZ_SOZU ? setMenu('sozIsim') : sozGonder(yazi))
-  // Hediye: alıcının yanında durur (rakipte isim etiketinin masaya bakan yanı, bende ceza yığınının üstü).
-  const [hediyeler, setHediyeler] = useState<{ no: number; kime: number; ad: string; x: number; y: number; dx: number; dy: number }[]>([])
+  // Hediye: alıcının yanında el sonuna kadar durur (rakipte isim etiketinin masaya bakan yanı). Bir göndericiden bir
+  // alıcıya elde 1 hediye; gönderdikten sonra HEDIYE_BEKLEME kadar yenisi gönderilemez. Botlar göndermez.
+  const [hediyeler, setHediyeler] = useState<{ no: number; kimden: number; kime: number; ad: string; x: number; y: number; dx: number; dy: number }[]>([])
   const [secilenHediye, setSecilenHediye] = useState('')
+  const [hediyeBekliyor, setHediyeBekliyor] = useState(false)
+  const [hediyeYeriSecimi, setHediyeYeriSecimi] = useKayitli<HediyeYeri>('hediyeYeri', 'Yığın solu')
+  // Ağdan gelen hediye eski kapanıştan çağrılır; seçim ref'ten okunur.
+  const hediyeYeriRef = useRef(hediyeYeriSecimi)
+  hediyeYeriRef.current = hediyeYeriSecimi
   const hediyeYeri = (oyuncu: number, sira: number) => {
     const masa = masaRef.current!
     const masaKutusu = masa.getBoundingClientRect()
     const olcek = masaKutusu.width / SAHNE_EN || 1
-    const el = masa.querySelector(oyuncu === 0 ? '[data-hedef="ceza:0"]' : `.rakip-ad[data-hedef="avuc:${oyuncu}"]`)
+    const secim = hediyeYeriRef.current
+    const desteSolu = oyuncu === 0 && secim === 'Deste solu'
+    const el = masa.querySelector(oyuncu !== 0 ? `.rakip-ad[data-hedef="avuc:${oyuncu}"]` : desteSolu ? '.deste' : '[data-hedef="ceza:0"]')
     const k = el?.getBoundingClientRect() ?? masaKutusu
     const sol = (k.left - masaKutusu.left) / olcek, sag = (k.right - masaKutusu.left) / olcek
     const ust = (k.top - masaKutusu.top) / olcek, alt = (k.bottom - masaKutusu.top) / olcek
     const ara = sira * (HEDIYE_EN + 4)
-    if (oyuncu === 0) return { x: sol + ara, y: ust - HEDIYE_EN - 6 }
+    if (oyuncu === 0) {
+      if (secim === 'Şimdiki') return { x: sol + ara, y: ust - HEDIYE_EN - 6 }
+      return { x: sol - 14 - HEDIYE_EN - ara, y: (ust + alt) / 2 - HEDIYE_EN / 2 }
+    }
     const y = alt - HEDIYE_EN
     return el?.classList.contains('sag') ? { x: sol - 22 - HEDIYE_EN - ara, y } : { x: sag + 22 + ara, y }
   }
   const hediyeGoster = (kimden: number, kime: number, ad: string) => setHediyeler(h => {
+    if (h.some(x => x.kimden === kimden && x.kime === kime)) return h
     const hedef = hediyeYeri(kime, h.filter(x => x.kime === kime).length)
     const kaynak = hediyeYeri(kimden, 0)
-    return [...h, { no: ++balonNo.current, kime, ad, ...hedef, dx: kaynak.x - hedef.x, dy: kaynak.y - hedef.y }]
+    return [...h, { no: ++balonNo.current, kimden, kime, ad, ...hedef, dx: kaynak.x - hedef.x, dy: kaynak.y - hedef.y }]
   })
   const hediyeGonder = (kime: number) => {
     setMenu(null)
     hediyeGoster(0, kime, secilenHediye)
     if (ag) oyunGonder({ tip: 'hediye', kimden: 0, kime, ad: secilenHediye })
+    setHediyeBekliyor(true)
+    setTimeout(() => setHediyeBekliyor(false), HEDIYE_BEKLEME)
+  }
+  // Çay yeri denemesi: menü kapanır, bana gelenler kalkar, soldaki rakipten yeni yere bir çay gelir.
+  const hediyeYeriDegistir = () => {
+    setMenu(null)
+    sonrakiSecenek(HEDIYE_YERLERI, hediyeYeriSecimi, setHediyeYeriSecimi)
+    setHediyeler(h => h.filter(x => x.kime !== 0))
+    setTimeout(() => hediyeGoster(2, 0, 'cay'), 50)
   }
   const [yazi, setYazi] = useState('')
   const yaziGonder = () => {
@@ -587,7 +612,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Varsayılanda yapışık kartlar sıradan kart gibi çizilir.
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
-  const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi', 'Işık')
+  const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi2', 'Çizgi')
   const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim2', 'Hafif')
   const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Hafif'
   // desen: tek süre ya da titre-dur-titre…; titreme süreleri seviyeyle çarpılır, aralar aynı kalır.
@@ -986,6 +1011,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Yeni el / yeni oyun: kartlar desteye toplanır, sonra dağıtılır.
   const topluDagit = async (yeni: Durum) => {
     basla()
+    setHediyeler([])
     yayinla({ tip: 'dagit', durum: yeni })
     await gec(dagitimOncesi(yeni, true))
     await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
@@ -1515,11 +1541,11 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           )}
           {menu === 'soz' && (
             <div className="hediye-satiri">
-              {HEDIYELER.map(h => <button key={h} className="test-satir" onClick={() => { setSecilenHediye(h); setMenu('hediyeIsim') }}><img src={hediyeResmi(h)} alt={h} /></button>)}
+              {HEDIYELER.map(h => <button key={h} className="test-satir" disabled={hediyeBekliyor} onClick={() => { setSecilenHediye(h); setMenu('hediyeIsim') }}><img src={hediyeResmi(h)} alt={h} /></button>)}
             </div>
           )}
           {menu === 'hediyeIsim'
-            ? [1, 2].map(i => <button key={i} className="test-satir" onClick={() => hediyeGonder(i)}>{gorunen.oyuncular[i].ad}</button>)
+            ? [1, 2].map(i => <button key={i} className="test-satir" disabled={hediyeler.some(h => h.kimden === 0 && h.kime === i)} onClick={() => hediyeGonder(i)}>{gorunen.oyuncular[i].ad}</button>)
             : menu === 'soz'
             ? HAZIR_SOZLER.map(s => <button key={s} className="test-satir" onClick={() => sozSec(s)}>{s}</button>)
             : KIZ_ISIMLERI.map(i => <button key={i} className="test-satir" onClick={() => sozGonder(kizSozu(i))}>{kizSozu(i)}</button>)}
@@ -1557,6 +1583,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
             Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
+          </button>
+          <button className="test-satir" onClick={hediyeYeriDegistir}>
+            Çay yeri <span className="test-deger">{hediyeYeriSecimi}</span>
           </button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />

@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 // Sürüm: derlendiği an (Türkiye saati; yayın GitHub'da derlenir). Giriş ekranında ve ☰ menüsünde küçük yazı:
 // telefon yeni yayını almış mı buradan anlaşılır.
-const surum = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/[.,\s]+(?=\d{2}:)/, ' ').replace('/', '.')
+const surum = new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(/[.,\s]+(?=\d{2}:)/, '-').replace('/', '.')
 
 export default defineConfig({
   plugins: [react()],

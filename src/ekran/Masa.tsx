@@ -1273,6 +1273,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={() => sonrakiSecenek(TITRESIMLER, titresim, v => { setTitresim(v); navigator.vibrate?.(Math.round(70 * TITRESIMLER[v])) })}>
             Titreşim <span className="test-deger">{titresim}</span>
           </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(KART_BOYUTLARI, kartBoyutu, setKartBoyutu)}>
+            Kart boyutu <span className="test-deger">{kartBoyutu}</span>
+          </button>
           {/* Kapatınca duraklatma da kalkar: gizli düğmeyle oyun duraklı kalmasın. */}
           {!misafir && <TestSecenegi ad="Geliştirici seçenekleri" acik={gelistirici} degistir={v => { setGelistirici(v); if (!v) setDuraklatildi(false) }} />}
           <div className="menu-surum">Sürüm {__SURUM__}</div>
@@ -1471,9 +1474,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         <div className="test-panel gorunus-panel">
           <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>
             El yüksekliği <span className="test-deger">{elYuksekligi}</span>
-          </button>
-          <button className="test-satir" onClick={() => sonrakiSecenek(KART_BOYUTLARI, kartBoyutu, setKartBoyutu)}>
-            Kart boyutu <span className="test-deger">{kartBoyutu}</span>
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(YIGIN_ZEMINLERI, yiginZemini, setYiginZemini)}>
             Yığın zemini <span className="test-deger">{yiginZemini}</span>

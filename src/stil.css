@@ -481,6 +481,7 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   background: var(--panel); color: var(--yazi); font: inherit; font-size: 18px; text-align: center; outline: none;
 }
 .giris-yazi:focus { border-color: var(--vurgu); }
+.giris-yazi.eksik { border-color: var(--sure-bitiyor); }
 .giris-yazi.kod { font-family: "Barlow Condensed", sans-serif; font-size: 28px; letter-spacing: 10px; }
 .giris-dugme { width: 100%; padding: 9px; border-radius: 10px; background: var(--panel); font-size: 16px; }
 .giris-dugme.ana { background: var(--vurgu); color: var(--rozet); font-weight: 800; }

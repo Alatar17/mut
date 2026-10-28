@@ -27,6 +27,14 @@ export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => voi
   const [kod, setKod] = useState('')
   const [masa, setMasa] = useState<MasaDurumu | null>(null)
   const ad = isim.trim() || 'Oyuncu'
+  // Masa kurmak / katılmak için ad zorunlu (botlarla oynarken değil): boşsa kutu kızarır ve seçilir.
+  const [adEksik, setAdEksik] = useState(false)
+  const adKutusu = useRef<HTMLInputElement>(null)
+  const adVarsa = (devam: () => void) => {
+    if (isim.trim()) return devam()
+    setAdEksik(true)
+    adKutusu.current?.focus()
+  }
   // Kurucu: yeni katılanın koltuğu birkaç kez parlar.
   const [yeni, setYeni] = useState<number | null>(null)
   const oturan = useRef(1)
@@ -70,9 +78,9 @@ export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => voi
       <div className="giris-surum">{__SURUM__}</div>
       {ekran === 'ana' && (
         <div className="giris-kutu">
-          <input className="giris-yazi" placeholder="Adın" maxLength={12} value={isim} onChange={e => setIsim(e.target.value)} />
-          <button className="giris-dugme ana" onClick={() => { setEkran('masa'); masaKur(ad, setMasa) }}>Masa kur</button>
-          <button className="giris-dugme ana" onClick={() => setEkran('katil')}>Katıl</button>
+          <input ref={adKutusu} className={'giris-yazi' + (adEksik && !isim.trim() ? ' eksik' : '')} placeholder={adEksik ? 'Önce adını yaz' : 'Adın'} maxLength={12} value={isim} onChange={e => setIsim(e.target.value)} />
+          <button className="giris-dugme ana" onClick={() => adVarsa(() => { setEkran('masa'); masaKur(ad, setMasa) })}>Masa kur</button>
+          <button className="giris-dugme ana" onClick={() => adVarsa(() => setEkran('katil'))}>Katıl</button>
           <button className="giris-dugme" onClick={() => oyna([isim.trim() || 'Sen', ...BOT_ADLARI])}>Botlarla oyna</button>
         </div>
       )}

@@ -122,7 +122,7 @@ const kizSozu = (isim: string) => `Şimdi ben kızı aldım ${isim} soktum.`
 const BALON_SURESI = 3000
 const YAZI_SINIRI = 40
 // Hediyeler (deneme): resim gönderenden alıcının önüne uçar ve orada durur.
-const HEDIYELER = ['cay', 'kazan']
+const HEDIYELER = ['cay']
 const HEDIYE_BEKLEME = 15000
 // Geçici (kullanıcı seçince kalkacak): bana gelen hediyenin yeri.
 const HEDIYE_YERLERI = { 'Yığın solu': 1, 'Deste solu': 2, Şimdiki: 3 }

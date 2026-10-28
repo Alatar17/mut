@@ -47,9 +47,9 @@ export interface Durum {
   // bomba: gönderilen bombadır (blokta bomba geri gider). bombaIle: bomba sahibi yığınını boşaltırken bomba
   // kartlarla birlikte gitti (6.8 madde 7); blokta kartlarla birlikte geri döner.
   blok?: { hedef: number; gonderen: number; adet: number; bomba?: true; bombaIle?: true }
-  // Sahte bekleme (ağ oyunu, kurucu koyar): zarar gören 2'siz ve sıradaki değilse bazen oyun blok penceresi gibi
-  // durur, kimde 2 olduğu belli olmasın. Bu sürede sıra zarar görende görünür, kimse oynamaz; bitince sıra `sira`ya döner.
-  bekleme?: { sira: number; sure: number }
+  // Ağ oyunu (herkes kendi telefonunda): zarar gören sıradaki değilse pencere 2'si olmasa da açılır, oyunun
+  // durmasından kimde 2 olduğu anlaşılmasın (kullanıcı kararı 2026-10-28). Botlarla oyunda kapalı.
+  gizliBlok?: true
   // Blokta atılan 2'ler ve Kral'da grubun altına giren Papaz'lar (kartAdi): grubun en alttaki kartına yapışık sayılır,
   // grup yakalanınca onunla gider (6.5, 6.9.1).
   yapisik: string[]
@@ -74,8 +74,6 @@ export interface HamleSonucu {
   cekme?: { hedef: number; kart: Kart }
   // Kral hamlesi (kral, kralAl, kralBitir): ekran yakalama inişi yapmaz, kartlar doğrudan uçar.
   kral?: true
-  // Kartları ceza yığınına gelen (zarar gören) oyuncu; blok penceresi açılmadıysa sahte bekleme için (ekran).
-  magdur?: number
 }
 
 export type HamleTipi =
@@ -184,7 +182,7 @@ function yakala(yigin: Kart[], k: Kart): Kart[] {
   return eslesir(yigin, k) ? ustGrubuAl(yigin) : yigin.splice(yigin.length - seriUzunlugu(yigin, k))
 }
 
-export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?: number }): Durum {
+export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?: number; gizliBlok?: boolean }): Durum {
   const n = secenek.isimler.length
   if (n !== 3 && n !== 4) throw new Error(`Mut 3 ya da 4 kişiyle oynanır (${n} verildi)`)
   const d: Durum = {
@@ -209,6 +207,7 @@ export function yeniOyun(secenek: { isimler: string[]; toplamEl: number; tohum?:
     yapisik: [],
     tohum: secenek.tohum ?? Math.floor(Math.random() * 2 ** 31),
   }
+  if (secenek.gizliBlok) d.gizliBlok = true
   d.elBaslatani = Math.floor(rastgele(d) * d.oyuncular.length)
   elKur(d)
   return d
@@ -467,21 +466,21 @@ export function hamleYap(eski: Durum, h: Hamle, dogrula = true): Durum {
   if (h.tip === 'takas') d.sonHamle.takas = h.hedef
   if (cekilen) d.sonHamle.cekme = { hedef: h.hedef!, kart: cekilen }
 
-  // Ceza yığınına kart gelen oyuncunun 2'si varsa blok penceresi açılır (zincir blok da böyle).
-  // 2'si yoksa ağ oyununda ekran bazen sahte bekleme koyar (Durum.bekleme; kullanıcı kararı 2026-10-28).
+  // Ceza yığınına kart gelen oyuncunun 2'si varsa blok penceresi açılır (zincir blok da böyle). Ağ oyununda
+  // (gizliBlok) zarar gören sıradaki değilse 2'si olmasa da açılır; o zaman sadece kabul (Geç) yapabilir.
   // Zarar gören: normal elde kartların gittiği yığının sahibi, eksi elde yığınından kart alınan (kendine almak zarar değil).
   // Bomba elinde bomba yeni sahibine gönderildiyse o; sahibindeki bombaya 10 eklemek blok açmaz (kullanıcı kararı).
   const kaynakOyuncu = nereden?.startsWith('ceza:') ? Number(nereden.split(':')[1]) : null
   const magdur =
     yer === 'bomba' ? (hedef !== eskiSahip ? hedef : null) : d.eksi ? (kaynakOyuncu !== oyuncu ? kaynakOyuncu : null) : hedef
   d.blok = undefined
-  if (magdur !== null && d.oyuncular[magdur].avuc.some((x) => x.deger === 2)) {
+  const gizli = magdur !== null && !!d.gizliBlok && d.oyuncular[magdur].avuc.length > 0 && siradakiOyuncu(d) !== magdur
+  if (magdur !== null && (gizli || d.oyuncular[magdur].avuc.some((x) => x.deger === 2))) {
     d.blok = { hedef: magdur, gonderen: oyuncu, adet: eslesen.length + 1 }
     if (yer === 'bomba') d.blok.bomba = true
     if (bombaIle) d.blok.bombaIle = true
     d.sira = magdur
   } else ilerle(d)
-  if (magdur !== null) d.sonHamle.magdur = magdur
   return d
 }
 

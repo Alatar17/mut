@@ -196,7 +196,7 @@ describe('hamle sonucu (sonHamle) ve dağıtım sırası', () => {
   it('orta yığında eşleşme: eşleşen kartlar ve yerler bildirilir', () => {
     const d = durum({ avuclar: [[k(5)], [k(9)], [k(10)]], orta: [k(4), k(5, 'kupa')] })
     const s = hamleYap(d, { tip: 'ortayaAt', kart: 0 }).sonHamle!
-    expect(s).toEqual({ oyuncu: 0, kart: k(5), eslesen: [k(5, 'kupa')], nereden: 'orta', nereye: 'ceza:1', magdur: 1 })
+    expect(s).toEqual({ oyuncu: 0, kart: k(5), eslesen: [k(5, 'kupa')], nereden: 'orta', nereye: 'ceza:1' })
   })
   it('eşleşmeyen kart: eşleşen yok, kart ortaya gider', () => {
     const d = durum({ avuclar: [[k(6)], [k(9)], [k(10)]], orta: [k(5)] })
@@ -625,6 +625,34 @@ describe('serbest el (3)', () => {
     expect(d.blok).toEqual({ hedef: 2, gonderen: 0, adet: 2 })
     const b = hamleYap(d, { tip: 'blok', kart: 0 })
     expect(b.oyuncular[0].ceza).toEqual([k(2, 'kupa'), k(9, 'kupa'), k(9)])
+  })
+})
+
+describe('gizli blok (ağ oyunu)', () => {
+  // 0, 2'nin yığınına (üstü 6) 6 ekler; sıradaki 1. 2'nin elinde 2 yok.
+  const kur = (gizli: boolean, avuc2 = [k(9), k(5, 'kupa')]) => {
+    const d = durum({ avuclar: [[k(6), k(4)], [k(7), k(8)], avuc2], cezalar: [[], [], [k(6, 'kupa')]] })
+    if (gizli) d.gizliBlok = true
+    return d
+  }
+  it('sıradaki olmayana 2 olmasa da pencere açılır, sadece kabul; kabulden sonra sıra sıradakinde', () => {
+    const d = hamleYap(kur(true), { tip: 'ekle', kart: 0, hedef: 2 })
+    expect(d.blok).toEqual({ hedef: 2, gonderen: 0, adet: 1 })
+    expect(d.sira).toBe(2)
+    expect(gecerliHamleler(d)).toEqual([{ tip: 'kabul', kart: -1 }])
+    expect(hamleYap(d, { tip: 'kabul', kart: -1 }).sira).toBe(1)
+  })
+  it('botlarla oyunda (gizliBlok yok) 2 yoksa pencere açılmaz', () => {
+    const d = hamleYap(kur(false), { tip: 'ekle', kart: 0, hedef: 2 })
+    expect(d.blok).toBeUndefined()
+    expect(d.sira).toBe(1)
+  })
+  it('zarar gören sıradakiyse 2 yoksa pencere açılmaz', () => {
+    const d0 = durum({ avuclar: [[k(6), k(4)], [k(7), k(8)], [k(9), k(5, 'kupa')]], cezalar: [[], [k(6, 'kupa')], []] })
+    d0.gizliBlok = true
+    const d = hamleYap(d0, { tip: 'ekle', kart: 0, hedef: 1 })
+    expect(d.blok).toBeUndefined()
+    expect(d.sira).toBe(1)
   })
 })
 

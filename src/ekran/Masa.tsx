@@ -97,16 +97,6 @@ const ORTADA_BEKLEME = 900
 // Blok penceresi açıkken normal bir hamle (kart atmak) kabul sayılır: önce kabul uygulanır, hamle ondan sonraki
 // durumda yapılır. Kabulden sonra sıra o oyuncuda değilse hamle geçersiz olur (6.6 bozulmasın).
 const KABUL: Hamle = { tip: 'kabul', kart: -1 }
-
-// Sahte bekleme (Durum.bekleme): zarar gören insan oyuncunun 2'si yok ve sıra ona geçmiyorsa yarı yarıya oyun
-// 1,5-3 sn durur (gerçek blok penceresi 3 sn; 2'si olan erken de karar verebilir). Yeni dağıtım / el sonu hariç.
-const SAHTE_BEKLEME_IHTIMALI = 0.5
-function sahteBeklemeEkle(eski: Durum, yeni: Durum, insan: (i: number) => boolean): Durum {
-  const m = yeni.sonHamle?.magdur
-  if (m === undefined || yeni.asama !== 'oyun' || yeni.blok || yeni.kral || m === yeni.sira || yeni.tur !== eski.tur || !insan(m)) return yeni
-  if (Math.random() >= SAHTE_BEKLEME_IHTIMALI) return yeni
-  return { ...yeni, sira: m, bekleme: { sira: yeni.sira, sure: 1500 + Math.random() * 1500 } }
-}
 const kabulSonrasi = (d: Durum, h: Hamle) => (d.blok && h.tip !== 'blok' && h.tip !== 'kabul' ? hamleYap(d, KABUL) : d)
 
 // Hedefi (gonder) dışında h ile aynı geçerli hamleler: serbest elde her rakip için bir tane, normalde en fazla bir.
@@ -120,7 +110,7 @@ function oyuncuAltinda(x: number, y: number): number | null {
 }
 
 // 0 = sen (alt), 1 = sağdaki (sıradaki), 2 = soldaki
-const yeniOyunKur = (isimler: string[], toplamEl: number) => yeniOyun({ isimler, toplamEl })
+const yeniOyunKur = (isimler: string[], toplamEl: number, ag: boolean) => yeniOyun({ isimler, toplamEl, gizliBlok: ag })
 const RAKIP_KART_EN = 56
 
 // Hazır sözler (kaba ilk sürüm; asıl hali 2. aşamada herkes kendi telefonundan). Kahvenin kendi lafları, aynen.
@@ -516,7 +506,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // d: oyunun gerçek durumu. gorunen: ekranda çizilen durum (animasyon sürerken d'nin gerisinde kalır).
   // Yeni oyunda kaç el oynanacağı ("Kaç el?" penceresinde son seçilen).
   const [elSayisi, setElSayisi] = useKayitli('elSayisi', 10)
-  const [d, setD] = useState(() => ag?.ilkDurum ?? yeniOyunKur(isimler, elSayisi))
+  const [d, setD] = useState(() => ag?.ilkDurum ?? yeniOyunKur(isimler, elSayisi, !!ag))
   const [gorunen, setGorunen] = useState(() => dagitimOncesi(d, true))
   const [ben, sagdaki, soldaki] = gorunen.oyuncular
   const elimdeIkiVar = ben.avuc.some(k => k.deger === 2)
@@ -793,7 +783,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         return
       }
       yeni = hamleYap(taban, h)
-      if (kurucu) yeni = sahteBeklemeEkle(taban, yeni, insanMi)
       yayinla({ tip: 'hamle', hamle: h, durum: yeni })
       await hamleyiGoster(eski, yeni, elle)
       bitir(yeni)
@@ -1037,7 +1026,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   }
 
   // Titreşim (Android; iPhone'da yok): sıra bana geçince bir kez kısa, blok penceresi bana açılınca sert üç kez.
-  const siraBende = d.asama === 'oyun' && d.sira === 0 && !d.blok && !d.bekleme
+  const siraBende = d.asama === 'oyun' && d.sira === 0 && !d.blok
   const baslayan = (koltuk: number) => d.asama !== 'oyunSonu' && d.elBaslatani === koltuk
   useEffect(() => {
     if (siraBende) titret(70)
@@ -1071,7 +1060,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const [kopuk, setKopuk] = useState<number[]>([])
   const [kurucuYok, setKurucuYok] = useState(false)
   const zamanAsimi = useRef(0)
-  const elleSirada = d.asama === 'oyun' && !d.blok && !d.bekleme && elleOynanir(d.sira)
+  const elleSirada = d.asama === 'oyun' && !d.blok && elleOynanir(d.sira)
   useEffect(() => {
     setSureUyari(false)
     if (!elleSirada || !sure || duraklatildi || kurucuYok || (d.sira === 0 && uzakta)) return
@@ -1091,20 +1080,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Botlar sırası gelince biraz bekleyip hamle yapar. Benim kartlarımı ben oynarım, uzaktaysam bot.
   // Bağlantısı kopan misafirin yerine de bot oynar.
   const botOynar = (i: number) => (i === 0 ? uzakta : uzak.includes(i) ? kurucu && kopuk.includes(i) : botlarOtomatik)
-  // Sahte bekleme sadece masada oturan insanlar için (botlar ve kopuklar hemen karar verir).
-  const insanMi = (i: number) => i === 0 || (uzak.includes(i) && !kopuk.includes(i))
-  // Kurucu: sahte bekleme bitince sıra asıl sıradakine geçer, herkese gider.
   useEffect(() => {
-    if (!kurucu || !d.bekleme || mesgul) return
-    const zamanlayici = setTimeout(() => {
-      const t = { ...d, sira: d.bekleme!.sira, bekleme: undefined }
-      yayinla({ tip: 'durum', durum: t })
-      kurtar(t)
-    }, d.bekleme.sure)
-    return () => clearTimeout(zamanlayici)
-  }, [d, mesgul])
-  useEffect(() => {
-    if (mesgul || duraklatildi || d.asama !== 'oyun' || d.bekleme || !botOynar(d.sira)) return
+    if (mesgul || duraklatildi || d.asama !== 'oyun' || !botOynar(d.sira)) return
     const zamanlayici = setTimeout(() => hamleOyna(akilliBotHamlesi(d), false), BOT_HIZLARI[botHizi])
     return () => clearTimeout(zamanlayici)
   }, [d, mesgul, botlarOtomatik, botHizi, uzakta, duraklatildi, kopuk])
@@ -1175,7 +1152,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       // Kurucu: misafirin hamlesi. Sırası değilse ya da geçersizse (uyuşmazlık) herkes kurucunun durumuna döner.
       const t = kabulSonrasi(d, m.hamle)
       const tam = m.hamle.gonder === undefined ? { ...m.hamle, gonder: ayniHamleler(t, m.hamle)[0]?.gonder } : m.hamle
-      if (d.asama === 'oyun' && !d.bekleme && t.sira === kimden && (!d.blok || d.blok.hedef === kimden) && hamleGecerliMi(t, tam)) hamleOyna(tam, false)
+      if (d.asama === 'oyun' && t.sira === kimden && (!d.blok || d.blok.hedef === kimden) && hamleGecerliMi(t, tam)) hamleOyna(tam, false)
       else yayinla({ tip: 'durum', durum: d })
     } else if (m.tip === 'hamle') gelenGoster(m.hamle, m.durum)
     else if (m.tip === 'dagit') {
@@ -1272,7 +1249,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     setPuanlarAcik(false)
     istenenEl.current = null
     bitirIstendi.current = false
-    const yeni = yeniOyunKur(isimler, toplamEl)
+    const yeni = yeniOyunKur(isimler, toplamEl, !!ag)
     topluDagit(deneme ? deneme(yeni) : yeni)
   }
   // Oyun ortasında el sayısı ya da oyunu bitirmek: animasyon sürüyorsa hamle bitince uygulanır.
@@ -1444,7 +1421,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         <div className="blok-penceresi" key={d.oyuncular[d.blok!.hedef].ceza.length + '-' + d.blok!.gonderen}>
           <div className="blok-sure" style={{ animationDuration: `${BLOK_SURESI}ms` }} />
           <button onClick={() => oyna({ tip: 'kabul', kart: -1 })}>
-            Kabul{d.blok!.hedef !== 0 && ` (${d.oyuncular[d.blok!.hedef].ad})`}
+            Geç{d.blok!.hedef !== 0 && ` (${d.oyuncular[d.blok!.hedef].ad})`}
           </button>
         </div>
       )}

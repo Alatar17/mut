@@ -121,6 +121,10 @@ const kizSozu = (isim: string) => `Şimdi ben kızı aldım ${isim} soktum.`
 // Botlar ve bota düşen oyuncu konuşmaz (kullanıcı kararı 2026-10-24); söz sadece elle seçilir.
 const BALON_SURESI = 3000
 const YAZI_SINIRI = 40
+// Hediyeler (deneme): resim gönderenden alıcının önüne uçar ve orada durur.
+const HEDIYELER = ['cay']
+const hediyeResmi = (ad: string) => `${import.meta.env.BASE_URL}hediyeler/${ad}.png`
+const HEDIYE_EN = 40
 
 // Elde tutulan kartlar gibi hafif yelpaze: kenardaki kartlar biraz döner ve alçalır.
 function yelpaze(sira: number, adet: number) {
@@ -505,7 +509,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const [puanlarAcik, setPuanlarAcik] = useState(false)
   // Menüler: geliştirme menüleri Test (ayarlar), Dene (hazır kurulmuş eller) ve sol alttaki Görünüş (görsel seçenekler); sağ üstte oyun menüsü
   // (☰) ve onun "Oyunu bitir" onayı. Aynı anda biri açık.
-  const [menu, setMenu] = useState<'test' | 'dene' | 'gorunus' | 'oyun' | 'bitir' | 'soz' | 'sozIsim' | null>(null)
+  const [menu, setMenu] = useState<'test' | 'dene' | 'gorunus' | 'oyun' | 'bitir' | 'soz' | 'sozIsim' | 'hediyeIsim' | null>(null)
   // Konuşma balonları (oyuncu → söz); her söz BALON_SURESI kadar görünür.
   const [balonlar, setBalonlar] = useState<Record<number, { yazi: string; no: number }>>({})
   const balonNo = useRef(0)
@@ -521,6 +525,32 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     if (ag) oyunGonder({ tip: 'soz', oyuncu: 0, yazi })
   }
   const sozSec = (yazi: string) => (yazi === KIZ_SOZU ? setMenu('sozIsim') : sozGonder(yazi))
+  // Hediye: alıcının yanında durur (rakipte isim etiketinin masaya bakan yanı, bende ceza yığınının üstü).
+  const [hediyeler, setHediyeler] = useState<{ no: number; kime: number; ad: string; x: number; y: number; dx: number; dy: number }[]>([])
+  const [secilenHediye, setSecilenHediye] = useState('')
+  const hediyeYeri = (oyuncu: number, sira: number) => {
+    const masa = masaRef.current!
+    const masaKutusu = masa.getBoundingClientRect()
+    const olcek = masaKutusu.width / SAHNE_EN || 1
+    const el = masa.querySelector(oyuncu === 0 ? '[data-hedef="ceza:0"]' : `.rakip-ad[data-hedef="avuc:${oyuncu}"]`)
+    const k = el?.getBoundingClientRect() ?? masaKutusu
+    const sol = (k.left - masaKutusu.left) / olcek, sag = (k.right - masaKutusu.left) / olcek
+    const ust = (k.top - masaKutusu.top) / olcek, alt = (k.bottom - masaKutusu.top) / olcek
+    const ara = sira * (HEDIYE_EN + 4)
+    if (oyuncu === 0) return { x: sol + ara, y: ust - HEDIYE_EN - 6 }
+    const y = alt - HEDIYE_EN
+    return el?.classList.contains('sag') ? { x: sol - 22 - HEDIYE_EN - ara, y } : { x: sag + 22 + ara, y }
+  }
+  const hediyeGoster = (kimden: number, kime: number, ad: string) => setHediyeler(h => {
+    const hedef = hediyeYeri(kime, h.filter(x => x.kime === kime).length)
+    const kaynak = hediyeYeri(kimden, 0)
+    return [...h, { no: ++balonNo.current, kime, ad, ...hedef, dx: kaynak.x - hedef.x, dy: kaynak.y - hedef.y }]
+  })
+  const hediyeGonder = (kime: number) => {
+    setMenu(null)
+    hediyeGoster(0, kime, secilenHediye)
+    if (ag) oyunGonder({ tip: 'hediye', kimden: 0, kime, ad: secilenHediye })
+  }
   const [yazi, setYazi] = useState('')
   const yaziGonder = () => {
     const t = yazi.trim()
@@ -1071,8 +1101,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const [gelenler, setGelenler] = useState<[OyunMesaji, number][]>([])
   // Sözler sıra beklemez; kurucu gelen sözü gönderen dışındaki misafirlere iletir.
   useEffect(() => (ag ? oyunuDinle((m, kimden) => {
-    if (m.tip !== 'soz') return setGelenler(g => [...g, [m, kimden]])
-    soyle(m.oyuncu, m.yazi)
+    if (m.tip !== 'soz' && m.tip !== 'hediye') return setGelenler(g => [...g, [m, kimden]])
+    if (m.tip === 'soz') soyle(m.oyuncu, m.yazi)
+    else hediyeGoster(m.kimden, m.kime, m.ad)
     if (kurucu) [1, 2].forEach(k => k !== kimden && oyunGonder(m, k))
   }) : undefined), [])
   // Kurucu: misafir kopunca yerine bot oynar; geri dönünce oyunun şimdiki hali ona gider, kendisi oynar.
@@ -1474,7 +1505,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           ))}
         </div>
       )}
-      {(menu === 'soz' || menu === 'sozIsim') && (
+      {(menu === 'soz' || menu === 'sozIsim' || menu === 'hediyeIsim') && (
         <div className={'oyun-menu soz-menu' + (menu === 'soz' ? ' genis' : '')}>
           {menu === 'soz' && (
             <form className="soz-yaz" onSubmit={e => { e.preventDefault(); yaziGonder() }}>
@@ -1482,11 +1513,21 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
               <button className="test-satir" disabled={!yazi.trim()}>Gönder</button>
             </form>
           )}
-          {menu === 'soz'
+          {menu === 'soz' && (
+            <div className="hediye-satiri">
+              {HEDIYELER.map(h => <button key={h} className="test-satir" onClick={() => { setSecilenHediye(h); setMenu('hediyeIsim') }}><img src={hediyeResmi(h)} alt={h} /></button>)}
+            </div>
+          )}
+          {menu === 'hediyeIsim'
+            ? [1, 2].map(i => <button key={i} className="test-satir" onClick={() => hediyeGonder(i)}>{gorunen.oyuncular[i].ad}</button>)
+            : menu === 'soz'
             ? HAZIR_SOZLER.map(s => <button key={s} className="test-satir" onClick={() => sozSec(s)}>{s}</button>)
             : KIZ_ISIMLERI.map(i => <button key={i} className="test-satir" onClick={() => sozGonder(kizSozu(i))}>{kizSozu(i)}</button>)}
         </div>
       )}
+      {hediyeler.map(h => (
+        <img key={h.no} className="hediye" src={hediyeResmi(h.ad)} alt="" style={{ left: h.x, top: h.y, width: HEDIYE_EN, '--dx': h.dx + 'px', '--dy': h.dy + 'px' } as CSSProperties} />
+      ))}
       {Object.entries(balonlar).map(([oyuncu, b]) => (
         <div key={b.no} className={`balon balon-${oyuncu}`}>{b.yazi}</div>
       ))}

@@ -35,13 +35,14 @@ export interface MasaDurumu {
 }
 
 // Oyun mesajları. Kurucu → misafir: hamle (yapılan hamle ve sonrası), dagit (yeni el / yeni oyun), durum (el sayısı,
-// oyunu bitirme, uyuşmazlıkta düzeltme). Misafir → kurucu: oyna (benim hamlem). soz: konuşma balonu (iki yönde; kurucu herkese iletir).
+// oyunu bitirme, uyuşmazlıkta düzeltme). Misafir → kurucu: oyna (benim hamlem). soz: konuşma balonu, hediye: uçan resim (iki yönde; kurucu herkese iletir).
 export type OyunMesaji =
   | { tip: 'hamle'; hamle: Hamle; durum: Durum }
   | { tip: 'dagit'; durum: Durum }
   | { tip: 'durum'; durum: Durum }
   | { tip: 'oyna'; hamle: Hamle }
   | { tip: 'soz'; oyuncu: number; yazi: string }
+  | { tip: 'hediye'; kimden: number; kime: number; ad: string }
 
 type Mesaj =
   | { tip: 'merhaba'; isim: string; kimlik: string }
@@ -100,12 +101,14 @@ const hata = (yazi: string) => guncelle({ asama: 'hata', hata: yazi })
 const oyunaIlet = (m: OyunMesaji, kimden: number) => (oyunDinleyici ? oyunDinleyici(m, kimden) : birikmis.push([m, kimden]))
 
 // k koltuğundakinin gözüne çevirir.
+const koltukCevir = (i: number, k: number) => (((i - k) % KOLTUK) + KOLTUK) % KOLTUK
 function mesajCevir(m: OyunMesaji, k: number): OyunMesaji {
   if (k % KOLTUK === 0) return m
   switch (m.tip) {
     case 'hamle': return { ...m, hamle: hamleCevir(m.hamle, k, KOLTUK), durum: durumCevir(m.durum, k) }
     case 'oyna': return { ...m, hamle: hamleCevir(m.hamle, k, KOLTUK) }
-    case 'soz': return { ...m, oyuncu: (((m.oyuncu - k) % KOLTUK) + KOLTUK) % KOLTUK }
+    case 'soz': return { ...m, oyuncu: koltukCevir(m.oyuncu, k) }
+    case 'hediye': return { ...m, kimden: koltukCevir(m.kimden, k), kime: koltukCevir(m.kime, k) }
     default: return { ...m, durum: durumCevir(m.durum, k) }
   }
 }

@@ -137,6 +137,22 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .rakip-ad.secilebilir { animation: secilebilir 0.8s ease-in-out infinite alternate; }
 @keyframes secilebilir { to { box-shadow: 0 0 14px 3px var(--vurgu); } }
 
+/* Elin başlayanı: rakipte isim etiketinin masaya bakan yanında, bende ceza yığınımın solunda. */
+.baslayan { position: absolute; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.rakip-ad.sol .baslayan { left: calc(100% + 6px); }
+.rakip-ad.sag .baslayan { right: calc(100% + 6px); }
+.benim-baslayan { left: 166px; top: calc(338px - (var(--kart-olcek, 1) - 1) * 39px); }
+.baslayan-harf {
+  width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center;
+  background: #f4f1e8; color: #1d2b22; border: 2px solid #1d2b22; font-size: 10px; font-weight: 800;
+  box-shadow: 0 1px 3px #0008;
+}
+.baslayan-nokta { width: 10px; height: 10px; border-radius: 50%; background: #f4f1e8; box-shadow: 0 0 0 2px #1d2b22, 0 1px 3px #0008; }
+.baslayan-deste {
+  width: 11px; height: 15px; border-radius: 2px; background: #f4f1e8; border: 1px solid #1d2b22;
+  box-shadow: 2px -2px 0 -1px #f4f1e8, 2px -2px 0 0 #1d2b22, 4px -4px 0 -1px #f4f1e8, 4px -4px 0 0 #1d2b22;
+}
+
 .rakip-avuc { position: absolute; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; }
 /* Avuç kendi katmanını oluşturduğu için sürüklenen kart ancak avuç öne alınınca diğer yığınların üstünden geçer. */
 .rakip-avuc:has(.surukleniyor), .benim-avuc:has(.surukleniyor) { z-index: 30; }

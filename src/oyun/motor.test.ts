@@ -685,11 +685,20 @@ describe('bomba eli (10)', () => {
     expect(geri.bomba?.sahip).toBe(0)
     expect(geri.oyuncular[0].ceza).toEqual([k(9), k(2), k(5, 'kupa'), k(5)])
   })
-  it('ortadan yakalama, ekle ve başkasının al-ilerlet yapması bombayı taşımaz', () => {
+  it('bomba sahibi başkasına ekler ya da alıp ilerletirse bomba kartlarla gider', () => {
+    const d = bomba({ mut: [], avuclar: [[k(5), k(6)], [k(4)], [k(7)]], cezalar: [[], [k(6, 'kupa')], [k(5, 'sinek')]] })
+    d.bomba = { sahip: 0, kartlar: [k(10, 'kupa'), k(10)] }
+    expect(hamleYap(d, { tip: 'ekle', kart: 0, hedef: 2 }).bomba?.sahip).toBe(2)
+    expect(hamleYap(d, { tip: 'ekle', kart: 1, hedef: 1 }).bomba?.sahip).toBe(1)
+    // B'nin yığınından 6'yı alıp C'ye ilerletir.
+    const i = hamleYap(d, { tip: 'alIlerlet', kart: 1 })
+    expect(i.oyuncular[2].ceza).toEqual([k(5, 'sinek'), k(6, 'kupa'), k(6)])
+    expect(i.bomba?.sahip).toBe(2)
+  })
+  it('ortadan yakalama ve başkasının al-ilerlet yapması bombayı taşımaz', () => {
     const d = bomba({ mut: [], avuclar: [[k(5), k(9)], [k(5, 'karo'), k(6)], [k(7)]], cezalar: [[k(5, 'kupa')], [], [k(5, 'sinek')]], orta: [k(9, 'kupa')] })
     d.bomba = { sahip: 0, kartlar: [k(10, 'kupa'), k(10)] }
     expect(hamleYap(d, { tip: 'ortayaAt', kart: 1 }).bomba?.sahip).toBe(0)
-    expect(hamleYap(d, { tip: 'ekle', kart: 0, hedef: 2 }).bomba?.sahip).toBe(0)
     // Soldaki C (2), sıradakinin (benim) yığınımdan alıp B'ye ilerletir; bomba bende kalır.
     const c = bomba({ mut: [], avuclar: [[k(4)], [k(6)], [k(5, 'karo')]], cezalar: [[k(5, 'kupa')], [], []], sira: 2 })
     c.bomba = { sahip: 0, kartlar: [k(10, 'kupa'), k(10)] }

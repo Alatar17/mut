@@ -373,8 +373,10 @@ export function hamleYap(eski: Durum, h: Hamle, dogrula = true): Durum {
   let nereye = `ceza:${d.eksi ? oyuncu : h.gonder ?? s1}`
   let cekilen: Kart | undefined
   const eskiSahip = d.bomba?.sahip
-  // Bomba sahibi kendi yığınından kart gönderirse bomba da kartlarla gider; blokta kartlarla geri döner (6.8 madde 7).
-  const bombaIle = (h.tip === 'cezaBosalt' && eskiSahip === oyuncu) || (h.tip === 'blok' && !!d.blok!.bombaIle)
+  // Bomba sahibi kendi yığınını boşaltırsa, başkasına eklerse ya da alıp ilerletirse bomba da kartlarla gider;
+  // blokta kartlarla geri döner (6.8 madde 7). Ortadan / Mut'tan yakalamada sahibinde kalır.
+  const bombaIle =
+    (eskiSahip === oyuncu && (h.tip === 'cezaBosalt' || h.tip === 'ekle' || h.tip === 'alIlerlet')) || (h.tip === 'blok' && !!d.blok!.bombaIle)
 
   switch (h.tip) {
     case 'ortayaAt':

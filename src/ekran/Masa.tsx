@@ -3,7 +3,7 @@ import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { cikanOnlar, elPuanlari, kralGruplari, elSayisiAyarla, gecerliHamleler, hamleGecerliMi, hamleYap, oyunuBitir, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
 import { karistir } from '../oyun/rastgele'
-import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBosaltmaDenemesi, yapisikDenemesi, kralDenemesi, kralBotDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
+import { asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBosaltmaDenemesi, bombaEkleDenemesi, yapisikDenemesi, kralDenemesi, kralBotDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { kartEni, kartOlcegi } from './boyut'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, patlamaOncesi, patlamaOrtada, UcanKart, type Konum, type Ucus } from './animasyon'
@@ -53,6 +53,9 @@ const DUYURU_SURESI = 1700
 // Sıranın bende olduğunu gösteren işaret (eski: avucun altında sarı çizgi; kullanıcı beğenmemişti). Görünüş menüsünde seçilecek.
 const SIRA_GOSTERGELERI = { Işık: 'sira-isik', Kenar: 'sira-kenar', Çizgi: 'sira-cizgi', Yok: '' }
 type SiraGostergesi = keyof typeof SIRA_GOSTERGELERI
+// Elin başlayanı (her elde sağdakine geçer): isim etiketinin yanında, bende ceza yığınımın solunda küçük işaret.
+const BASLAYAN_ISARETLERI = { Harf: 'baslayan-harf', Nokta: 'baslayan-nokta', Deste: 'baslayan-deste' }
+type BaslayanIsareti = keyof typeof BASLAYAN_ISARETLERI
 // Titreşim (☰ menüsü, herkes kendi ayarlar). Tarayıcı gücü ayarlatmıyor; süre çarpılır (kısa = hafif, uzun = güçlü).
 export const TITRESIMLER = { Kapalı: 0, Hafif: 1, Orta: 2, Güçlü: 3 }
 type Titresim = keyof typeof TITRESIMLER
@@ -174,16 +177,20 @@ function rakipKartDuzeni(sira: number, adet: number, taraf: 'sol' | 'sag', duz: 
   return kalkma + (duz ? '' : yanYelpaze(sira, adet, taraf)) || undefined
 }
 
+const BaslayanRozeti = ({ sinif, ben }: { sinif: string; ben?: boolean }) => (
+  <span className={'baslayan ' + sinif + (ben ? ' benim-baslayan' : '')}>{sinif === BASLAYAN_ISARETLERI.Harf ? 'B' : ''}</span>
+)
+
 // Masanın sol/sağ kenarına oturmuş oyuncu: kartlar ona dönük, dikey dizili, masanın ortası hizasında.
 // sec: Kız ile çekmede ters kartlardan birine dokunmak.
 // secilebilir: serbest elde yakalanan kartların gönderilebileceği oyuncu (isim etiketi hafifçe parlar).
 // sureUyari: hamle süresinin son saniyeleri, isim etiketinin çevresinde azalan halka.
-function Rakip({ oyuncu, koltuk, kalkik, birak, sec, sirada, secilebilir, sureUyari, taraf, carpan, kapali, duz, kirpik, cezaAralik, yapisik, kopuk }: { oyuncu: Oyuncu; koltuk: number; kalkik: string | null; birak: (kart: number, hedef: string) => Birakma; sec: (kart: number) => void; sirada: boolean; secilebilir: boolean; sureUyari: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean; cezaAralik: number; yapisik: string[]; kopuk: boolean }) {
+function Rakip({ oyuncu, koltuk, kalkik, birak, sec, sirada, secilebilir, sureUyari, taraf, carpan, kapali, duz, kirpik, cezaAralik, yapisik, kopuk, baslayan }: { oyuncu: Oyuncu; koltuk: number; kalkik: string | null; birak: (kart: number, hedef: string) => Birakma; sec: (kart: number) => void; sirada: boolean; secilebilir: boolean; sureUyari: boolean; taraf: 'sol' | 'sag'; carpan: number; kapali: boolean; duz: boolean; kirpik: boolean; cezaAralik: number; yapisik: string[]; kopuk: boolean; baslayan: string | null }) {
   const avucBoyu = kartEni(RAKIP_KART_EN) + (oyuncu.avuc.length - 1) * kartEni(RAKIP_KART_EN - RAKIP_KART_BINME)
   return (
     <>
       {/* İsim etiketi de takas hedefi: avucu boşken bırakılacak yer kalmasın. */}
-      <div className={`rakip-ad ${taraf}` + (sirada ? ' sirada' : '') + (secilebilir ? ' secilebilir' : '') + (sureUyari ? ' sure-uyari' : '') + (kopuk ? ' kopuk' : '')} style={{ top: SAHNE_BOY / 2 - avucBoyu / 2 - 30 }} data-hedef={`avuc:${koltuk}`}>{oyuncu.ad}</div>
+      <div className={`rakip-ad ${taraf}` + (sirada ? ' sirada' : '') + (secilebilir ? ' secilebilir' : '') + (sureUyari ? ' sure-uyari' : '') + (kopuk ? ' kopuk' : '')} style={{ top: SAHNE_BOY / 2 - avucBoyu / 2 - 30 }} data-hedef={`avuc:${koltuk}`}>{oyuncu.ad}{baslayan && <BaslayanRozeti sinif={baslayan} />}</div>
       <div className={`rakip-avuc ${taraf}` + (kirpik ? ' kirpik' : '')} data-yer={`avuc:${koltuk}`} data-hedef={`avuc:${koltuk}`}>
         {oyuncu.avuc.map((k, i) => (
           <RakipKart
@@ -547,6 +554,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
   const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi', 'Işık')
+  const [baslayanKayit, setBaslayanIsareti] = useKayitli<BaslayanIsareti>('baslayanIsareti', 'Harf')
+  const baslayanIsareti: BaslayanIsareti = baslayanKayit in BASLAYAN_ISARETLERI ? baslayanKayit : 'Harf'
   const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim2', 'Hafif')
   const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Hafif'
   // desen: tek süre ya da titre-dur-titre…; titreme süreleri seviyeyle çarpılır, aralar aynı kalır.
@@ -960,6 +969,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
 
   // Titreşim (Android; iPhone'da yok): sıra bana geçince bir kez kısa, blok penceresi bana açılınca sert üç kez.
   const siraBende = d.asama === 'oyun' && d.sira === 0 && !d.blok
+  const baslayanSinifi = (koltuk: number) => (d.asama !== 'oyunSonu' && d.elBaslatani === koltuk ? BASLAYAN_ISARETLERI[baslayanIsareti] : null)
   useEffect(() => {
     if (siraBende) titret(70)
   }, [siraBende])
@@ -1300,9 +1310,10 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         </div>
       )}
 
-      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(2)} />
-      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(1)} />
+      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(2)} baslayan={baslayanSinifi(2)} />
+      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(1)} baslayan={baslayanSinifi(1)} />
 
+      {baslayanSinifi(0) && <BaslayanRozeti sinif={baslayanSinifi(0)!} ben />}
       <div className="benim-ceza">
         <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} />
       </div>
@@ -1448,7 +1459,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">
-          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Bomba boşaltma dene', bombaBosaltmaDenemesi], ['2 yapışma dene', yapisikDenemesi], ['Kral dene', kralDenemesi], ['Bot Kral dene', kralBotDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
+          {([['Yeni oyun', undefined], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Bomba boşaltma dene', bombaBosaltmaDenemesi], ['Bomba ekle dene', bombaEkleDenemesi], ['2 yapışma dene', yapisikDenemesi], ['Kral dene', kralDenemesi], ['Bot Kral dene', kralBotDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
             // "Bot 8 dene" kalkan kurulu başlar: takas gelince sökülmesi görülsün.
             <button key={ad} className="test-satir" onClick={() => { setMenu(null); if (!deneme) return setElPenceresi('yeni'); yeniOyunBaslat(deneme); setKalkanKurulu(ad === 'Bot 8 dene') }}>{ad}</button>
           ))}
@@ -1493,6 +1504,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
             Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
+          </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(BASLAYAN_ISARETLERI, baslayanIsareti, setBaslayanIsareti)}>
+            Başlayan işareti <span className="test-deger">{baslayanIsareti}</span>
           </button>
           <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />

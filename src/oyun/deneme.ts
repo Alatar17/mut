@@ -199,6 +199,21 @@ export const bombaBosaltmaDenemesi = (d: Durum) => {
   return d
 }
 
+// Bomba bende (iki 10), yığınım boş. Sağdaki B'nin yığınında 6, soldaki C'ninkinde 7. Avucumdaki 7'yi C'nin yığınına
+// eklersem ya da 6'yı B'ye eklersem bomba da gider. 6'yla B'nin yığınından alıp ilerletirsem kartlar ve bomba C'ye gider.
+// C'de 2 var: bloklarsa kartlar ve bomba bana döner. Kalan iki 10 C'nin yığınının altında.
+export const bombaEkleDenemesi = (d: Durum) => {
+  denemeKur(d, {
+    avucum: [kart(7, 'sinek'), kart(6, 'sinek'), kart(4, 'sinek'), kart(5, 'sinek')],
+    digerAvuclar: [[kart(4, 'kupa'), kart(5, 'kupa'), kart(9, 'kupa'), kart(12, 'maca')], [kart(2, 'kupa')]],
+    cezalar: [[kart(10, 'maca'), kart(10, 'kupa')], [kart(9, 'karo'), kart(6, 'kupa')], [kart(10, 'karo'), kart(10, 'sinek'), kart(3, 'sinek'), kart(7, 'kupa')]],
+    mut: [kart(9, 'maca'), kart(4, 'karo'), kart(5, 'karo'), kart(12, 'kupa')],
+  })
+  d.bombaEli = true
+  d.bomba = { sahip: 0, kartlar: d.oyuncular[0].ceza.splice(0, 2) }
+  return d
+}
+
 // 2 gruba yapışır (6.5). Ceza yığınımda 7 üstünde iki 5, avucumda iki 5. 5'imi kendi yığınıma bırakınca üç 5 sağdaki
 // B'ye gider; B 2 ile bloklar, üç 5 altlarındaki 2 ile bana döner (7'nin üstüne). Sıra bana gelince öbür 5'imi de
 // bırakırsam dört 5 ve 2 birlikte B'ye gider, 7 bende kalır.

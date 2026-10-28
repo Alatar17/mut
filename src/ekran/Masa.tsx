@@ -1552,7 +1552,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         </div>
       )}
       {hediyeler.map(h => (
-        <img key={h.no} className="hediye" src={hediyeResmi(h.ad)} alt="" style={{ left: h.x, top: h.y, width: HEDIYE_EN, '--dx': h.dx + 'px', '--dy': h.dy + 'px' } as CSSProperties} />
+        <img key={h.no} className="hediye" src={hediyeResmi(h.ad)} alt="" style={{ left: h.x, top: h.y, width: HEDIYE_EN, height: HEDIYE_EN, '--dx': h.dx + 'px', '--dy': h.dy + 'px' } as CSSProperties} />
       ))}
       {Object.entries(balonlar).map(([oyuncu, b]) => (
         <div key={b.no} className={`balon balon-${oyuncu}`}>{b.yazi}</div>

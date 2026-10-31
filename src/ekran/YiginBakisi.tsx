@@ -89,49 +89,24 @@ export function useYiginBakisi(masaRef: RefObject<HTMLDivElement | null>) {
   return { bakis, olaylar }
 }
 
-export type BakisGorunusu = 'Ortada' | 'Yerinde'
-
-// Açılan yığın: en alttaki kart solda, en üstteki sağda; sağ altta kart sayısı. Ortada: büyük şerit, kart çoksa iki sıra.
-// Yerinde: yığının üstünde tek sıra.
-export function YiginYelpazesi({ bakis, kartlar, gorunus }: { bakis: Bakis; kartlar: KartTipi[]; gorunus: BakisGorunusu }) {
+// Açılan yığın, yığının üstünde tek sıra: en alttaki kart solda, en üstteki sağda; sağ altta kart sayısı.
+export function YiginYelpazesi({ bakis, kartlar }: { bakis: Bakis; kartlar: KartTipi[] }) {
   if (kartlar.length === 0) return null
   const n = kartlar.length
-
-  if (gorunus === 'Yerinde') {
-    const en = kartEni(56)
-    const boy = kartBoyu(en)
-    const adim = n > 1 ? Math.min(22, (SAHNE_EN - 24 - en) / (n - 1)) : 0
-    const gen = en + adim * (n - 1)
-    const sol = Math.min(Math.max(bakis.x - gen / 2, 12), SAHNE_EN - 12 - gen)
-    const ust = Math.min(Math.max(bakis.y - boy / 2, 8), SAHNE_BOY - 8 - boy)
-    return (
-      <div className="yigin-bakisi yerinde" style={{ left: sol, top: ust, width: gen, height: boy }}>
-        {kartlar.map((k, i) => (
-          <div key={i} className="bakis-kart" style={{ left: i * adim }}>
-            <Kart kart={k} genislik={en} ucan />
-          </div>
-        ))}
-        <span className="rozet bakis-rozet">{n}</span>
-      </div>
-    )
-  }
-
-  const en = kartEni(60)
+  const en = kartEni(56)
   const boy = kartBoyu(en)
-  const siraBasi = n <= 18 ? n : Math.ceil(n / 2)
-  const adim = siraBasi > 1 ? Math.min(40, (760 - en) / (siraBasi - 1)) : 0
-  const gen = en + adim * (siraBasi - 1)
-  const siralar = Math.ceil(n / siraBasi)
+  const adim = n > 1 ? Math.min(22, (SAHNE_EN - 24 - en) / (n - 1)) : 0
+  const gen = en + adim * (n - 1)
+  const sol = Math.min(Math.max(bakis.x - gen / 2, 12), SAHNE_EN - 12 - gen)
+  const ust = Math.min(Math.max(bakis.y - boy / 2, 8), SAHNE_BOY - 8 - boy)
   return (
-    <div className="yigin-bakisi ortada">
-      <div style={{ position: 'relative', width: gen, height: siralar * boy + (siralar - 1) * 6 }}>
-        {kartlar.map((k, i) => (
-          <div key={i} className="bakis-kart" style={{ left: (i % siraBasi) * adim, top: Math.floor(i / siraBasi) * (boy + 6) }}>
-            <Kart kart={k} genislik={en} ucan />
-          </div>
-        ))}
-        <span className="rozet bakis-rozet">{n}</span>
-      </div>
+    <div className="yigin-bakisi yerinde" style={{ left: sol, top: ust, width: gen, height: boy }}>
+      {kartlar.map((k, i) => (
+        <div key={i} className="bakis-kart" style={{ left: i * adim }}>
+          <Kart kart={k} genislik={en} ucan />
+        </div>
+      ))}
+      <span className="rozet bakis-rozet">{n}</span>
     </div>
   )
 }

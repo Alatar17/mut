@@ -75,6 +75,7 @@ interface CezaProps {
   kartlar: KartTipi[]
   carpan: number
   puanTarafi: 'sag' | 'sol'
+  puanGizli?: boolean
   // Yan oturan oyuncunun yığını ona dönük, yan durur.
   donuk?: 'sol' | 'sag'
   // Kart bırakılabilen yer işareti (bkz. Masa).
@@ -117,7 +118,7 @@ function ZincirIkonu() {
 const CIZILEN_UST_KART = 5
 
 // Orta yığın gibi son 3 kart kaydırılmış görünür (daha dar); alttakilerin köşe sayısı görünsün diye sola kayar (stil.css).
-export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, yapisik }: CezaProps) {
+export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, yapisik, puanGizli }: CezaProps) {
   const gizliler = useGizliKartlar()
   // Puan, yerine varmış kartlardan hesaplanır (uçan kart inince artar).
   const varanlar = kartlar.filter(k => !gizliler.has(kartKimligi(k)))
@@ -160,14 +161,16 @@ export function CezaYigini({ kartlar, carpan, puanTarafi, donuk, hedef, aralik, 
   )
   // Puan yeri (Görünüş menüsü, masa sınıfı puan-*): yanında = akıştaki puan; kenarda / rozet = yığının üstündeki
   // puan gösterilir, akıştaki görünmez ama yer tutar (yerleşim kaymasın).
+  // Puan gizliyken (masa ayarı) yer tutmaya devam eder, yerleşim puanlı masayla aynı kalır.
   const puan = <Puan deger={yiginPuani(varanlar) * carpan} bos={varanlar.length === 0} />
+  const gizle = puanGizli ? { visibility: 'hidden' as const } : undefined
   return (
     <div className={'ceza-yigini puan-' + puanTarafi} data-hedef={hedef} data-bak={hedef}>
       <div className="yigin-sarici">
         {donuk ? <div className={'yan-yigin ' + donuk} style={{ width: boy, height: en }}>{govde}</div> : govde}
-        <span className="puan-ustte">{puan}</span>
+        <span className="puan-ustte" style={gizle}>{puan}</span>
       </div>
-      <span className="puan-akista">{puan}</span>
+      <span className="puan-akista" style={gizle}>{puan}</span>
     </div>
   )
 }

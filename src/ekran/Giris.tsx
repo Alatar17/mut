@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { basla, birak, katil, KOLTUK, masaKur, type MasaDurumu } from '../ag'
-import { TITRESIMLER, type AgOyunu } from './Masa'
+import { ElSayisiPenceresi, kayitYaz, TITRESIMLER, useOyunAyari, type AgOyunu } from './Masa'
 
 const BOT_ADLARI = ['Bot B', 'Bot C']
 
@@ -34,6 +34,16 @@ export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => voi
     if (isim.trim()) return devam()
     setAdEksik(true)
     adKutusu.current?.focus()
+  }
+  // Oyun başlamadan "Kaç el?" ve masa ayarları penceresi (Botlarla oyna / kurucunun Başla'sı).
+  const [pencere, setPencere] = useState<'bot' | 'masa' | null>(null)
+  const [oyunAyari, setOyunAyari] = useOyunAyari()
+  const pencereSec = (n: number) => {
+    kayitYaz('elSayisi', n)
+    kayitYaz('oyunAyari', oyunAyari)
+    setPencere(null)
+    if (pencere === 'bot') oyna([isim.trim() || 'Sen', ...BOT_ADLARI])
+    else basla()
   }
   // Kurucu: yeni katılanın koltuğu birkaç kez parlar.
   const [yeni, setYeni] = useState<number | null>(null)
@@ -81,7 +91,7 @@ export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => voi
           <input ref={adKutusu} className={'giris-yazi' + (adEksik && !isim.trim() ? ' eksik' : '')} placeholder={adEksik ? 'Önce adını yaz' : 'Adın'} maxLength={12} value={isim} onChange={e => setIsim(e.target.value)} />
           <button className="giris-dugme ana" onClick={() => adVarsa(() => { setEkran('masa'); masaKur(ad, setMasa) })}>Masa kur</button>
           <button className="giris-dugme ana" onClick={() => adVarsa(() => setEkran('katil'))}>Katıl</button>
-          <button className="giris-dugme" onClick={() => oyna([isim.trim() || 'Sen', ...BOT_ADLARI])}>Botlarla oyna</button>
+          <button className="giris-dugme" onClick={() => setPencere('bot')}>Botlarla oyna</button>
         </div>
       )}
       {ekran === 'katil' && (
@@ -112,13 +122,14 @@ export function Giris({ oyna }: { oyna: (isimler: string[], ag?: AgOyunu) => voi
                 ))}
               </div>
               {masa.kurucu
-                ? <button className="giris-dugme ana" onClick={basla}>Başla</button>
+                ? <button className="giris-dugme ana" onClick={() => setPencere('masa')}>Başla</button>
                 : <div className="giris-bilgi">Kurucu başlatacak…</div>}
             </>
           )}
           <button className="giris-dugme" onClick={geri}>{masa.kurucu && masa.asama !== 'hata' ? 'Masayı kapat' : 'Geri'}</button>
         </div>
       )}
+      {pencere && <ElSayisiPenceresi enAz={1} sec={pencereSec} kapat={() => setPencere(null)} ayar={oyunAyari} degistir={setOyunAyari} />}
     </div>
   )
 }

@@ -57,6 +57,10 @@ export interface Durum {
   kralEli: boolean
   // Kullanılmakta olan Kral gücü: oynanan Papaz ve Mut'tan alınan Papaz'lar, her biri bir güç. Bitene kadar sıra oyuncuda.
   kral?: { oyuncu: number; papazlar: Kart[] }
+  // Masa ayarları (kurucu oyun başında seçer, durumla herkese gider; yoksa kapalı): deste penceresi açılabilir,
+  // ceza yığınlarının (bomba elinde orta yığının da) puanı görünür.
+  destePenceresi?: true
+  puanGoster?: true
 }
 
 // Yer: "orta", "mut", "ceza:<oyuncu>", "bomba:<oyuncu>".

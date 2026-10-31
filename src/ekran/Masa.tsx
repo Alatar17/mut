@@ -61,9 +61,6 @@ const DUYURU_ADI: Record<string, string> = { Kral: 'Kral eli', Bomba: 'Bomba eli
 // Ceza yığınının puanı: yanında / zeminin üst kenarında / köşede rozet (masa sınıfı). Kullanıcı Görünüş menüsünde seçecek.
 const PUAN_YERLERI = { Yanında: 'puan-yaninda', Kenarda: 'puan-kenarda', Rozet: 'puan-rozette' }
 type PuanYeri = keyof typeof PUAN_YERLERI
-// Geçici (kullanıcı seçince kalkacak): puan kağıdının yazı tipi (masa sınıfı, stil.css).
-const KAGIT_YAZILARI = { 'El yazısı': '', Düz: 'kagit-duz' }
-type KagitYazisi = keyof typeof KAGIT_YAZILARI
 // Deste penceresinde kendi avucumdaki kartlar.
 const KARTLARIM: Record<KartlarimGorunusu, true> = { Soluk: true, Çerçeveli: true }
 // Avucun yukarı kayması (masa değişkeni --el-kayma, stil.css). Varsayılan +10 px (kullanıcı kararı, 2026-10-22).
@@ -661,7 +658,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     if (c) navigator.vibrate?.(Array.isArray(desen) ? desen.map((ms, i) => (i % 2 ? ms : Math.round(ms * c))) : Math.round(desen * c))
   }
   const [puanYeri, setPuanYeri] = useKayitli<PuanYeri>('puanYeri', 'Yanında')
-  const [kagitYazisi, setKagitYazisi] = useKayitli<KagitYazisi>('kagitYazisi', 'El yazısı')
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
   const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', '+10 px')
   const elYuksekligi: ElYuksekligi = elYuksekligiKayit in EL_YUKSEKLIKLERI ? elYuksekligiKayit : '+10 px'
@@ -1048,8 +1044,10 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   }
 
   // Yeni el / yeni oyun: kartlar desteye toplanır, sonra dağıtılır.
+  const [kurallarGizli, setKurallarGizli] = useState(false)
   const topluDagit = async (yeni: Durum) => {
     basla()
+    setKurallarGizli(true)
     setHediyeler([])
     yayinla({ tip: 'dagit', durum: yeni })
     await gec(dagitimOncesi(yeni, true))
@@ -1061,6 +1059,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       await bekle(DUYURU_SURESI)
       setDuyuru(null)
     }
+    setKurallarGizli(false)
     bitir(yeni)
   }
 
@@ -1273,7 +1272,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     return 'red'
   }
 
-  const aktifKurallar = aktifKurallarOf(d)
+  // Yeni el dağıtılırken eski elin kural yazıları kalkar; yenileri duyurudan sonra gelir.
+  const aktifKurallar = kurallarGizli ? [] : aktifKurallarOf(d)
   // Ceza yığınlarında görünen puan çarpanı: eksi elde puanlar eksi görünür.
   const puanCarpani = d.eksi ? -d.carpan : d.carpan
   // Test menüsünde bir seçeneğe her basışta sıradaki değere geçer.
@@ -1341,7 +1341,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   return (
     <GizliKartlar.Provider value={gizli}>
     <div
-      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (YAPISIK_GORUNUSLERI[yapisikGorunusu] ?? '') + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (JQK_GORUNUSLERI[jqkGorunusu] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '') + ' ' + (KAGIT_YAZILARI[kagitYazisi] ?? '')}
+      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (YAPISIK_GORUNUSLERI[yapisikGorunusu] ?? '') + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (JQK_GORUNUSLERI[jqkGorunusu] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '')}
       ref={masaRef}
       style={{ '--el-kayma': EL_YUKSEKLIKLERI[elYuksekligi], '--kart-olcek': KART_BOYUTLARI[kartBoyutu] } as CSSProperties}
       // Oyunda sağ tık menüsü yok (sürüklemeyi bölüyordu).
@@ -1378,6 +1378,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           {!misafir && <button className="test-satir" disabled={d.asama === 'oyunSonu'} onClick={() => setMenu('bitir')}>Oyunu bitir</button>}
           <button className="test-satir" onClick={cikis}>Giriş ekranı</button>
           {/* Seçince yeni seviyede kısa bir titreşim: fark hemen hissedilsin. */}
+          <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
+            Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
+          </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(TITRESIMLER, titresim, v => { setTitresim(v); navigator.vibrate?.(Math.round(70 * TITRESIMLER[v])) })}>
             Titreşim <span className="test-deger">{titresim}</span>
           </button>
@@ -1595,9 +1598,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
 
       {menu === 'gorunus' && (
         <div className="test-panel gorunus-panel">
-          <button className="test-satir" onClick={() => sonrakiSecenek(KAGIT_YAZILARI, kagitYazisi, setKagitYazisi)}>
-            Puan kağıdı yazısı <span className="test-deger">{kagitYazisi}</span>
-          </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>
             El yüksekliği <span className="test-deger">{elYuksekligi}</span>
           </button>
@@ -1618,9 +1618,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(KARTLARIM, kartlarim, setKartlarim)}>
             Destede kartlarım <span className="test-deger">{kartlarim}</span>
-          </button>
-          <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
-            Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
           </button>
           <button className="test-satir" onClick={hediyeYeriDegistir}>
             Çay yeri <span className="test-deger">{hediyeYeriSecimi}</span>

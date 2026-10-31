@@ -196,8 +196,8 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   animation: sira-belir 0.5s ease-out;
 }
 @keyframes sira-belir { from { opacity: 0; } }
-/* Sırası gelen rakip: Işık kartlarının arkasında dikey oval, Kenar ekranın o yanı. Güç inline opacity ile. */
-.rakip-sira { position: absolute; pointer-events: none; animation: sira-belir 0.5s ease-out; }
+/* Sırası gelen rakip: Işık kartlarının arkasında dikey oval, Kenar ekranın o yanı. Benimkinden biraz soluk (kullanıcı seçti). */
+.rakip-sira { position: absolute; pointer-events: none; opacity: 0.75; animation: sira-belir 0.5s ease-out; }
 .rakip-sira.sira-isik {
   top: 50%; width: 280px; height: 420px; transform: translateY(-50%);
   background: radial-gradient(ellipse 105px 175px at 50% 50%, var(--sira-isik) 0%, transparent 100%);

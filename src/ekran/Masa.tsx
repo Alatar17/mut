@@ -52,8 +52,6 @@ const DUYURU_SURESI = 1700
 // Sıranın bende olduğunu gösteren işaret (eski: avucun altında sarı çizgi; kullanıcı beğenmemişti). Görünüş menüsünde seçilecek.
 const SIRA_GOSTERGELERI = { Işık: 'sira-isik', Kenar: 'sira-kenar', Çizgi: 'sira-cizgi', Yok: '' }
 type SiraGostergesi = keyof typeof SIRA_GOSTERGELERI
-const RAKIP_ISIKLARI = { Hafif: 0.5, Orta: 0.75, Güçlü: 1 }
-type RakipIsik = keyof typeof RAKIP_ISIKLARI
 // Titreşim (☰ menüsü, herkes kendi ayarlar). Tarayıcı gücü ayarlatmıyor; süre çarpılır (kısa = hafif, uzun = güçlü).
 export const TITRESIMLER = { Kapalı: 0, Hafif: 1, Orta: 2, Güçlü: 3 }
 type Titresim = keyof typeof TITRESIMLER
@@ -652,8 +650,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
   const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi2', 'Işık')
-  // Geçici: rakipteki Işık/Kenar'ın gücü, beğenilen seçilince kalkacak.
-  const [rakipIsik, setRakipIsik] = useKayitli<RakipIsik>('rakipIsik', 'Orta')
   const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim2', 'Hafif')
   const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Hafif'
   // desen: tek süre ya da titre-dur-titre…; titreme süreleri seviyeyle çarpılır, aralar aynı kalır.
@@ -1385,11 +1381,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
             Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
           </button>
-          {(siraGostergesi === 'Işık' || siraGostergesi === 'Kenar') && (
-            <button className="test-satir" onClick={() => sonrakiSecenek(RAKIP_ISIKLARI, rakipIsik, setRakipIsik)}>
-              Rakip ışığı (deneme) <span className="test-deger">{rakipIsik}</span>
-            </button>
-          )}
           <button className="test-satir" onClick={() => sonrakiSecenek(TITRESIMLER, titresim, v => { setTitresim(v); navigator.vibrate?.(Math.round(70 * TITRESIMLER[v])) })}>
             Titreşim <span className="test-deger">{titresim}</span>
           </button>
@@ -1427,7 +1418,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
 
       {/* Sırası gelen rakipte de aynı gösterge (Çizgi'de değil: orada isim etiketi yetiyor). Kartların arkasında kalsın diye rakiplerden önce. */}
       {(siraGostergesi === 'Işık' || siraGostergesi === 'Kenar') && d.asama === 'oyun' && d.sira !== 0 && !d.blok && (
-        <div key={d.sira} className={'rakip-sira ' + SIRA_GOSTERGELERI[siraGostergesi] + (d.sira === 2 ? ' sol' : ' sag')} style={{ opacity: RAKIP_ISIKLARI[rakipIsik] }} />
+        <div key={d.sira} className={'rakip-sira ' + SIRA_GOSTERGELERI[siraGostergesi] + (d.sira === 2 ? ' sol' : ' sag')} />
       )}
       <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2) || (hediyeSecimi && hediyeAlabilir(2))} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(2)} baslayan={baslayan(2)} puanGizli={!d.puanGoster} />
       <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1) || (hediyeSecimi && hediyeAlabilir(1))} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(1)} baslayan={baslayan(1)} puanGizli={!d.puanGoster} />

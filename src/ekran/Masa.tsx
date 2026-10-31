@@ -114,7 +114,7 @@ const yeniOyunKur = (isimler: string[], toplamEl: number, ag: boolean) => yeniOy
 const RAKIP_KART_EN = 56
 
 // Hazır sözler (kaba ilk sürüm; asıl hali 2. aşamada herkes kendi telefonundan). Kahvenin kendi lafları, aynen.
-const HAZIR_SOZLER = ['Çok saçma kendime sokamıyom!', 'Tost oldu.', 'Beton döktü.', 'Şimdi ben kızı aldım … soktum.', 'Üstüne kapatma göt!', 'Kapatma göt!', 'Dönme dolap!', 'Şu kartın anasını s.keyim!', 'Son eli atalım, annem kötüleşti.', 'Kakao içiyor musun? Söyle o zaman.']
+const HAZIR_SOZLER = ['Çok saçma kendime sokamıyom!', 'Tost oldu.', 'Beton döktü.', 'Şimdi ben kızı aldım … soktum.', 'Kapatma göt!', 'Dönme dolap!', 'Şu kartın anasını s.keyim!', 'Son eli atalım, annem kötüleşti.', 'Kakao içiyor musun? Söyle o zaman.', 'Siz daha benim şeroluğumu görmediniz.', 'Gelin lan gelin!']
 const KIZ_SOZU = HAZIR_SOZLER[3]
 const KIZ_ISIMLERI = ["Tahir'e", "Uğur'a", "Mert'e"]
 const kizSozu = (isim: string) => `Şimdi ben kızı aldım ${isim} soktum.`
@@ -323,6 +323,21 @@ function TestSecenegi({ ad, acik, degistir }: { ad: string; acik: boolean; degis
 }
 
 
+// Kendi ceza yığınım ve avucum (Kız'la çekilen kart buraya bırakılır) görünenden BIRAKMA_PAYI kadar geniş yakalar
+// (masa pikseli). Tam üstünde hedef yoksa paya düşen en yakın olan seçilir; sürüklenen kartın kendi avucu sayılmaz.
+const BIRAKMA_PAYI = 20
+function payliHedef(x: number, y: number, olcek: number, kart: Element) {
+  const pay = BIRAKMA_PAYI * olcek
+  let enYakin: { hedef: string; uzaklik: number } | undefined
+  for (const el of document.querySelectorAll<HTMLElement>('[data-hedef="ceza:0"], [data-hedef="avuc:0"]')) {
+    if (el.contains(kart)) continue
+    const k = el.getBoundingClientRect()
+    const uzaklik = Math.hypot(Math.max(k.left - x, 0, x - k.right), Math.max(k.top - y, 0, y - k.bottom))
+    if (uzaklik <= pay && (!enYakin || uzaklik < enYakin.uzaklik)) enYakin = { hedef: el.dataset.hedef!, uzaklik }
+  }
+  return enYakin?.hedef
+}
+
 // Kart sürükleme: basılı tutup kaydırınca kart parmağı izler, bırakınca altındaki yer (data-hedef) bulunur.
 // Kabul edilmezse kart yerine döner. Kaydırmadan bırakmak dokunmadır. tut: sürükleme başlayınca (Kız seçiminde
 // tutulan kart seçilmiş olur).
@@ -360,11 +375,12 @@ function useSurukle(dokun: () => void, birak: Birak, tut?: () => void) {
       if (!b.surukleniyor) return dokun()
       // Sürüklenen kartın kendisi (ve içinde durduğu avuç) hedef sayılmaz.
       const kart = e.currentTarget
-      const hedef = document
-        .elementsFromPoint(e.clientX, e.clientY)
-        .filter(el => !kart.contains(el))
-        .map(el => el.closest<HTMLElement>('[data-hedef]'))
-        .find(el => el)?.dataset.hedef
+      const hedef =
+        document
+          .elementsFromPoint(e.clientX, e.clientY)
+          .filter(el => !kart.contains(el))
+          .map(el => el.closest<HTMLElement>('[data-hedef]'))
+          .find(el => el)?.dataset.hedef ?? payliHedef(e.clientX, e.clientY, b.olcek, kart)
       if (hedef && birak(hedef) === 'kabul') return
       setKayma(null)
     },
@@ -553,7 +569,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       if (secim === 'Şimdiki') return { x: sol + ara, y: ust - HEDIYE_EN - 6 }
       return { x: sol - 14 - HEDIYE_EN - ara, y: (ust + alt) / 2 - HEDIYE_EN / 2 }
     }
-    const y = alt - HEDIYE_EN
+    // İsim etiketi avuçtaki kart sayısıyla kayar; hediye hep 4 kartlık eldeki yerinde durur.
+    const kartSayisi = masa.querySelectorAll(`.rakip-avuc[data-yer="avuc:${oyuncu}"] > *`).length
+    const y = alt - HEDIYE_EN + ((kartSayisi - 4) * kartEni(RAKIP_KART_EN - RAKIP_KART_BINME)) / 2
     return el?.classList.contains('sag') ? { x: sol - 22 - HEDIYE_EN - ara, y } : { x: sag + 22 + ara, y }
   }
   const hediyeGoster = (kimden: number, kime: number, ad: string) => setHediyeler(h => {

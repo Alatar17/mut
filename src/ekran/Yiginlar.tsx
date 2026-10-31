@@ -61,7 +61,6 @@ export function OrtaYigin({ kartlar, carpan }: { kartlar: KartTipi[]; carpan?: n
           </div>
         ))}
       </div>
-      <span className="rozet">{kartlar.length}</span>
       {carpan !== undefined && (
         <span className="orta-puan">
           <Puan deger={yiginPuani(varanlar) * carpan} bos={varanlar.length === 0} />

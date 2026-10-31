@@ -723,10 +723,28 @@ describe('bomba eli (10)', () => {
     expect(i.oyuncular[2].ceza).toEqual([k(5, 'sinek'), k(6, 'kupa'), k(6)])
     expect(i.bomba?.sahip).toBe(2)
   })
-  it('ortadan yakalama ve başkasının al-ilerlet yapması bombayı taşımaz', () => {
-    const d = bomba({ mut: [], avuclar: [[k(5), k(9)], [k(5, 'karo'), k(6)], [k(7)]], cezalar: [[k(5, 'kupa')], [], [k(5, 'sinek')]], orta: [k(9, 'kupa')] })
+  it("bomba sahibi ortadan ya da Mut'tan yakalayıp yollarsa bomba gider; boşa atmak ve eksi elde kendine almak taşımaz", () => {
+    const d = bomba({ mut: [k(7, 'kupa')], avuclar: [[k(5), k(9), k(7), k(4)], [k(6)], [k(8)]], orta: [k(9, 'kupa')] })
     d.bomba = { sahip: 0, kartlar: [k(10, 'kupa'), k(10)] }
-    expect(hamleYap(d, { tip: 'ortayaAt', kart: 1 }).bomba?.sahip).toBe(0)
+    const orta = hamleYap(d, { tip: 'ortayaAt', kart: 1 })
+    expect(orta.bomba?.sahip).toBe(1)
+    expect(orta.blok).toBeUndefined()
+    expect(hamleYap(d, { tip: 'mutEslestir', kart: 2 }).bomba?.sahip).toBe(1)
+    const bos = bomba({ mut: [], avuclar: [[k(4)], [k(6)], [k(8)]], orta: [k(9, 'kupa')] })
+    bos.bomba = { sahip: 0, kartlar: [k(10, 'kupa'), k(10)] }
+    expect(hamleYap(bos, { tip: 'ortayaAt', kart: 0 }).bomba?.sahip).toBe(0)
+    const eksi = structuredClone(d)
+    eksi.eksi = true
+    expect(hamleYap(eksi, { tip: 'ortayaAt', kart: 1 }).bomba?.sahip).toBe(0)
+  })
+  it('ortadan yakalayıp yollanan bomba blokta kartlarla geri döner', () => {
+    const d = bomba({ mut: [], avuclar: [[k(9), k(4)], [k(2), k(6)], [k(8)]], orta: [k(9, 'kupa')] })
+    d.bomba = { sahip: 0, kartlar: [k(10, 'kupa'), k(10)] }
+    const b = hamleYap(d, { tip: 'ortayaAt', kart: 0 })
+    expect(b.blok).toEqual({ hedef: 1, gonderen: 0, adet: 2, bombaIle: true })
+    expect(hamleYap(b, { tip: 'blok', kart: 0 }).bomba?.sahip).toBe(0)
+  })
+  it('başkasının al-ilerlet yapması bombayı taşımaz', () => {
     // Soldaki C (2), sıradakinin (benim) yığınımdan alıp B'ye ilerletir; bomba bende kalır.
     const c = bomba({ mut: [], avuclar: [[k(4)], [k(6)], [k(5, 'karo')]], cezalar: [[k(5, 'kupa')], [], []], sira: 2 })
     c.bomba = { sahip: 0, kartlar: [k(10, 'kupa'), k(10)] }
@@ -793,6 +811,16 @@ describe('Kral (Papaz)', () => {
     const c = hamleYap({ ...s, sira: 0, oyuncular: s.oyuncular.map((o, i) => (i === 0 ? { ...o, avuc: [k(3, 'sinek')] } : o)) }, { tip: 'alIlerlet', kart: 0 })
     expect(c.oyuncular[1].ceza).toEqual([k(9)])
     expect(c.oyuncular[2].ceza).toEqual([k(13), k(3), k(3, 'kupa'), k(3, 'sinek')])
+  })
+  it("bomba sahibi Papaz'la ilk yolladığı kartlarla bombayı da yollar; sonraki yollamalar bombasız", () => {
+    const d0 = kralli({ avuclar: [[k(13), k(4)], [k(6)], [k(7)]], cezalar: [[], [k(3), k(3, 'kupa'), k(9)], [k(5)]] })
+    d0.bombaEli = true
+    d0.bomba = { sahip: 0, kartlar: [k(10, 'kupa'), k(10)] }
+    const d = hamleYap(d0, { tip: 'kral', kart: 0 })
+    const al = hamleYap(d, { tip: 'kralAl', kart: -1, yigin: 'ceza:1', bas: 0, adet: 2, gonder: 2 })
+    expect(al.bomba?.sahip).toBe(2)
+    const son = hamleYap(al, { tip: 'kralBitir', kart: -1, gonder: 1 })
+    expect(son.bomba?.sahip).toBe(2)
   })
   it('Mut Papazı masadayken Papaz ortaya boşa atılamaz; yokken atılabilir; Kral eli değilse güç yok', () => {
     expect(tipler(kralli({ avuclar: [[k(13)], [k(6)], [k(7)]] }), 0)).toEqual(['kral'])

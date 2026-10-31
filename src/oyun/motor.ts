@@ -56,7 +56,8 @@ export interface Durum {
   // Kral eli (Mut kartlarında Papaz, 6.9): avuçtaki Papaz yığınların içinden kart alır.
   kralEli: boolean
   // Kullanılmakta olan Kral gücü: oynanan Papaz ve Mut'tan alınan Papaz'lar, her biri bir güç. Bitene kadar sıra oyuncuda.
-  kral?: { oyuncu: number; papazlar: Kart[] }
+  // yolladi: bu Kral'la birine kart yollandı (bomba sadece ilk yollamayla gider, 6.8 madde 7).
+  kral?: { oyuncu: number; papazlar: Kart[]; yolladi?: true }
   // Masa ayarları (kurucu oyun başında seçer, durumla herkese gider; yoksa kapalı): deste penceresi açılabilir,
   // ceza yığınlarının (bomba elinde orta yığının da) puanı görünür.
   destePenceresi?: true
@@ -381,10 +382,6 @@ export function hamleYap(eski: Durum, h: Hamle, dogrula = true): Durum {
   let nereye = `ceza:${d.eksi ? oyuncu : h.gonder ?? s1}`
   let cekilen: Kart | undefined
   const eskiSahip = d.bomba?.sahip
-  // Bomba sahibi kendi yığınını boşaltırsa, başkasına eklerse ya da alıp ilerletirse bomba da kartlarla gider;
-  // blokta kartlarla geri döner (6.8 madde 7). Ortadan / Mut'tan yakalamada sahibinde kalır.
-  const bombaIle =
-    (eskiSahip === oyuncu && (h.tip === 'cezaBosalt' || h.tip === 'ekle' || h.tip === 'alIlerlet')) || (h.tip === 'blok' && !!d.blok!.bombaIle)
 
   switch (h.tip) {
     case 'ortayaAt':
@@ -454,6 +451,11 @@ export function hamleYap(eski: Durum, h: Hamle, dogrula = true): Durum {
   }
   const [yer, no] = nereye.split(':')
   const hedef = yer === 'orta' ? null : Number(no)
+  // Bomba sahibi kendi yığınını boşaltırsa, başkasına eklerse, alıp ilerletirse ya da ortadan / Mut'tan yakalayıp
+  // birine yollarsa bomba da kartlarla gider; blokta kartlarla geri döner (6.8 madde 7).
+  const bombaIle =
+    (eskiSahip === oyuncu && yer === 'ceza' && ['cezaBosalt', 'ekle', 'alIlerlet', 'ortayaAt', 'mutEslestir'].includes(h.tip)) ||
+    (h.tip === 'blok' && !!d.blok!.bombaIle)
   let yigin = d.orta
   if (yer === 'bomba') {
     d.bomba ??= { sahip: hedef!, kartlar: [] }
@@ -489,8 +491,9 @@ export function hamleYap(eski: Durum, h: Hamle, dogrula = true): Durum {
 }
 
 // Kral (6.9, 6.9.1). kral: Papaz avuçtan, Mut'taki Papaz'lar da güce katılır; sıra oyuncuda kalır.
-// kralAl: gruptan önce bir Papaz altına girip gruba yapışır, hepsi gonder'in yığınına; bloklanamaz. Bomba sahibi kendi
-// yığınından gönderirse bomba da gider (6.8 madde 7). kralBitir: kalan Papaz'lar gonder'e. Güç bitince sıra 6.6 ile.
+// kralAl: gruptan önce bir Papaz altına girip gruba yapışır, hepsi gonder'in yığınına; bloklanamaz. kralBitir: kalan
+// Papaz'lar gonder'e. Bomba sahibi bu Kral'la ilk kez birine kart yollayınca bomba da gider, sonraki yollamalar
+// bombasız (6.8 madde 7, kullanıcı kararı 2026-10-31). Güç bitince sıra 6.6 ile.
 function kralHamlesi(d: Durum, h: Hamle) {
   const oyuncu = d.sira
   d.blok = undefined
@@ -504,12 +507,15 @@ function kralHamlesi(d: Durum, h: Hamle) {
   }
   const papazlar = d.kral!.papazlar
   const hedef = d.oyuncular[h.gonder!].ceza
+  if (h.gonder !== oyuncu && !d.kral!.yolladi) {
+    d.kral!.yolladi = true
+    if (d.bomba?.sahip === oyuncu) d.bomba.sahip = h.gonder!
+  }
   if (h.tip === 'kralAl') {
     const papaz = papazlar.shift()!
     const alinan = yiginKartlari(d, h.yigin!).splice(h.bas!, h.adet!)
     hedef.push(papaz, ...alinan)
     d.yapisik.push(kartAdi(papaz))
-    if (h.yigin === `ceza:${oyuncu}` && d.bomba?.sahip === oyuncu) d.bomba.sahip = h.gonder!
     d.sonHamle = { oyuncu, kart: papaz, eslesen: alinan, nereden: h.yigin!, nereye: `ceza:${h.gonder}`, kral: true }
   } else {
     const [papaz, ...kalan] = papazlar.splice(0)

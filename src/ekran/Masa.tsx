@@ -61,6 +61,9 @@ const DUYURU_ADI: Record<string, string> = { Kral: 'Kral eli', Bomba: 'Bomba eli
 // Ceza yığınının puanı: yanında / zeminin üst kenarında / köşede rozet (masa sınıfı). Kullanıcı Görünüş menüsünde seçecek.
 const PUAN_YERLERI = { Yanında: 'puan-yaninda', Kenarda: 'puan-kenarda', Rozet: 'puan-rozette' }
 type PuanYeri = keyof typeof PUAN_YERLERI
+// Geçici (kullanıcı seçince kalkacak): puan kağıdının yazı tipi (masa sınıfı, stil.css).
+const KAGIT_YAZILARI = { 'El yazısı': '', Düz: 'kagit-duz' }
+type KagitYazisi = keyof typeof KAGIT_YAZILARI
 // Deste penceresinde kendi avucumdaki kartlar.
 const KARTLARIM: Record<KartlarimGorunusu, true> = { Soluk: true, Çerçeveli: true }
 // Avucun yukarı kayması (masa değişkeni --el-kayma, stil.css). Varsayılan +10 px (kullanıcı kararı, 2026-10-22).
@@ -547,7 +550,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const [puanlarAcik, setPuanlarAcik] = useState(false)
   // Menüler: geliştirme menüleri Test (ayarlar), Dene (hazır kurulmuş eller) ve sol alttaki Görünüş (görsel seçenekler); sağ üstte oyun menüsü
   // (☰) ve onun "Oyunu bitir" onayı. Aynı anda biri açık.
-  const [menu, setMenu] = useState<'test' | 'dene' | 'gorunus' | 'oyun' | 'bitir' | 'soz' | 'sozIsim' | 'hediyeIsim' | null>(null)
+  const [menu, setMenu] = useState<'test' | 'dene' | 'gorunus' | 'oyun' | 'bitir' | 'soz' | 'sozIsim' | null>(null)
   // Konuşma balonları (oyuncu → söz); her söz BALON_SURESI kadar görünür.
   const [balonlar, setBalonlar] = useState<Record<number, { yazi: string; no: number }>>({})
   const balonNo = useRef(0)
@@ -597,8 +600,12 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     const kaynak = hediyeYeri(kimden, 0)
     return [...h, { no: ++balonNo.current, kimden, kime, ad, ...hedef, dx: kaynak.x - hedef.x, dy: kaynak.y - hedef.y }]
   })
-  const hediyeGonder = (kime: number) => {
-    setMenu(null)
+  // Hediye seçilince menü kapanır, gönderilebilecek rakiplerin ismi parlar; birine dokununca ona gider, boşa dokununca vazgeçilir.
+  const [hediyeSecimi, setHediyeSecimi] = useState(false)
+  const hediyeAlabilir = (i: number) => !hediyeler.some(h => h.kimden === 0 && h.kime === i)
+  const hediyeGonder = (kime: number | null) => {
+    setHediyeSecimi(false)
+    if (kime === null || kime === 0 || !hediyeAlabilir(kime)) return
     hediyeGoster(0, kime, secilenHediye)
     if (ag) oyunGonder({ tip: 'hediye', kimden: 0, kime, ad: secilenHediye })
   }
@@ -654,6 +661,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     if (c) navigator.vibrate?.(Array.isArray(desen) ? desen.map((ms, i) => (i % 2 ? ms : Math.round(ms * c))) : Math.round(desen * c))
   }
   const [puanYeri, setPuanYeri] = useKayitli<PuanYeri>('puanYeri', 'Yanında')
+  const [kagitYazisi, setKagitYazisi] = useKayitli<KagitYazisi>('kagitYazisi', 'El yazısı')
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
   const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', '+10 px')
   const elYuksekligi: ElYuksekligi = elYuksekligiKayit in EL_YUKSEKLIKLERI ? elYuksekligiKayit : '+10 px'
@@ -1333,7 +1341,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   return (
     <GizliKartlar.Provider value={gizli}>
     <div
-      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (YAPISIK_GORUNUSLERI[yapisikGorunusu] ?? '') + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (JQK_GORUNUSLERI[jqkGorunusu] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '')}
+      className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (YAPISIK_GORUNUSLERI[yapisikGorunusu] ?? '') + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (JQK_GORUNUSLERI[jqkGorunusu] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '') + ' ' + (KAGIT_YAZILARI[kagitYazisi] ?? '')}
       ref={masaRef}
       style={{ '--el-kayma': EL_YUKSEKLIKLERI[elYuksekligi], '--kart-olcek': KART_BOYUTLARI[kartBoyutu] } as CSSProperties}
       // Oyunda sağ tık menüsü yok (sürüklemeyi bölüyordu).
@@ -1405,8 +1413,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         </div>
       )}
 
-      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2)} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(2)} baslayan={baslayan(2)} puanGizli={!d.puanGoster} />
-      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1)} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(1)} baslayan={baslayan(1)} puanGizli={!d.puanGoster} />
+      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2) || (hediyeSecimi && hediyeAlabilir(2))} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(2)} baslayan={baslayan(2)} puanGizli={!d.puanGoster} />
+      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1) || (hediyeSecimi && hediyeAlabilir(1))} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(1)} baslayan={baslayan(1)} puanGizli={!d.puanGoster} />
 
       <div className="benim-ceza">
         <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} puanGizli={!d.puanGoster} />
@@ -1464,6 +1472,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       {kurucuYok && <div className="uzakta">Kurucu bekleniyor…</div>}
 
       {hedefSecimi && <div className="secim-arka" onClick={e => hedefSecildi(oyuncuAltinda(e.clientX, e.clientY))} />}
+      {hediyeSecimi && <div className="secim-arka" onClick={e => hediyeGonder(oyuncuAltinda(e.clientX, e.clientY))} />}
       {hedefSecimi && (
         <SecimKarti
           kart={hedefSecimi.kart}
@@ -1559,7 +1568,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           ))}
         </div>
       )}
-      {(menu === 'soz' || menu === 'sozIsim' || menu === 'hediyeIsim') && (
+      {(menu === 'soz' || menu === 'sozIsim') && (
         <div className={'oyun-menu soz-menu' + (menu === 'soz' ? ' genis' : '')}>
           {menu === 'soz' && (
             <form className="soz-yaz" onSubmit={e => { e.preventDefault(); yaziGonder() }}>
@@ -1569,12 +1578,10 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           )}
           {menu === 'soz' && (
             <div className="hediye-satiri">
-              {HEDIYELER.map(h => <button key={h} className="test-satir" onClick={() => { setSecilenHediye(h); setMenu('hediyeIsim') }}><img src={hediyeResmi(h)} alt={h} /></button>)}
+              {HEDIYELER.map(h => <button key={h} className="test-satir" disabled={![1, 2].some(hediyeAlabilir)} onClick={() => { setSecilenHediye(h); setMenu(null); setHediyeSecimi(true) }}><img src={hediyeResmi(h)} alt={h} /></button>)}
             </div>
           )}
-          {menu === 'hediyeIsim'
-            ? [1, 2].map(i => <button key={i} className="test-satir" disabled={hediyeler.some(h => h.kimden === 0 && h.kime === i)} onClick={() => hediyeGonder(i)}>{gorunen.oyuncular[i].ad}</button>)
-            : menu === 'soz'
+          {menu === 'soz'
             ? HAZIR_SOZLER.map(s => <button key={s} className="test-satir" onClick={() => sozSec(s)}>{s}</button>)
             : KIZ_ISIMLERI.map(i => <button key={i} className="test-satir" onClick={() => sozGonder(kizSozu(i))}>{kizSozu(i)}</button>)}
         </div>
@@ -1588,6 +1595,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
 
       {menu === 'gorunus' && (
         <div className="test-panel gorunus-panel">
+          <button className="test-satir" onClick={() => sonrakiSecenek(KAGIT_YAZILARI, kagitYazisi, setKagitYazisi)}>
+            Puan kağıdı yazısı <span className="test-deger">{kagitYazisi}</span>
+          </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>
             El yüksekliği <span className="test-deger">{elYuksekligi}</span>
           </button>

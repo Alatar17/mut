@@ -100,7 +100,8 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
 .ucan-kart { position: absolute; z-index: 18; pointer-events: none; }
 
 .orta-yigin { position: absolute; left: 50%; top: 156px; transform: translateX(-50%); }
-.orta-yigin .rozet { right: -30px; bottom: 0; }
+/* Benim bombam avucun yanında ekranın altına yakın: sayı üst köşede, taşmasın. */
+.bomba-0 .rozet { top: -8px; bottom: auto; }
 .orta-puan { position: absolute; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); }
 
 /* ---- Bomba yığını: sahibinin ceza yığınının yanında, yanıp söner ---- */
@@ -363,8 +364,10 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   min-width: 340px; padding: 16px 20px; border-radius: 4px;
   background: var(--kagit); color: var(--kagit-yazi);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
-  font-family: "Comic Sans MS", "Segoe Print", cursive;
+  font-family: "Patrick Hand", cursive;
 }
+/* Geçici (Görünüş menüsü, kullanıcı seçince kalkacak): puan kağıdında düz yazı. */
+.kagit-duz .puan-kagidi { font-family: "Barlow Condensed", sans-serif; }
 .puan-kagidi table { width: 100%; border-collapse: collapse; font-size: 15px; }
 .puan-kagidi th, .puan-kagidi td { padding: 5px 10px; text-align: center; border-bottom: 1px solid var(--kagit-cizgi); }
 .puan-kagidi th + th, .puan-kagidi td + td { border-left: 1px solid var(--kagit-cizgi); }

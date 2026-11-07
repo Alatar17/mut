@@ -2,14 +2,15 @@
 // Her tür için birkaç ses vardır; her seferinde rastgele biri çalar (arka arkaya aynısı gelmez), hız hafif oynar.
 const TURLER = {
   // Kart atma / yığına inme: ElevenLabs'te üretilen 4 ses (baştaki sessizlik kırpıldı, seviyeleri eşitlendi).
-  at: { dosyalar: ['at1', 'at2', 'at3', 'at4'], ses: 1 },
-  // Kart dağıtma: ElevenLabs'te üretilen 8 ses (1-4 "single playing card", 5-8 "quick soft flick"); 0,3 sn'ye kırpıldı.
-  dagit: { dosyalar: ['dagit1', 'dagit2', 'dagit3', 'dagit4', 'dagit5', 'dagit6', 'dagit7', 'dagit8'], ses: 0.5 },
+  at: { dosyalar: ['at1', 'at2', 'at3', 'at4'], ses: 0.5 },
+  // Kart dağıtma: şimdilik kapalı (tek kart sesleri dağıtmada atma gibi geldi, uzun dağıtma sesleri de uymadı).
+  // public/ses/dagit1-8.mp3 duruyor; denemek için dosya adları buraya yazılır.
+  dagit: { dosyalar: [] as string[], ses: 0.5 },
 }
 export type SesTuru = keyof typeof TURLER
 
 let ctx: AudioContext | null = null
-let acik = true
+let acik = false
 const tamponlar = new Map<string, AudioBuffer>()
 const sonCalan = new Map<SesTuru, string>()
 
@@ -43,7 +44,7 @@ if (typeof document !== 'undefined') {
 
 // gecikmeMs sonra tür için rastgele bir ses çalar.
 export function sesCal(tur: SesTuru, gecikmeMs = 0) {
-  if (!acik) return
+  if (!acik || TURLER[tur].dosyalar.length === 0) return
   const c = baglam()
   if (!c || c.state !== 'running') return
   const t = TURLER[tur]

@@ -696,7 +696,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Elle oynanan koltuk: ben; botlar kapalıyken başka telefondan oynanmayan koltuklar.
   const elleOynanir = (i: number) => i === 0 || (!botlarOtomatik && !uzak.includes(i))
   const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)
-  const [sesAcik, setSesAcik] = useKayitli('sesAcik', true)
+  const [sesAcik, setSesAcik] = useKayitli('sesAcik', false)
   sesAcKapa(sesAcik)
   const [cezaAraligiKayit, setCezaAraligi] = useKayitli<CezaAraligi>('cezaAraligi', '10 px')
   // 8 px kaldırıldı (2026-10-27); kayıtlıysa varsayılana döner.
@@ -1627,6 +1627,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={() => sonrakiSecenek(TITRESIMLER, titresim, v => { setTitresim(v); navigator.vibrate?.(Math.round(70 * TITRESIMLER[v])) })}>
             Titreşim <span className="test-deger">{titresim}</span>
           </button>
+          <TestSecenegi ad="Ses" acik={sesAcik} degistir={setSesAcik} />
           <button className="test-satir" onClick={() => sonrakiSecenek(KART_BOYUTLARI, kartBoyutu, setKartBoyutu)}>
             Kart boyutu <span className="test-deger">{kartBoyutu}</span>
           </button>
@@ -1877,7 +1878,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={hediyeYeriDegistir}>
             Çay yeri <span className="test-deger">{hediyeYeriSecimi}</span>
           </button>
-          <TestSecenegi ad="Ses" acik={sesAcik} degistir={setSesAcik} />
           <TestSecenegi ad="Bot kartlarını kapat"acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
           <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_ARALIKLARI, cezaAraligi, setCezaAraligi)}>

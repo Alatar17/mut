@@ -810,15 +810,25 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     try {
       if (secenekler.length > 1) h = { ...h, gonder: await hedefSec(taban, h, secenekler) }
       // Çekmede hangi kartın alınacağı ekranda seçilir; hamle ondan sonra yapılır.
-      if (h.tip === 'cek') h = { ...h, cekilen: await cekilecekKart(taban, h, elle) }
+      if (h.tip === 'cek') {
+        // Misafirin çekmesi: kart misafirde seçildi, sonuç hemen yollanır; misafir kurucudaki karma gösterisini beklemez
+        // (beklerken bıraktığı kart avucunun üstünde ters takılı kalıyordu).
+        if (h.cekilen !== undefined && !misafir) {
+          yeni = hamleYap(taban, h)
+          yayinla({ tip: 'hamle', hamle: h, durum: yeni })
+        }
+        h = { ...h, cekilen: await cekilecekKart(taban, h, elle) }
+      }
       // Misafir: hamle kurucuya gider; sonucu kurucudan gelince gösterilir (gelenGoster).
       if (misafir) {
         onayBekleniyor.current = { elle }
         oyunGonder({ tip: 'oyna', hamle: h })
         return
       }
-      yeni = hamleYap(taban, h)
-      yayinla({ tip: 'hamle', hamle: h, durum: yeni })
+      if (!yeni) {
+        yeni = hamleYap(taban, h)
+        yayinla({ tip: 'hamle', hamle: h, durum: yeni })
+      }
       await hamleyiGoster(eski, yeni, elle)
       bitir(yeni)
     } catch (hata) {
@@ -888,6 +898,11 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     await gec(ara)
     setBotKalkik(null)
     if (hedef === 0) setKalkikKart(null)
+    // Hedefte tek kart varsa karma ve seçim yok: o kart kendiliğinden çekilir.
+    if (taban.oyuncular[hedef].avuc.length === 1) {
+      cekmeKaynak.current = konumOlc(masaRef.current!, kartKimligi(taban.oyuncular[hedef].avuc[0]), `avuc:${hedef}`)
+      return 0
+    }
     // Kartlar ters dönmüşken sıraları gerçekten karılır: dokunulan yerdeki kart gerçekten o kart olur.
     const karisik = structuredClone(ara)
     const avuc = karistir(karisik.oyuncular[hedef].avuc, { tohum: Math.floor(Math.random() * 2 ** 31) })

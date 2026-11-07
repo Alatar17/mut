@@ -218,14 +218,41 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   padding: 8px 22px; border-radius: 30px; font-size: 34px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase;
   background: var(--vurgu); color: var(--rozet); box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
-/* Küçük seçeneği: el / tur yazısı küçük (Görünüş menüsü, geçici). */
-.el-duyurusu.kucuk span.tur-yazisi { font-size: 22px; padding: 6px 16px; }
-/* Kız blöfü, Parlama seçeneği: kartı çekilenin gösterdiği kart parlar. */
-.blof-parlama > .kart { animation: blof-parla 0.8s ease-in-out infinite alternate; }
-@keyframes blof-parla {
-  from { filter: drop-shadow(0 0 2px var(--vurgu)); }
-  to { filter: drop-shadow(0 0 10px var(--vurgu)) drop-shadow(0 0 4px var(--vurgu)); }
+/* Tur yazısı: kural duyurusundan farklı görünüş (Görünüş menüsü, geçici). Son tur turuncu ve biraz uzun. */
+.tur-duyurusu {
+  position: absolute; left: 50%; top: 48%; transform: translate(-50%, -50%); z-index: 24; pointer-events: none; white-space: nowrap;
+  animation: tur-belir 1.6s ease-out forwards;
 }
+.tur-duyurusu.son { animation-duration: 2.4s; }
+.tur-duz span { font-size: 56px; font-weight: 300; letter-spacing: 8px; text-transform: uppercase; color: var(--yazi); text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6); }
+.tur-serit span {
+  display: flex; align-items: center; gap: 14px; font-size: 22px; font-weight: 600; letter-spacing: 6px; text-transform: uppercase;
+  color: var(--yazi); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+.tur-serit span::before, .tur-serit span::after { content: ''; width: 90px; height: 2px; background: var(--yazi-soluk); }
+.tur-duyurusu.son span { color: var(--son-tur); }
+.tur-serit.son span::before, .tur-serit.son span::after { background: var(--son-tur); }
+@keyframes tur-belir {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.92); }
+  20%, 75% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+/* Köşe: sağ üstteki tur yazısı büyüyüp parlar. */
+.tur-kose-vurgu { display: inline-block; transform-origin: 100% 0; color: var(--vurgu); animation: tur-kose 1.6s ease-out forwards; }
+.tur-kose-vurgu.son { color: var(--son-tur); animation-duration: 2.4s; }
+@keyframes tur-kose {
+  0%, 100% { transform: scale(1); text-shadow: none; }
+  20%, 70% { transform: scale(1.7); text-shadow: 0 0 10px currentColor; }
+}
+/* Kız blöfü: kartı çekilenin gösterdiği kartın yanında zıplayan parmak (karta doğru). */
+.blof-parmak {
+  position: absolute; z-index: 5; font-size: 26px; line-height: 1; pointer-events: none;
+  animation: blof-zipla 0.5s ease-in-out infinite alternate;
+}
+.avuc-kart .blof-parmak { left: 50%; top: -32px; margin-left: -13px; --zipla: 0, 6px; }
+.rakip-avuc.sol .blof-parmak { left: 100%; top: 50%; margin-top: -13px; --zipla: -6px, 0; }
+.rakip-avuc.sag .blof-parmak { right: 100%; top: 50%; margin-top: -13px; --zipla: 6px, 0; }
+@keyframes blof-zipla { to { transform: translate(var(--zipla)); } }
 @keyframes duyuru-ortada {
   0% { opacity: 0; transform: translate(-50%, -50%) scale(0.6); }
   15% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); }

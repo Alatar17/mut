@@ -45,6 +45,9 @@ export type OyunMesaji =
   | { tip: 'hediye'; kimden: number; kime: number; ad: string }
   // Avuçta kalkan kart: sadece soldan kaçıncı olduğu gider (kartın kendisi değil); null = indi.
   | { tip: 'kaldir'; oyuncu: number; sira: number | null }
+  // Canlı Kız (insan çekerken): başlarken hamle + karma tohumu (herkeste aynı karma), sonra çekenin kaldırdığı ters kartın sırası.
+  | { tip: 'kizBasla'; hamle: Hamle; tohum: number }
+  | { tip: 'kizKaldir'; sira: number }
 
 type Mesaj =
   | { tip: 'merhaba'; isim: string; kimlik: string }
@@ -112,6 +115,8 @@ function mesajCevir(m: OyunMesaji, k: number): OyunMesaji {
     case 'soz': return { ...m, oyuncu: koltukCevir(m.oyuncu, k) }
     case 'hediye': return { ...m, kimden: koltukCevir(m.kimden, k), kime: koltukCevir(m.kime, k) }
     case 'kaldir': return { ...m, oyuncu: koltukCevir(m.oyuncu, k) }
+    case 'kizBasla': return { ...m, hamle: hamleCevir(m.hamle, k, KOLTUK) }
+    case 'kizKaldir': return m
     default: return { ...m, durum: durumCevir(m.durum, k) }
   }
 }

@@ -84,6 +84,9 @@ type Duraklama = keyof typeof DURAKLAMALAR
 // Kullanıcı Test menüsünde deneyip seçecek.
 // donus: dağıtımda benim kartlarımın inince dönerek açılma süresi.
 const SURE = { kalkma: 250, ucus: 380, dagitimAraligi: 70, donus: 380 }
+// Canlı Kız (ağ): çekilen kartın sırası (misafirde sonrası da) ve bekleyiş.
+type KizSonucu = { cekilen: number; durum?: Durum }
+type CanliKiz = { ceken: number; kalkik: number | null; kaldir?: (i: number) => void; sonuc: Promise<KizSonucu>; al: (s: KizSonucu) => void; iptal: () => void }
 // Blok penceresi süresi (6.5.1); kahve testinde ayarlanacak.
 const BLOK_SURESI = 3000
 // Kurulu kalkan bloklamadan önce parladığı görülsün diye kısa bekleme (ms).
@@ -834,7 +837,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   }
 
   // elle: kartı kullanıcı sürükledi (botun kart kaldırma adımı atlanır).
-  const hamleOyna = async (h: Hamle, elle: boolean) => {
+  // canli: kurucu, misafirin elle çekmesini canlı izler (Kız; sonuç misafirden gelir).
+  const hamleOyna = async (h: Hamle, elle: boolean, canli?: { tohum: number }) => {
     if (mesgulRef.current) return
     const taban = kabulSonrasi(d, h)
     // Serbest elde yakalamanın hedefi verilmediyse ekranda seçilir; tek seçenek varsa kendiliğinden o.
@@ -861,7 +865,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           yeni = hamleYap(taban, h)
           yayinla({ tip: 'hamle', hamle: h, durum: yeni })
         }
-        h = { ...h, cekilen: await cekilecekKart(taban, h, elle) }
+        h = { ...h, cekilen: await cekilecekKart(taban, h, elle, canli) }
+        if (canli) canliKiz.current = null
       }
       // Misafir: hamle kurucuya gider; sonucu kurucudan gelince gösterilir (gelenGoster).
       if (misafir) {
@@ -878,6 +883,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     } catch (hata) {
       // Animasyonda beklenmedik bir hata oyunu kilitlemesin: ekran gerçek duruma döner, oyun sürer.
       console.error(hata)
+      if (canli) canliKiz.current = null
       if (misafir) return kurtar(eski)
       if (!yeni) {
         yeni = hamleYap(taban, h)
@@ -907,6 +913,38 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
 
   // Misafir: kurucuya yolladığım hamlenin sonucu bekleniyor (elle: kartı kullanıcı mı oynadı).
   const onayBekleniyor = useRef<{ elle: boolean } | null>(null)
+  // Canlı Kız (ağda insan çekerken): başkasının çekmesi canlı izlenir. Çekenin kaldırdığı ters kart ve sonuç (çekilen kartın
+  // karılmamış avuçtaki sırası; -1 = rastgele, çeken koptu) mesajla gelir. ceken: kurucuda çekenin koltuğu (misafirde -1).
+  const canliKiz = useRef<CanliKiz | null>(null)
+  const canliKizKur = (ceken: number) => {
+    let al!: CanliKiz['al']
+    let iptal!: () => void
+    const sonuc = new Promise<KizSonucu>((a, r) => {
+      al = a
+      iptal = () => r(new Error('Kız iptal'))
+    })
+    sonuc.catch(() => {})
+    canliKiz.current = { ceken, kalkik: null, sonuc, al, iptal }
+  }
+  // Misafir: başkasının canlı Kız'ı (kurucudan gelen sonuçla biter).
+  const gelenKiz = async (h: Hamle, tohum: number) => {
+    const c = canliKiz.current
+    const eski = d
+    basla()
+    try {
+      if (!c) throw new Error('Canlı Kız yok')
+      await cekilecekKart(kabulSonrasi(eski, h), h, false, { tohum })
+      const { durum } = await c.sonuc
+      await hamleyiGoster(eski, durum!, false)
+      bitir(durum!)
+    } catch (hata) {
+      console.error(hata)
+      kurtar(eski)
+    } finally {
+      canliKiz.current = null
+    }
+  }
+
   // Ağdan gelen hamle: başka telefonda oynandı (ya da misafirsem benim hamlemin kurucudan gelen sonucu).
   const gelenGoster = async (h: Hamle, yeni: Durum) => {
     const benim = onayBekleniyor.current
@@ -928,10 +966,15 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // dokunup kaldırır (fikrini değiştirebilir), birini kendi avucuna sürükleyince alır; başka yere bırakırsa kart
   // geri döner. Bot da önce bir kartı kaldırıp düşünür, bazen başkasına geçer. Süre yok.
   // Dönen: çekilen kartın hedefin karılmamış avucundaki sırası (motora verilir).
-  const cekilecekKart = async (taban: Durum, h: Hamle, elle: boolean) => {
+  // canli: başka telefondaki insanın çekmesi canlı izlenir (karma tohumu ondan gelir).
+  const cekilecekKart = async (taban: Durum, h: Hamle, elle: boolean, canli?: { tohum: number }) => {
     const ceken = taban.sira
     const hedef = h.hedef!
     const kiz = taban.oyuncular[ceken].avuc[h.kart]
+    const tohum = canli?.tohum ?? Math.floor(Math.random() * 2 ** 31)
+    // Ağda elle çekiyorsam herkes canlı izler: aynı tohumla karar, kaldırdığım kartı görür.
+    const yay = elle && !!ag
+    if (yay) oyunGonder({ tip: 'kizBasla', hamle: h, tohum })
     if (!elle) {
       setBotKalkik(kartKimligi(kiz))
       await bekle(SURE.kalkma * carpan)
@@ -942,18 +985,24 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     await gec(ara)
     setBotKalkik(null)
     if (hedef === 0) setKalkikKart(null)
+    else setAgKalkik(a => ({ ...a, [hedef]: null }))
     // Hedefte tek kart varsa karma ve seçim yok: o kart kendiliğinden çekilir.
     if (taban.oyuncular[hedef].avuc.length === 1) {
+      if (canli) await canliKiz.current!.sonuc
       cekmeKaynak.current = konumOlc(masaRef.current!, kartKimligi(taban.oyuncular[hedef].avuc[0]), `avuc:${hedef}`)
       return 0
     }
     // Kartlar ters dönmüşken sıraları gerçekten karılır: dokunulan yerdeki kart gerçekten o kart olur.
     const karisik = structuredClone(ara)
-    const avuc = karistir(karisik.oyuncular[hedef].avuc, { tohum: Math.floor(Math.random() * 2 ** 31) })
+    const avuc = karistir(karisik.oyuncular[hedef].avuc, { tohum })
     setTers(hedef)
     await gec(karisik)
     await avucuKar(masaRef.current!, hedef, KARMA_SURESI * carpan)
-    const kaldir = (i: number) => (hedef === 0 ? setKalkikKart(i) : setBotKalkik(kartKimligi(avuc[i])))
+    const kaldir = (i: number) => {
+      if (hedef === 0) setKalkikKart(i)
+      else setBotKalkik(kartKimligi(avuc[i]))
+      if (yay) oyunGonder({ tip: 'kizKaldir', sira: i })
+    }
     let sira: number
     // Kartı elle oynayan seçer (bot hamlesi değilse); süre biterse rastgele kart çekilir.
     if (elle) {
@@ -972,6 +1021,21 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       })
       clearTimeout(zamanlayici)
       setKizSuresi(false)
+    } else if (canli) {
+      // Başkasının elle çekmesi: kaldırdığı kart burada da kalkar; sonuç gelince çektiği kart (kalkık değilse önce kalkar) uçar.
+      const c = canliKiz.current!
+      c.kaldir = kaldir
+      if (c.kalkik !== null) kaldir(c.kalkik)
+      const { cekilen } = await c.sonuc
+      c.kaldir = undefined
+      const gercekKart = taban.oyuncular[hedef].avuc[cekilen]
+      const gercek = gercekKart ? avuc.findIndex(k => kartKimligi(k) === kartKimligi(gercekKart)) : -1
+      sira = gercek < 0 ? Math.floor(Math.random() * avuc.length) : gercek
+      if (sira !== c.kalkik) {
+        kaldir(sira)
+        await bekle(BOT_SECIM_SURESI * carpan)
+      }
+      cekmeKaynak.current = konumOlc(masaRef.current!, kartKimligi(avuc[sira]), `avuc:${hedef}`)
     } else {
       sira = Math.floor(Math.random() * avuc.length)
       kaldir(sira)
@@ -1229,11 +1293,31 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const [gelenler, setGelenler] = useState<[OyunMesaji, number][]>([])
   // Ağ oyununda rakiplerin kaldırdığı kart (koltuk → kart kimliği). Benim kaldırdığım herkese gider.
   const [agKalkik, setAgKalkik] = useState<Record<number, string | null>>({})
+  // Kız benden çekerken kalkan kart çekenin seçimidir (karılmış sırada), gönderilmez.
   useEffect(() => {
-    if (ag) oyunGonder({ tip: 'kaldir', oyuncu: 0, sira: kalkikKart })
+    if (ag && ters !== 0) oyunGonder({ tip: 'kaldir', oyuncu: 0, sira: kalkikKart })
   }, [kalkikKart])
   // Sözler sıra beklemez; kurucu gelen sözü gönderen dışındaki misafirlere iletir.
   useEffect(() => (ag ? oyunuDinle((m, kimden) => {
+    // Canlı Kız: başlangıç sıraya girer (önceki hamleler bitince gösterilir), kaldırma ve sonuç beklemeden işlenir.
+    if (m.tip === 'kizBasla' || m.tip === 'kizKaldir') {
+      if (kurucu) [1, 2].forEach(k => k !== kimden && oyunGonder(m, k))
+      if (m.tip === 'kizBasla') {
+        canliKizKur(kurucu ? kimden : -1)
+        return setGelenler(g => [...g, [m, kimden]])
+      }
+      const c = canliKiz.current
+      if (c) {
+        c.kalkik = m.sira
+        c.kaldir?.(m.sira)
+      }
+      return
+    }
+    const c = canliKiz.current
+    if (c && kurucu && m.tip === 'oyna' && m.hamle.tip === 'cek' && kimden === c.ceken) return c.al({ cekilen: m.hamle.cekilen ?? -1 })
+    if (c && misafir && m.tip === 'hamle' && m.hamle.tip === 'cek' && !onayBekleniyor.current) return c.al({ cekilen: m.hamle.cekilen ?? -1, durum: m.durum })
+    // Kurucudan düzeltme ya da yeni el gelirse bekleyen canlı Kız bırakılır (ekran sonra o duruma geçer).
+    if (c && misafir && (m.tip === 'durum' || m.tip === 'dagit')) c.iptal()
     if (m.tip !== 'soz' && m.tip !== 'hediye' && m.tip !== 'kaldir') return setGelenler(g => [...g, [m, kimden]])
     if (m.tip === 'kaldir') {
       const kart = m.sira === null ? undefined : gorunenRef.current.oyuncular[m.oyuncu]?.avuc[m.sira]
@@ -1251,6 +1335,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   }) : undefined), [])
   useEffect(() => (kurucu ? koltuklariDinle((k, bagli) => {
     if (bagli) oyunGonder({ tip: 'durum', durum: sonYayin.current ?? dRef.current }, k)
+    // Kız'la çekerken koptuysa rastgele kart çekilir.
+    else if (canliKiz.current?.ceken === k) canliKiz.current.al({ cekilen: -1 })
     soyle(k, bagli ? 'Döndü' : 'Koptu · bot oynuyor')
   }) : undefined), [])
   useEffect(() => {
@@ -1264,6 +1350,16 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       const tam = m.hamle.gonder === undefined ? { ...m.hamle, gonder: ayniHamleler(t, m.hamle)[0]?.gonder } : m.hamle
       if (d.asama === 'oyun' && t.sira === kimden && (!d.blok || d.blok.hedef === kimden) && hamleGecerliMi(t, tam)) hamleOyna(tam, false)
       else yayinla({ tip: 'durum', durum: d })
+    } else if (m.tip === 'kizBasla') {
+      // Kurucu: misafirin Kız'ı geçerliyse canlı izlenir, sonuç gelince hamle yapılıp herkese gider.
+      if (kurucu) {
+        const t = kabulSonrasi(d, m.hamle)
+        if (d.asama === 'oyun' && t.sira === kimden && (!d.blok || d.blok.hedef === kimden) && hamleGecerliMi(t, m.hamle)) hamleOyna(m.hamle, false, { tohum: m.tohum })
+        else {
+          canliKiz.current = null
+          yayinla({ tip: 'durum', durum: d })
+        }
+      } else gelenKiz(m.hamle, m.tohum)
     } else if (m.tip === 'hamle') gelenGoster(m.hamle, m.durum)
     else if (m.tip === 'dagit') {
       setPuanlarAcik(false)

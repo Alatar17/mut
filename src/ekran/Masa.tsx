@@ -1832,6 +1832,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={() => sonrakiSecenek(SON_TUR_GORUNUSLERI, sonTurGorunusu, setSonTurGorunusu)}>
             Son tur <span className="test-deger">{sonTurGorunusu}</span>
           </button>
+          <button className="test-satir" onClick={() => { setMenu(null); turGoster('Son tur', true) }}>Son tur dene</button>
           <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>
             El yüksekliği <span className="test-deger">{elYuksekligi}</span>
           </button>

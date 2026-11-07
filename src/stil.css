@@ -376,7 +376,15 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   background: var(--kagit); color: var(--kagit-yazi);
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
   font-family: "Barlow Condensed", sans-serif;
+  max-height: 370px; display: flex; flex-direction: column;
 }
+/* El satırları sığmazsa kayar; isimler üstte, Toplam altta sabit. */
+.kagit-tablo { min-height: 0; overflow-y: auto; }
+.puan-kagidi thead th { position: sticky; top: 0; background: var(--kagit); }
+.puan-kagidi tfoot td { position: sticky; bottom: 0; background: var(--kagit); }
+/* Son oynanan el: el bitince kim ne yedi hemen görünsün. */
+.puan-kagidi tr.son-el td { background: rgba(240, 185, 40, 0.38); font-weight: 800; }
+.puan-kagidi tr.son-el td:first-child { color: var(--kagit-yazi); }
 .puan-kagidi table { width: 100%; border-collapse: collapse; font-size: 15px; }
 .puan-kagidi th, .puan-kagidi td { padding: 5px 10px; text-align: center; border-bottom: 1px solid var(--kagit-cizgi); }
 .puan-kagidi th + th, .puan-kagidi td + td { border-left: 1px solid var(--kagit-cizgi); }

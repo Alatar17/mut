@@ -25,6 +25,8 @@ type HamleSuresi = keyof typeof HAMLE_SURELERI
 const UYARI_SURESI = 10000
 // Kız ile çekmede kart seçme süresi; bitince rastgele kart çekilir (hamle süresi kapalıysa süre yok).
 const KIZ_SURESI = 10000
+// Arkadaşlarla oynarken el bitince "Sonraki el" düğmesi bu kadar saniye basılmaz.
+const SONRAKI_EL_BEKLEMESI = 3
 // Üst üste bu kadar süre biterse oyuncu "uzakta" sayılır, ekrana dokunana kadar yerine bot oynar.
 const UZAKTA_SAYISI = 2
 
@@ -225,17 +227,31 @@ function kazananYazisi(d: Durum) {
 }
 
 // sonrakiEl / yeniOyun verilmezse (misafir) yerine "Kurucu başlatacak" yazar.
-function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun }: { d: Durum; kapat: () => void; sonrakiEl?: () => void; yeniOyun?: () => void }) {
+// bekle: arkadaşlarla oynarken "Sonraki el" ilk 3 saniye basılmaz (herkes puanlara baksın); botlarla oynarken yok.
+// El satırları sığmazsa sadece onlar kayar (isimler, Toplam ve düğmeler görünür kalır); açılınca en alta, son ele iner.
+function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun, bekle }: { d: Durum; kapat: () => void; sonrakiEl?: () => void; yeniOyun?: () => void; bekle: boolean }) {
+  const [kalan, setKalan] = useState(bekle && d.asama === 'elSonu' ? SONRAKI_EL_BEKLEMESI : 0)
+  useEffect(() => {
+    if (kalan <= 0) return
+    const z = setTimeout(() => setKalan(k => k - 1), 1000)
+    return () => clearTimeout(z)
+  }, [kalan])
+  const tabloRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const t = tabloRef.current
+    if (t) t.scrollTop = t.scrollHeight
+  }, [])
   return (
     <div className="pencere-arka" onClick={kapat}>
       <div className="puan-kagidi" onClick={e => e.stopPropagation()}>
+        <div className="kagit-tablo" ref={tabloRef}>
         <table>
           <thead>
             <tr><th />{d.oyuncular.map(o => <th key={o.ad}>{o.ad}</th>)}</tr>
           </thead>
           <tbody>
             {d.puanKagidi.map((satir, i) => (
-              <tr key={i}><td>{i + 1}. el</td>{satir.map((p, j) => <td key={j}>{p}</td>)}</tr>
+              <tr key={i} className={i === d.puanKagidi.length - 1 ? 'son-el' : undefined}><td>{i + 1}. el</td>{satir.map((p, j) => <td key={j}>{p}</td>)}</tr>
             ))}
           </tbody>
           <tfoot>
@@ -245,7 +261,8 @@ function PuanPenceresi({ d, kapat, sonrakiEl, yeniOyun }: { d: Durum; kapat: () 
             </tr>
           </tfoot>
         </table>
-        {d.asama === 'elSonu' && (sonrakiEl ? <button className="kagit-dugme" onClick={sonrakiEl}>Sonraki el</button> : <div className="kazanan">Kurucu başlatacak</div>)}
+        </div>
+        {d.asama === 'elSonu' && (sonrakiEl ? <button className="kagit-dugme" disabled={kalan > 0} onClick={sonrakiEl}>{kalan > 0 ? `Sonraki el (${kalan})` : 'Sonraki el'}</button> : <div className="kazanan">Kurucu başlatacak</div>)}
         {d.asama === 'oyunSonu' && (
           <>
             <div className="kazanan">{kazananYazisi(d)}</div>
@@ -459,7 +476,7 @@ function MutAlani({ kartlar }: { kartlar: KartTipi[] }) {
   // Yeni kart geldiyse (dağıtım, yeni el) yerler baştan alınır.
   if (kartlar.some(k => !yerler.current.some(y => kartKimligi(y) === kartKimligi(k)))) yerler.current = kartlar
   return (
-    // Mut alanının boş yerine bırakılan kart, Mut'ta kendi sayısı varsa onunla eşleşir ("mut:alan").
+    // Mut alanına bırakılan kart, Mut'ta kendi sayısı varsa onunla eşleşir ("mut:alan").
     <div className="mut-alani" data-yer="mut" data-hedef="mut:alan">
       {yerler.current.map(k =>
         kartlar.some(m => kartKimligi(m) === kartKimligi(k))
@@ -1237,8 +1254,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     if (ters === oyuncu) return cekmeBirak(oyuncu, kart, hedef)
     if (mesgul || kurucuYok || d.asama !== 'oyun' || !elleOynanir(oyuncu)) return 'red'
     const [yer, alan] = hedef.split(':')
-    // Mut alanına bırakılan kart kendi sayısındaki Mut kartına bırakılmış sayılır.
-    const deger = yer === 'mut' && alan === 'alan' ? String(d.oyuncular[oyuncu].avuc[kart].deger) : alan
+    // Mut alanının herhangi bir yerine (başka bir Mut kartının üstü dahil) bırakılan kart kendi sayısındaki Mut kartına bırakılmış sayılır.
+    const deger = yer === 'mut' ? String(d.oyuncular[oyuncu].avuc[kart].deger) : alan
     const dene = (tip: Hamle['tip'], hedef?: number): Birakma => {
       const h = { tip, kart, hedef }
       if (ayniHamleler(kabulSonrasi(d, h), h).length === 0) return 'red'
@@ -1674,6 +1691,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       {puanlarAcik && (
         <PuanPenceresi
           d={d}
+          bekle={!!ag}
           kapat={() => setPuanlarAcik(false)}
           sonrakiEl={misafir ? undefined : () => {
             if (mesgulRef.current) return

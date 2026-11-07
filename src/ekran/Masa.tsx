@@ -56,9 +56,7 @@ const DUYURU_SURESI = 1700
 // Tur yazısı (kullanıcı 2026-11-07, Şerit seçildi): kural duyurusundan farklı görünüş. El başında kurallardan sonra "1. tur",
 // her yeni turda "2. tur", son turda "Son tur" (turuncu, biraz uzun). Mut kartlarıyla orta yığın arasında, küçük ve altın renkli
 // (büyük beyaz yazı kartlarla karışıyordu; düz yazı ve köşe denendi, kalktı).
-// Son tur görünüşü (kullanıcı: zayıf kaldı; geçici seçim): Normal = turuncu yazı, Büyük = büyük + nabız gibi parlar, Rozet = turuncu kutu.
-const SON_TUR_GORUNUSLERI = { Normal: '', Büyük: ' son-buyuk', Rozet: ' son-rozet' }
-type SonTurGorunusu = keyof typeof SON_TUR_GORUNUSLERI
+// Son tur: turuncu yazı (kullanıcı 2026-11-07, Normal seçildi; Büyük ve Rozet kalktı).
 const TUR_SURESI = 1600
 const SON_TUR_SURESI = 2400
 // Sıranın bende olduğunu gösteren işaret (eski: avucun altında sarı çizgi; kullanıcı beğenmemişti). Görünüş menüsünde seçilecek.
@@ -75,9 +73,7 @@ const PUAN_YERLERI = { Yanında: 'puan-yaninda', Kenarda: 'puan-kenarda', Rozet:
 type PuanYeri = keyof typeof PUAN_YERLERI
 // Deste penceresinde kendi avucumdaki kartlar.
 const KARTLARIM: Record<KartlarimGorunusu, true> = { Soluk: true, Çerçeveli: true }
-// Avucun yukarı kayması (masa değişkeni --el-kayma, stil.css). Varsayılan +10 px (kullanıcı kararı, 2026-10-22).
-const EL_YUKSEKLIKLERI = { Eski: '0px', '+10 px': '10px', '+20 px': '20px' }
-type ElYuksekligi = keyof typeof EL_YUKSEKLIKLERI
+// Avucun yukarı kayması: sabit +10 px (masa değişkeni --el-kayma, stil.css; kullanıcı kararı 2026-10-22, seçenek 2026-11-07'de kalktı).
 // Masadaki bütün kartlar bu oranda büyür (boyut.ts). Varsayılan %110 (kullanıcı kararı, 2026-10-23, telefonda denendi).
 const KART_BOYUTLARI = { '%110': 1.1, '%115': 1.15 }
 type KartBoyutu = keyof typeof KART_BOYUTLARI
@@ -717,7 +713,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Tur yazısı oyunu bekletmez: belirip kendi söner. Son turda deste boştur.
   const [turDuyurusu, setTurDuyurusu] = useState<{ yazi: string; son: boolean; no: number } | null>(null)
   const turNo = useRef(0)
-  const [sonTurGorunusu, setSonTurGorunusu] = useKayitli<SonTurGorunusu>('sonTurGorunusu', 'Büyük')
   const turGoster = (yazi: string, son: boolean) => {
     const no = ++turNo.current
     setTurDuyurusu({ yazi, son, no })
@@ -734,8 +729,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   }
   const [puanYeri, setPuanYeri] = useKayitli<PuanYeri>('puanYeri', 'Yanında')
   const [kartlarim, setKartlarim] = useKayitli<KartlarimGorunusu>('kartlarim', 'Soluk')
-  const [elYuksekligiKayit, setElYuksekligi] = useKayitli<ElYuksekligi>('elYuksekligi', '+10 px')
-  const elYuksekligi: ElYuksekligi = elYuksekligiKayit in EL_YUKSEKLIKLERI ? elYuksekligiKayit : '+10 px'
   const [kartBoyutuKayit, setKartBoyutu] = useKayitli<KartBoyutu>('kartBoyutu', '%110')
   const kartBoyutu: KartBoyutu = kartBoyutuKayit in KART_BOYUTLARI ? kartBoyutuKayit : '%110'
   // Alt bileşenler bu çizimde yeni çarpanı okusun diye çizimin başında.
@@ -1562,7 +1555,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     <div
       className={'masa ' + YIGIN_ZEMINLERI[yiginZemini] + ' ' + (YAPISIK_GORUNUSLERI[yapisikGorunusu] ?? '') + ' ' + (MUT_ZEMINLERI[mutZemini] ?? '') + ' ' + (JQK_GORUNUSLERI[jqkGorunusu] ?? '') + ' ' + (PUAN_YERLERI[puanYeri] ?? '')}
       ref={masaRef}
-      style={{ '--el-kayma': EL_YUKSEKLIKLERI[elYuksekligi], '--kart-olcek': KART_BOYUTLARI[kartBoyutu] } as CSSProperties}
+      style={{ '--el-kayma': '10px','--kart-olcek': KART_BOYUTLARI[kartBoyutu] } as CSSProperties}
       // Oyunda sağ tık menüsü yok (sürüklemeyi bölüyordu).
       onContextMenu={e => e.preventDefault()}
       onPointerDown={e => {
@@ -1684,7 +1677,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         </div>
       )}
       {turDuyurusu && (
-        <div key={turDuyurusu.no} className={'tur-duyurusu tur-serit' + (turDuyurusu.son ? ' son' + SON_TUR_GORUNUSLERI[sonTurGorunusu] : '')}>
+        <div key={turDuyurusu.no} className={'tur-duyurusu tur-serit' + (turDuyurusu.son ? ' son' : '')}>
           <span>{turDuyurusu.yazi}</span>
         </div>
       )}
@@ -1829,13 +1822,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
 
       {menu === 'gorunus' && (
         <div className="test-panel gorunus-panel">
-          <button className="test-satir" onClick={() => sonrakiSecenek(SON_TUR_GORUNUSLERI, sonTurGorunusu, setSonTurGorunusu)}>
-            Son tur <span className="test-deger">{sonTurGorunusu}</span>
-          </button>
-          <button className="test-satir" onClick={() => { setMenu(null); turGoster('Son tur', true) }}>Son tur dene</button>
-          <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>
-            El yüksekliği <span className="test-deger">{elYuksekligi}</span>
-          </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(YIGIN_ZEMINLERI, yiginZemini, setYiginZemini)}>
             Yığın zemini <span className="test-deger">{yiginZemini}</span>
           </button>

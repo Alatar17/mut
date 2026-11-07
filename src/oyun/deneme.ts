@@ -82,20 +82,6 @@ export const kizDenemesi = (d: Durum) =>
     eksik: true,
   })
 
-// Sağdaki B (sırası onda) 8 ile benimle takas yapar: avucumda 2 ve üç 9, Mut kartlarında 9 (bende kalkan kurulu
-// başlar). B'nin avucunda 8, 2 ve işe yaramaz kartlar; takastan sonra 2 bana geçer, kalkan görünür ama kurulu
-// değildir. B en çok kartı olduğu için tekrar oynar, 9'u Mut 9'la yakalar.
-export const takasBotDenemesi = (d: Durum) =>
-  denemeKur(d, {
-    avucum: [kart(2, 'maca'), kart(9, 'kupa'), kart(9, 'karo'), kart(9, 'sinek')],
-    digerAvuclar: [
-      [kart(8, 'kupa'), kart(2, 'kupa'), kart(4, 'kupa'), kart(5, 'kupa')],
-      [kart(4, 'karo'), kart(5, 'karo'), kart(6, 'karo'), kart(3, 'karo')],
-    ],
-    mut: [kart(9, 'maca'), kart(7, 'kupa'), kart(7, 'karo'), kart(7, 'sinek')],
-    sira: 1,
-  })
-
 // Mut kartlarında Vale (puanlar ×2); avucumda Vale, sağdaki B'nin ceza yığınında 9 (18 görünür). Vale'yi Mut Vale'ye
 // bırakınca iki Vale B'ye gider: (9 + 25 + 25) × 2 = 118.
 export const valeDenemesi = (d: Durum) =>
@@ -103,16 +89,6 @@ export const valeDenemesi = (d: Durum) =>
     avucum: [kart(11, 'kupa'), kart(4, 'sinek'), kart(5, 'sinek'), kart(6, 'sinek')],
     cezalar: [[], [kart(9, 'kupa')], [kart(9, 'karo')]],
     mut: [kart(11, 'maca')],
-  })
-
-// Soldaki C (sırası onda) Kız ile benden çeker: avucumda üç 9 ve rastgele bir kart, Mut kartlarında 9; çektiği büyük ihtimalle
-// 9 olur ve Mut 9'u yakalar. Botun ters kartlarımdan birini kaldırıp düşünmesi, sonra alması görülür.
-export const kizBotDenemesi = (d: Durum) =>
-  denemeKur(d, {
-    avucum: [kart(9, 'kupa'), kart(9, 'karo'), kart(9, 'sinek')],
-    digerAvuclar: [[], [kart(12, 'kupa'), kart(4, 'maca'), kart(5, 'maca'), kart(6, 'maca')]],
-    mut: [kart(9, 'maca'), kart(7, 'kupa'), kart(7, 'karo'), kart(7, 'sinek')],
-    sira: 2,
   })
 
 // Eksi el (Mut kartlarında As). Avucumda 5, 9, 7 ve 2. Ortada 9 (kapınca bana gelir), benim yığınımda 5 (5'i ekleyebilirim),
@@ -250,16 +226,6 @@ export const kralDenemesi = (d: Durum) =>
     orta: [kart(11, 'kupa'), kart(7, 'karo')],
     cezalar: [[], [kart(3, 'maca'), kart(3, 'kupa'), kart(3, 'karo'), kart(3, 'sinek'), kart(9, 'kupa')], [kart(4, 'kupa'), kart(5, 'kupa'), kart(6, 'kupa'), kart(10, 'sinek')]],
     mut: [kart(13, 'kupa'), kart(6, 'sinek'), kart(7, 'kupa'), kart(8, 'kupa')],
-  })
-
-// Kral eli; soldaki C (sırası onda) Papaz'ıyla Mut Papaz'ını alır, benim yığınımdaki gömülü dört 3'ü çekip gönderir.
-export const kralBotDenemesi = (d: Durum) =>
-  denemeKur(d, {
-    avucum: [kart(4, 'sinek'), kart(5, 'sinek'), kart(9, 'karo'), kart(2, 'maca')],
-    digerAvuclar: [[], [kart(13, 'maca'), kart(4, 'karo'), kart(5, 'karo'), kart(9, 'maca')]],
-    cezalar: [[kart(3, 'maca'), kart(3, 'kupa'), kart(3, 'karo'), kart(3, 'sinek'), kart(9, 'kupa')]],
-    mut: [kart(13, 'kupa'), kart(6, 'sinek'), kart(7, 'kupa'), kart(8, 'kupa')],
-    sira: 2,
   })
 
 // Bomba elinin son hamleleri: bomba soldaki C'de (iki 10), herkesin avucunda tek kart, deste bitmiş (kalan kartlar orta

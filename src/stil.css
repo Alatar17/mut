@@ -226,7 +226,6 @@ button { font: inherit; color: inherit; border: none; background: none; cursor: 
   animation: tur-belir 1.6s ease-out forwards;
 }
 .tur-duyurusu.son { animation-duration: 2.4s; }
-.tur-duz span { font-size: 20px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase; color: var(--vurgu); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7); }
 .tur-serit span {
   display: flex; align-items: center; gap: 12px; font-size: 16px; font-weight: 700; letter-spacing: 5px; text-transform: uppercase;
   color: var(--vurgu); text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);

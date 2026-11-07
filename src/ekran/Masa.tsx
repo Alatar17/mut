@@ -53,11 +53,9 @@ const YAPISIK_GORUNUSLERI = { Varsayılan: '', 'Taşan köşe': 'yapisik-kose', 
 type YapisikGorunusu = keyof typeof YAPISIK_GORUNUSLERI
 // El başında aktif kuralların duyurusu: ortada belirip söner (kullanıcı 2026-10-24; Uçarak ve Kapalı denendi, kalktı).
 const DUYURU_SURESI = 1700
-// Tur yazısı (kullanıcı 2026-11-07; geçici, Görünüş menüsünde seçilecek): kural duyurusundan farklı görünüş. El başında
-// kurallardan sonra "1. tur", her yeni turda "2. tur", son turda "Son tur" (turuncu, biraz uzun). Mut kartlarıyla orta yığın arasında,
-// küçük ve altın renkli (kullanıcı: büyük beyaz yazı kartlarla karışıyordu; köşe denendi, kalktı).
-const TUR_YAZILARI = { 'Düz yazı': 'tur-duz', Şerit: 'tur-serit', Yok: '' }
-type TurYazisi = keyof typeof TUR_YAZILARI
+// Tur yazısı (kullanıcı 2026-11-07, Şerit seçildi): kural duyurusundan farklı görünüş. El başında kurallardan sonra "1. tur",
+// her yeni turda "2. tur", son turda "Son tur" (turuncu, biraz uzun). Mut kartlarıyla orta yığın arasında, küçük ve altın renkli
+// (büyük beyaz yazı kartlarla karışıyordu; düz yazı ve köşe denendi, kalktı).
 // Son tur görünüşü (kullanıcı: zayıf kaldı; geçici seçim): Normal = turuncu yazı, Büyük = büyük + nabız gibi parlar, Rozet = turuncu kutu.
 const SON_TUR_GORUNUSLERI = { Normal: '', Büyük: ' son-buyuk', Rozet: ' son-rozet' }
 type SonTurGorunusu = keyof typeof SON_TUR_GORUNUSLERI
@@ -716,24 +714,16 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Varsayılanda yapışık kartlar sıradan kart gibi çizilir.
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
-  const [turYazisi, setTurYazisi] = useKayitli<TurYazisi>('turYazisi4', 'Şerit')
   // Tur yazısı oyunu bekletmez: belirip kendi söner. Son turda deste boştur.
   const [turDuyurusu, setTurDuyurusu] = useState<{ yazi: string; son: boolean; no: number } | null>(null)
   const turNo = useRef(0)
   const [sonTurGorunusu, setSonTurGorunusu] = useKayitli<SonTurGorunusu>('sonTurGorunusu', 'Büyük')
   const turGoster = (yazi: string, son: boolean) => {
-    if (turYazisi === 'Yok') return
     const no = ++turNo.current
     setTurDuyurusu({ yazi, son, no })
     setTimeout(() => turNo.current === no && setTurDuyurusu(null), son ? SON_TUR_SURESI : TUR_SURESI)
   }
   const turDuyur = (yeni: Durum) => (yeni.deste.length === 0 ? turGoster('Son tur', true) : turGoster(`${yeni.tur}. tur`, false))
-  // Test menüsü: 3 tur oynamadan tur yazısı ve son tur görülsün.
-  const turYazisiDene = () => {
-    setMenu(null)
-    turGoster('2. tur', false)
-    setTimeout(() => turGoster('Son tur', true), TUR_SURESI + 300)
-  }
   const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi2', 'Işık')
   const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim2', 'Hafif')
   const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Hafif'
@@ -760,12 +750,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const [jqkGorunusu, setJqkGorunusu] = useKayitli<JqkGorunusu>('jqkGorunusu2', 'Sade')
   const sure = HAMLE_SURELERI[hamleSuresi] ?? 0
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
-  // Avucumdan kart sürüklenince kart kalkar (herkes görür); bırakmadan avuca dönerse önceki hâline döner (kullanıcı 2026-11-07).
-  const tutmadanOnce = useRef<number | null>(null)
-  const kartiTut = (i: number) => {
-    tutmadanOnce.current = kalkikKart
-    setKalkikKart(i)
-  }
+  // Avucumdan kart sürüklenince kart kalkar (herkes görür); bırakmadan avuca dönerse hiçbir kart kalkık kalmaz (kullanıcı 2026-11-07:
+  // önce kalkık olan kartın geri kalkması şaşırtıyordu).
   // Önceden kurulmuş kalkan (otomatik blok). Sadece benim ekranımda görünür.
   const [kalkanKurulu, setKalkanKurulu] = useState(false)
   // Kral seçim penceresi (6.9.1): açılan yığın; kart = henüz oynanmamış Papaz (avuçtaki sırası; pencere kapanırsa hamle
@@ -1674,9 +1660,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
             kapali={false}
             blof={blofGor(0) === i}
             dokun={() => (ters === 0 ? (canliKiz.current ? blofYap(i) : sec(0, i)) : setKalkikKart(kalkikKart === i ? null : i))}
-            tut={() => (ters === 0 ? sec(0, i) : kartiTut(i))}
+            tut={() => (ters === 0 ? sec(0, i) : setKalkikKart(i))}
             birak={hedef => kartBirak(0, i, hedef)}
-            birakmadi={() => ters !== 0 && setKalkikKart(tutmadanOnce.current)}
+            birakmadi={() => ters !== 0 && setKalkikKart(null)}
           />
         ))}
         {elimdeIkiVar && (
@@ -1698,7 +1684,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         </div>
       )}
       {turDuyurusu && (
-        <div key={turDuyurusu.no} className={'tur-duyurusu ' + TUR_YAZILARI[turYazisi] + (turDuyurusu.son ? ' son' + SON_TUR_GORUNUSLERI[sonTurGorunusu] : '')}>
+        <div key={turDuyurusu.no} className={'tur-duyurusu tur-serit' + (turDuyurusu.son ? ' son' + SON_TUR_GORUNUSLERI[sonTurGorunusu] : '')}>
           <span>{turDuyurusu.yazi}</span>
         </div>
       )}
@@ -1843,13 +1829,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
 
       {menu === 'gorunus' && (
         <div className="test-panel gorunus-panel">
-          <button className="test-satir" onClick={() => sonrakiSecenek(TUR_YAZILARI, turYazisi, setTurYazisi)}>
-            Tur yazısı <span className="test-deger">{turYazisi}</span>
-          </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(SON_TUR_GORUNUSLERI, sonTurGorunusu, setSonTurGorunusu)}>
             Son tur <span className="test-deger">{sonTurGorunusu}</span>
           </button>
-          <button className="test-satir" onClick={turYazisiDene}>Tur yazısı dene</button>
           <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>
             El yüksekliği <span className="test-deger">{elYuksekligi}</span>
           </button>

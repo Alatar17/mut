@@ -1109,6 +1109,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     basla()
     setKurallarGizli(true)
     setHediyeler([])
+    setKalkikKart(null)
+    setAgKalkik({})
     yayinla({ tip: 'dagit', durum: yeni })
     await gec(dagitimOncesi(yeni, true))
     await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
@@ -1225,10 +1227,18 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // ---- Ağ ----
   // Gelen mesajlar sırayla işlenir: animasyon sürerken bekler (misafir kendi hamlesinin sonucunu beklerken hariç).
   const [gelenler, setGelenler] = useState<[OyunMesaji, number][]>([])
+  // Ağ oyununda rakiplerin kaldırdığı kart (koltuk → kart kimliği). Benim kaldırdığım herkese gider.
+  const [agKalkik, setAgKalkik] = useState<Record<number, string | null>>({})
+  useEffect(() => {
+    if (ag) oyunGonder({ tip: 'kaldir', oyuncu: 0, sira: kalkikKart })
+  }, [kalkikKart])
   // Sözler sıra beklemez; kurucu gelen sözü gönderen dışındaki misafirlere iletir.
   useEffect(() => (ag ? oyunuDinle((m, kimden) => {
-    if (m.tip !== 'soz' && m.tip !== 'hediye') return setGelenler(g => [...g, [m, kimden]])
-    if (m.tip === 'soz') soyle(m.oyuncu, m.yazi)
+    if (m.tip !== 'soz' && m.tip !== 'hediye' && m.tip !== 'kaldir') return setGelenler(g => [...g, [m, kimden]])
+    if (m.tip === 'kaldir') {
+      const kart = m.sira === null ? undefined : gorunenRef.current.oyuncular[m.oyuncu]?.avuc[m.sira]
+      setAgKalkik(a => ({ ...a, [m.oyuncu]: kart ? kartKimligi(kart) : null }))
+    } else if (m.tip === 'soz') soyle(m.oyuncu, m.yazi)
     else hediyeGoster(m.kimden, m.kime, m.ad)
     if (kurucu) [1, 2].forEach(k => k !== kimden && oyunGonder(m, k))
   }) : undefined), [])
@@ -1410,9 +1420,11 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       style={{ '--el-kayma': EL_YUKSEKLIKLERI[elYuksekligi], '--kart-olcek': KART_BOYUTLARI[kartBoyutu] } as CSSProperties}
       // Oyunda sağ tık menüsü yok (sürüklemeyi bölüyordu).
       onContextMenu={e => e.preventDefault()}
-      onPointerDown={() => {
+      onPointerDown={e => {
         zamanAsimi.current = 0
         setUzakta(false)
+        // Avucum ve düğmeler dışına dokununca kalkık kart iner.
+        if (!(e.target as Element).closest('.benim-avuc, button')) setKalkikKart(null)
       }}
       {...bakisOlaylari}
     >
@@ -1484,8 +1496,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       {(siraGostergesi === 'Işık' || siraGostergesi === 'Kenar') && d.asama === 'oyun' && d.sira !== 0 && !d.blok && (
         <div key={d.sira} className={'rakip-sira ' + SIRA_GOSTERGELERI[siraGostergesi] + (d.sira === 2 ? ' sol' : ' sag')} />
       )}
-      <Rakip oyuncu={soldaki} koltuk={2} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2) || (hediyeSecimi && hediyeAlabilir(2))} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(2)} baslayan={baslayan(2)} puanGizli={!d.puanGoster} />
-      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1) || (hediyeSecimi && hediyeAlabilir(1))} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(1)} baslayan={baslayan(1)} puanGizli={!d.puanGoster} />
+      <Rakip oyuncu={soldaki} koltuk={2} kalkik={agKalkik[2] ?? botKalkik} birak={(kart, hedef) => kartBirak(2, kart, hedef)} sec={kart => sec(2, kart)} taraf="sol" sirada={d.asama === 'oyun' && d.sira === 2} secilebilir={!!hedefSecimi?.secenekler.includes(2) || (hediyeSecimi && hediyeAlabilir(2))} sureUyari={sureUyari && d.sira === 2} carpan={puanCarpani} kapali={rakipKapali || ters === 2} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(2)} baslayan={baslayan(2)} puanGizli={!d.puanGoster} />
+      <Rakip oyuncu={sagdaki} koltuk={1} kalkik={agKalkik[1] ?? botKalkik} birak={(kart, hedef) => kartBirak(1, kart, hedef)} sec={kart => sec(1, kart)} taraf="sag" sirada={d.asama === 'oyun' && d.sira === 1} secilebilir={!!hedefSecimi?.secenekler.includes(1) || (hediyeSecimi && hediyeAlabilir(1))} sureUyari={sureUyari && d.sira === 1} carpan={puanCarpani} kapali={rakipKapali || ters === 1} duz={false} kirpik={botKartlariKirpik} cezaAralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} kopuk={kopuk.includes(1)} baslayan={baslayan(1)} puanGizli={!d.puanGoster} />
 
       <div className="benim-ceza">
         <CezaYigini kartlar={ben.ceza} carpan={puanCarpani} puanTarafi="sol" hedef="ceza:0" aralik={CEZA_ARALIKLARI[cezaAraligi]} yapisik={yapisikCiz} puanGizli={!d.puanGoster} />

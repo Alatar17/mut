@@ -58,6 +58,9 @@ const DUYURU_SURESI = 1700
 // küçük ve altın renkli (kullanıcı: büyük beyaz yazı kartlarla karışıyordu; köşe denendi, kalktı).
 const TUR_YAZILARI = { 'Düz yazı': 'tur-duz', Şerit: 'tur-serit', Yok: '' }
 type TurYazisi = keyof typeof TUR_YAZILARI
+// Son tur görünüşü (kullanıcı: zayıf kaldı; geçici seçim): Normal = turuncu yazı, Büyük = büyük + nabız gibi parlar, Rozet = turuncu kutu.
+const SON_TUR_GORUNUSLERI = { Normal: '', Büyük: ' son-buyuk', Rozet: ' son-rozet' }
+type SonTurGorunusu = keyof typeof SON_TUR_GORUNUSLERI
 const TUR_SURESI = 1600
 const SON_TUR_SURESI = 2400
 // Sıranın bende olduğunu gösteren işaret (eski: avucun altında sarı çizgi; kullanıcı beğenmemişti). Görünüş menüsünde seçilecek.
@@ -712,12 +715,19 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Tur yazısı oyunu bekletmez: belirip kendi söner. Son turda deste boştur.
   const [turDuyurusu, setTurDuyurusu] = useState<{ yazi: string; son: boolean; no: number } | null>(null)
   const turNo = useRef(0)
-  const turDuyur = (yeni: Durum) => {
+  const [sonTurGorunusu, setSonTurGorunusu] = useKayitli<SonTurGorunusu>('sonTurGorunusu', 'Büyük')
+  const turGoster = (yazi: string, son: boolean) => {
     if (turYazisi === 'Yok') return
-    const son = yeni.deste.length === 0
     const no = ++turNo.current
-    setTurDuyurusu({ yazi: son ? 'Son tur' : `${yeni.tur}. tur`, son, no })
+    setTurDuyurusu({ yazi, son, no })
     setTimeout(() => turNo.current === no && setTurDuyurusu(null), son ? SON_TUR_SURESI : TUR_SURESI)
+  }
+  const turDuyur = (yeni: Durum) => (yeni.deste.length === 0 ? turGoster('Son tur', true) : turGoster(`${yeni.tur}. tur`, false))
+  // Test menüsü: 3 tur oynamadan tur yazısı ve son tur görülsün.
+  const turYazisiDene = () => {
+    setMenu(null)
+    turGoster('2. tur', false)
+    setTimeout(() => turGoster('Son tur', true), TUR_SURESI + 300)
   }
   const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi2', 'Işık')
   const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim2', 'Hafif')
@@ -1676,7 +1686,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
         </div>
       )}
       {turDuyurusu && (
-        <div key={turDuyurusu.no} className={'tur-duyurusu ' + TUR_YAZILARI[turYazisi] + (turDuyurusu.son ? ' son' : '')}>
+        <div key={turDuyurusu.no} className={'tur-duyurusu ' + TUR_YAZILARI[turYazisi] + (turDuyurusu.son ? ' son' + SON_TUR_GORUNUSLERI[sonTurGorunusu] : '')}>
           <span>{turDuyurusu.yazi}</span>
         </div>
       )}
@@ -1824,6 +1834,10 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={() => sonrakiSecenek(TUR_YAZILARI, turYazisi, setTurYazisi)}>
             Tur yazısı <span className="test-deger">{turYazisi}</span>
           </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(SON_TUR_GORUNUSLERI, sonTurGorunusu, setSonTurGorunusu)}>
+            Son tur <span className="test-deger">{sonTurGorunusu}</span>
+          </button>
+          <button className="test-satir" onClick={turYazisiDene}>Tur yazısı dene</button>
           <button className="test-satir" onClick={() => sonrakiSecenek(EL_YUKSEKLIKLERI, elYuksekligi, setElYuksekligi)}>
             El yüksekliği <span className="test-deger">{elYuksekligi}</span>
           </button>

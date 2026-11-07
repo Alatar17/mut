@@ -3,7 +3,7 @@ import { kartBoyu, type Kart as KartTipi } from '../oyun/kart'
 import { cikanOnlar, elPuanlari, kralGruplari, elSayisiAyarla, gecerliHamleler, hamleGecerliMi, hamleYap, oyunuBitir, sonraki, sonrakiEl, toplamPuanlar, yeniOyun, type Durum, type Hamle, type HamleSonucu, type Oyuncu } from '../oyun/motor'
 import { akilliBotHamlesi } from '../oyun/bot'
 import { karistir } from '../oyun/rastgele'
-import { puanKagidiDenemesi, asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBosaltmaDenemesi, bombaEkleDenemesi, kalabalikDenemesi, yapisikDenemesi, kralDenemesi, kralBotDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
+import { dortluDenemesi, puanKagidiDenemesi, asBotDenemesi, asDenemesi, bakisDenemesi, blokDenemesi, bombaBosaltmaDenemesi, bombaEkleDenemesi, kalabalikDenemesi, yapisikDenemesi, kralDenemesi, kralBotDenemesi, bombaBotDenemesi, bombaDenemesi, patlamaDenemesi, cezaSerisiDenemesi, kizBotDenemesi, kizDenemesi, seriDenemesi, takasBotDenemesi, takasDenemesi, ucBotDenemesi, ucDenemesi, valeDenemesi } from '../oyun/deneme'
 import { Kart } from './Kart'
 import { kartEni, kartOlcegi } from './boyut'
 import { bekle, dagitimOncesi, GizliKartlar, kartKimligi, kartYerleri, konumOlc, patlamaOncesi, patlamaOrtada, UcanKart, type Konum, type Ucus } from './animasyon'
@@ -162,6 +162,35 @@ type Birakma = 'kabul' | 'red' | 'bekle'
 function salla(el: Element) {
   const x = [0, -6, 6, -4, 3, 0].map(p => ({ transform: `translateX(${p}px)` }))
   el.animate(x, { duration: 400 })
+}
+
+// Dört 3 (120) ya da dört Vale (100) tek hamlede bir ceza yığınına giderse şok (ilerletme, Kral; tek tek eklenince değil).
+const SOK_DEGERLERI = [3, 11]
+const sokluHamle = (s: HamleSonucu) => s.nereye.startsWith('ceza:') && SOK_DEGERLERI.some(v => [s.kart, ...s.eslesen].filter(k => k.deger === v).length >= 4)
+// Geçici deneme (kullanıcı seçince kalkacak): A masa sarsılır, B yığın sallanıp parlar, C ikisi birden.
+const SOK_STILLERI = { 'A Masa': 'A', 'B Yığın': 'B', 'C İkisi': 'C' }
+type SokStili = keyof typeof SOK_STILLERI
+function sokVer(masa: HTMLElement, nereye: string, stil: string) {
+  if (stil !== 'B') {
+    const x = [0, -12, 11, -9, 7, -5, 3, 0]
+    masa.animate(x.map((p, i) => ({ transform: `translate(${p}px, ${i % 2 ? 3 : -3}px)` })).concat({ transform: 'none' }), { duration: 600, easing: 'ease-out' })
+  }
+  if (stil === 'A') return
+  const yigin = masa.querySelector(`.ceza-yigini[data-hedef="${nereye}"]`)
+  if (!yigin) return
+  const parlak = 'drop-shadow(0 0 16px rgba(255, 90, 40, 0.95))'
+  yigin.animate(
+    [
+      { transform: 'none', filter: 'drop-shadow(0 0 0 transparent)' },
+      { transform: 'translateX(-7px) rotate(-3deg)', filter: parlak },
+      { transform: 'translateX(7px) rotate(3deg)', filter: parlak },
+      { transform: 'translateX(-5px) rotate(-2deg)', filter: parlak },
+      { transform: 'translateX(4px) rotate(1deg)', filter: parlak },
+      { transform: 'none', filter: parlak },
+      { transform: 'none', filter: 'drop-shadow(0 0 0 transparent)' },
+    ],
+    { duration: 1100, easing: 'ease-out' },
+  )
 }
 
 // Kız ile çekmede hedefin avucu karılır (9.2): kartlar iki kez ortada toplanıp yeniden açılır.
@@ -670,6 +699,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
   const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi2', 'Işık')
+  const [sokStiliKayit, setSokStili] = useKayitli<SokStili>('sokStili', 'C İkisi')
+  const sokStili: SokStili = sokStiliKayit in SOK_STILLERI ? sokStiliKayit : 'C İkisi'
   const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim2', 'Hafif')
   const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Hafif'
   // desen: tek süre ya da titre-dur-titre…; titreme süreleri seviyeyle çarpılır, aralar aynı kalır.
@@ -1022,6 +1053,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     // Blokta kabul: kart oynanmaz (sonHamle yok).
     if (yeni.sonHamle) await kartiGoster(eski, yeni.sonHamle, hamleSonrasi, elle)
     else await gec(hamleSonrasi)
+    if (yeni.sonHamle && sokluHamle(yeni.sonHamle)) sokVer(masaRef.current!, yeni.sonHamle.nereye, SOK_STILLERI[sokStili])
     if (dagitildi) await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
     if (yeni.patlama) {
       await bekle(PATLAMA_BEKLEMESI * carpan)
@@ -1420,6 +1452,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
             Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
           </button>
+          <button className="test-satir" onClick={() => sonrakiSecenek(SOK_STILLERI, sokStili, setSokStili)}>
+            Şok (geçici) <span className="test-deger">{sokStili}</span>
+          </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(TITRESIMLER, titresim, v => { setTitresim(v); navigator.vibrate?.(Math.round(70 * TITRESIMLER[v])) })}>
             Titreşim <span className="test-deger">{titresim}</span>
           </button>
@@ -1608,7 +1643,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
       {menu && <div className="test-arka" onClick={() => setMenu(null)} />}
       {menu === 'dene' && (
         <div className="test-panel dene-panel">
-          {([['Yeni oyun', undefined], ['Puan kağıdı dene', puanKagidiDenemesi], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Bomba boşaltma dene', bombaBosaltmaDenemesi], ['Bomba ekle dene', bombaEkleDenemesi], ['Kalabalık masa dene', kalabalikDenemesi], ['2 yapışma dene', yapisikDenemesi], ['Kral dene', kralDenemesi], ['Bot Kral dene', kralBotDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
+          {([['Yeni oyun', undefined], ['Dörtlü dene', dortluDenemesi], ['Puan kağıdı dene', puanKagidiDenemesi], ['Seri dene', seriDenemesi], ['Ceza serisi dene', cezaSerisiDenemesi], ['Blok dene', blokDenemesi], ['8 dene', takasDenemesi], ['Bot 8 dene', takasBotDenemesi], ['Kız dene', kizDenemesi], ['Bot Kız dene', kizBotDenemesi], ['Vale dene', valeDenemesi], ['As dene', asDenemesi], ['Bot As dene', asBotDenemesi], ['3 dene', ucDenemesi], ['Bot 3 dene', ucBotDenemesi], ['Bomba dene', bombaDenemesi], ['Bot bomba dene', bombaBotDenemesi], ['Patlama dene', patlamaDenemesi], ['Bomba boşaltma dene', bombaBosaltmaDenemesi], ['Bomba ekle dene', bombaEkleDenemesi], ['Kalabalık masa dene', kalabalikDenemesi], ['2 yapışma dene', yapisikDenemesi], ['Kral dene', kralDenemesi], ['Bot Kral dene', kralBotDenemesi], ['Yığına bakış dene', bakisDenemesi]] as const).map(([ad, deneme]) => (
             // "Bot 8 dene" kalkan kurulu başlar: takas gelince sökülmesi görülsün.
             <button key={ad} className="test-satir" onClick={() => { setMenu(null); if (!deneme) return setElPenceresi('yeni'); yeniOyunBaslat(deneme); setKalkanKurulu(ad === 'Bot 8 dene') }}>{ad}</button>
           ))}

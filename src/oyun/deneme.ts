@@ -304,3 +304,11 @@ export const puanKagidiDenemesi = (d: Durum) => {
   d.puanKagidi = Array.from({ length: 9 }, () => d.oyuncular.map(() => Math.floor(Math.random() * 12) * 5))
   return d
 }
+
+// Şok denemesi: sağdaki B'nin (sıradaki) ceza yığınının üstünde üç 3, avucumda dördüncü 3. 3'ü B'nin yığınına bırak →
+// İlerlet → dört 3 birlikte C'ye gider, masa şoku görülür (☰ → Şok ile A/B/C).
+export const dortluDenemesi = (d: Durum) =>
+  denemeKur(d, {
+    avucum: [kart(3, 'sinek'), kart(4, 'kupa'), kart(5, 'sinek'), kart(6, 'karo')],
+    cezalar: [[], [kart(3, 'maca'), kart(3, 'kupa'), kart(3, 'karo')]],
+  })

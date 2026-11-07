@@ -4,7 +4,7 @@
 > İşaretler: ❓ = henüz netleşmedi, 🔔 = sonra hatırlatılacak. Hepsi Bölüm 11'de toplu.
 
 ## 0. Proje Durumu
-- **Sıradaki iş (devir 2026-11-07):** Konuşulacak, kod yok: **dokunulan (kaldırılan) kart anında herkeste görünsün**; Kız seçiminde çekenin kaldırdığı ters kart da (kartı çekilen kendi ekranında görsün). Şu an kaldırma ağdan gitmiyor, sadece kendi ekranında. Gecikme ~0,1-0,3 sn olur (misafir → kurucu → diğer misafir). Konuşulacaklar: kim görsün (herkes mi), "ne oynayacağını belli etme" etkisi.
+- **Sıradaki iş (2026-11-07, 3 adım):** 1) ✅ kaldırılan kart herkeste (sadece sırası gider; boş masaya dokununca iner) — iki telefonla test bekliyor. 2) Kız: çekenin dokunduğu ters kart herkeste kalksın; çekilenin ekranında kartlar karılır ama yüzü açık (A), aynı karma sırası kurucudan herkese gitmeli. 3) Kız: çekilen kendi kartını kaldırıp blöf yapabilir (botlar yapmaz).
 - **2026-11-07 yapılanlar (hepsi GitHub'da; kullanıcı testleri geçti, 15 sn bot beklemesi gerçek kopmada denenmedi):**
   - **Kız takılması düzeltildi:** misafir Kız'la kart çekince kurucu sonucu hemen yollar (eskiden kendi karma/seçim gösterisini bitirip yolluyordu; misafirin bıraktığı kart 1-2 sn avucunun üstünde ters takılı kalıyordu). Hedefte tek kart varsa karma/seçim yok, kart kendiliğinden gelir.
   - **Mut alanı:** Mut alanının her yerine (başka Mut kartının üstü dahil) bırakılan kart kendi sayısındaki Mut kartına bırakılmış sayılır (`data-hedef="mut:alan"`).

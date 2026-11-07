@@ -54,8 +54,9 @@ type YapisikGorunusu = keyof typeof YAPISIK_GORUNUSLERI
 // El başında aktif kuralların duyurusu: ortada belirip söner (kullanıcı 2026-10-24; Uçarak ve Kapalı denendi, kalktı).
 const DUYURU_SURESI = 1700
 // Tur yazısı (kullanıcı 2026-11-07; geçici, Görünüş menüsünde seçilecek): kural duyurusundan farklı görünüş. El başında
-// kurallardan sonra "1. tur", her yeni turda "2. tur", son turda "Son tur" (turuncu, biraz uzun). Köşe: sağ üstteki tur yazısı büyüyüp parlar.
-const TUR_YAZILARI = { 'Düz yazı': 'tur-duz', Şerit: 'tur-serit', Köşe: 'tur-kose', Yok: '' }
+// kurallardan sonra "1. tur", her yeni turda "2. tur", son turda "Son tur" (turuncu, biraz uzun). Mut kartlarıyla orta yığın arasında,
+// küçük ve altın renkli (kullanıcı: büyük beyaz yazı kartlarla karışıyordu; köşe denendi, kalktı).
+const TUR_YAZILARI = { 'Düz yazı': 'tur-duz', Şerit: 'tur-serit', Yok: '' }
 type TurYazisi = keyof typeof TUR_YAZILARI
 const TUR_SURESI = 1600
 const SON_TUR_SURESI = 2400
@@ -707,7 +708,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Varsayılanda yapışık kartlar sıradan kart gibi çizilir.
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
-  const [turYazisi, setTurYazisi] = useKayitli<TurYazisi>('turYazisi2', 'Düz yazı')
+  const [turYazisi, setTurYazisi] = useKayitli<TurYazisi>('turYazisi3', 'Düz yazı')
   // Tur yazısı oyunu bekletmez: belirip kendi söner. Son turda deste boştur.
   const [turDuyurusu, setTurDuyurusu] = useState<{ yazi: string; son: boolean; no: number } | null>(null)
   const turNo = useRef(0)
@@ -1578,9 +1579,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
 
       <div className="el-tur">
         <button className="el-sayaci" onClick={() => !misafir && setElPenceresi('degistir')}>{d.el}/{gosterilenToplamEl}</button>
-        {turDuyurusu && turYazisi === 'Köşe'
-          ? <span key={turDuyurusu.no} className={'tur-kose-vurgu' + (turDuyurusu.son ? ' son' : '')}>{turDuyurusu.yazi}</span>
-          : <span>{d.tur}. tur</span>}
+        <span>{d.tur}. tur</span>
       </div>
       <button className={'yuvarlak-dugme menu-dugme' + (menu === 'oyun' || menu === 'bitir' ? ' acik' : '')} aria-label="Menü" onClick={() => setMenu(menu === 'oyun' || menu === 'bitir' ? null : 'oyun')}>
         <svg viewBox="0 0 24 24" width="20" height="20">
@@ -1676,7 +1675,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           {duyuru.map(k => <span key={k}>{k}</span>)}
         </div>
       )}
-      {turDuyurusu && turYazisi !== 'Köşe' && (
+      {turDuyurusu && (
         <div key={turDuyurusu.no} className={'tur-duyurusu ' + TUR_YAZILARI[turYazisi] + (turDuyurusu.son ? ' son' : '')}>
           <span>{turDuyurusu.yazi}</span>
         </div>

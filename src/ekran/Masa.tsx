@@ -459,7 +459,8 @@ function MutAlani({ kartlar }: { kartlar: KartTipi[] }) {
   // Yeni kart geldiyse (dağıtım, yeni el) yerler baştan alınır.
   if (kartlar.some(k => !yerler.current.some(y => kartKimligi(y) === kartKimligi(k)))) yerler.current = kartlar
   return (
-    <div className="mut-alani" data-yer="mut">
+    // Mut alanının boş yerine bırakılan kart, Mut'ta kendi sayısı varsa onunla eşleşir ("mut:alan").
+    <div className="mut-alani" data-yer="mut" data-hedef="mut:alan">
       {yerler.current.map(k =>
         kartlar.some(m => kartKimligi(m) === kartKimligi(k))
           ? <div key={kartKimligi(k)} data-hedef={`mut:${k.deger}`}><Kart kart={k} genislik={kartEni(56)} /></div>
@@ -1235,7 +1236,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const kartBirak = (oyuncu: number, kart: number, hedef: string): Birakma => {
     if (ters === oyuncu) return cekmeBirak(oyuncu, kart, hedef)
     if (mesgul || kurucuYok || d.asama !== 'oyun' || !elleOynanir(oyuncu)) return 'red'
-    const [yer, deger] = hedef.split(':')
+    const [yer, alan] = hedef.split(':')
+    // Mut alanına bırakılan kart kendi sayısındaki Mut kartına bırakılmış sayılır.
+    const deger = yer === 'mut' && alan === 'alan' ? String(d.oyuncular[oyuncu].avuc[kart].deger) : alan
     const dene = (tip: Hamle['tip'], hedef?: number): Birakma => {
       const h = { tip, kart, hedef }
       if (ayniHamleler(kabulSonrasi(d, h), h).length === 0) return 'red'

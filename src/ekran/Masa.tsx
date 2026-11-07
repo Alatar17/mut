@@ -167,15 +167,10 @@ function salla(el: Element) {
 // Dört 3 (120) ya da dört Vale (100) tek hamlede bir ceza yığınına giderse şok (ilerletme, Kral; tek tek eklenince değil).
 const SOK_DEGERLERI = [3, 11]
 const sokluHamle = (s: HamleSonucu) => s.nereye.startsWith('ceza:') && SOK_DEGERLERI.some(v => [s.kart, ...s.eslesen].filter(k => k.deger === v).length >= 4)
-// Geçici deneme (kullanıcı seçince kalkacak): A masa sarsılır, B yığın sallanıp parlar, C ikisi birden.
-const SOK_STILLERI = { 'A Masa': 'A', 'B Yığın': 'B', 'C İkisi': 'C' }
-type SokStili = keyof typeof SOK_STILLERI
-function sokVer(masa: HTMLElement, nereye: string, stil: string) {
-  if (stil !== 'B') {
-    const x = [0, -12, 11, -9, 7, -5, 3, 0]
-    masa.animate(x.map((p, i) => ({ transform: `translate(${p}px, ${i % 2 ? 3 : -3}px)` })).concat({ transform: 'none' }), { duration: 600, easing: 'ease-out' })
-  }
-  if (stil === 'A') return
+// Masa sarsılır, kartların gittiği yığın sallanıp parlar (kullanıcı 2026-11-07 C'yi seçti).
+function sokVer(masa: HTMLElement, nereye: string) {
+  const x = [0, -12, 11, -9, 7, -5, 3, 0]
+  masa.animate(x.map((p, i) => ({ transform: `translate(${p}px, ${i % 2 ? 3 : -3}px)` })).concat({ transform: 'none' }), { duration: 600, easing: 'ease-out' })
   const yigin = masa.querySelector(`.ceza-yigini[data-hedef="${nereye}"]`)
   if (!yigin) return
   const parlak = 'drop-shadow(0 0 16px rgba(255, 90, 40, 0.95))'
@@ -699,8 +694,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
   const [siraGostergesi, setSiraGostergesi] = useKayitli<SiraGostergesi>('siraGostergesi2', 'Işık')
-  const [sokStiliKayit, setSokStili] = useKayitli<SokStili>('sokStili', 'C İkisi')
-  const sokStili: SokStili = sokStiliKayit in SOK_STILLERI ? sokStiliKayit : 'C İkisi'
   const [titresimKayit, setTitresim] = useKayitli<Titresim>('titresim2', 'Hafif')
   const titresim: Titresim = titresimKayit in TITRESIMLER ? titresimKayit : 'Hafif'
   // desen: tek süre ya da titre-dur-titre…; titreme süreleri seviyeyle çarpılır, aralar aynı kalır.
@@ -1053,7 +1046,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     // Blokta kabul: kart oynanmaz (sonHamle yok).
     if (yeni.sonHamle) await kartiGoster(eski, yeni.sonHamle, hamleSonrasi, elle)
     else await gec(hamleSonrasi)
-    if (yeni.sonHamle && sokluHamle(yeni.sonHamle)) sokVer(masaRef.current!, yeni.sonHamle.nereye, SOK_STILLERI[sokStili])
+    if (yeni.sonHamle && sokluHamle(yeni.sonHamle)) sokVer(masaRef.current!, yeni.sonHamle.nereye)
     if (dagitildi) await gec(yeni, { sira: yeni.dagitim.map(kartKimligi) })
     if (yeni.patlama) {
       await bekle(PATLAMA_BEKLEMESI * carpan)
@@ -1451,9 +1444,6 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           {/* Seçince yeni seviyede kısa bir titreşim: fark hemen hissedilsin. */}
           <button className="test-satir" onClick={() => sonrakiSecenek(SIRA_GOSTERGELERI, siraGostergesi, setSiraGostergesi)}>
             Sıra göstergesi <span className="test-deger">{siraGostergesi}</span>
-          </button>
-          <button className="test-satir" onClick={() => sonrakiSecenek(SOK_STILLERI, sokStili, setSokStili)}>
-            Şok (geçici) <span className="test-deger">{sokStili}</span>
           </button>
           <button className="test-satir" onClick={() => sonrakiSecenek(TITRESIMLER, titresim, v => { setTitresim(v); navigator.vibrate?.(Math.round(70 * TITRESIMLER[v])) })}>
             Titreşim <span className="test-deger">{titresim}</span>

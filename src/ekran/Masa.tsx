@@ -12,6 +12,7 @@ import { BombaYigini, CezaYigini, Deste, OrtaYigin } from './Yiginlar'
 import { useYiginBakisi, YiginYelpazesi } from './YiginBakisi'
 import { DestePenceresi, type KartlarimGorunusu } from './DestePenceresi'
 import { puanKagidiniKaydet } from './puanResmi'
+import { sesAcKapa, sesCal } from '../ses'
 import { koltuklariDinle, kopuklariDinle, oyunGonder, oyunuDinle, type OyunMesaji } from '../ag'
 
 const AVUC_KART_EN = 60
@@ -695,6 +696,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Elle oynanan koltuk: ben; botlar kapalıyken başka telefondan oynanmayan koltuklar.
   const elleOynanir = (i: number) => i === 0 || (!botlarOtomatik && !uzak.includes(i))
   const [botKartlariKirpik, setBotKartlariKirpik] = useKayitli('botKartlariKirpik', false)
+  const [sesAcik, setSesAcik] = useKayitli('sesAcik', true)
+  sesAcKapa(sesAcik)
   const [cezaAraligiKayit, setCezaAraligi] = useKayitli<CezaAraligi>('cezaAraligi', '10 px')
   // 8 px kaldırıldı (2026-10-27); kayıtlıysa varsayılana döner.
   const cezaAraligi: CezaAraligi = cezaAraligiKayit in CEZA_ARALIKLARI ? cezaAraligiKayit : '10 px'
@@ -835,6 +838,15 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     }))
     if (b.ekUcus) yeniUcuslar.unshift(b.ekUcus)
     setUcuslar(yeniUcuslar)
+    // Sesler kartların indiği anda: dağıtımda her kart için, hamlede orta yığına / ceza yığınına inen için (en çok 2).
+    let atmaSesi = 0
+    for (const u of yeniUcuslar) {
+      const yer = b.tasinan.find(([id]) => kartKimligi(u.kart) === id)?.[1]
+      if (!yer || u === b.ekUcus) continue
+      if (b.gecikme.has(kartKimligi(u.kart))) {
+        if (yer.startsWith('avuc:') || yer === 'mut') sesCal('dagit', u.gecikme + u.sure)
+      } else if ((yer === 'orta' || yer.startsWith('ceza:')) && atmaSesi++ < 2) sesCal('at', u.gecikme + u.sure)
+    }
     const toplam = Math.max(...yeniUcuslar.map(u => u.gecikme + u.sure + (u.donus ?? 0)))
     setTimeout(() => {
       setGizli(new Set())
@@ -1865,7 +1877,8 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
           <button className="test-satir" onClick={hediyeYeriDegistir}>
             Çay yeri <span className="test-deger">{hediyeYeriSecimi}</span>
           </button>
-          <TestSecenegi ad="Bot kartlarını kapat" acik={botKartlariKapali} degistir={setBotKartlariKapali} />
+          <TestSecenegi ad="Ses" acik={sesAcik} degistir={setSesAcik} />
+          <TestSecenegi ad="Bot kartlarını kapat"acik={botKartlariKapali} degistir={setBotKartlariKapali} />
           <TestSecenegi ad="Bot kartları kenardan taşsın" acik={botKartlariKirpik} degistir={setBotKartlariKirpik} />
           <button className="test-satir" onClick={() => sonrakiSecenek(CEZA_ARALIKLARI, cezaAraligi, setCezaAraligi)}>
             Ceza yığını aralığı <span className="test-deger">{cezaAraligi}</span>

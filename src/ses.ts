@@ -3,8 +3,8 @@
 const TURLER = {
   // Kart atma / yığına inme: ElevenLabs'te üretilen 4 ses (baştaki sessizlik kırpıldı, seviyeleri eşitlendi).
   at: { dosyalar: ['at1', 'at2', 'at3', 'at4'], ses: 1 },
-  // Kart dağıtma: şimdilik yer tutucu (kısık atma sesi); gerçek dağıtma sesleri gelince dosya adları burada değişir.
-  dagit: { dosyalar: ['at1'], ses: 0.45 },
+  // Kart dağıtma: ElevenLabs'te üretilen 8 ses (1-4 "single playing card", 5-8 "quick soft flick"); 0,3 sn'ye kırpıldı.
+  dagit: { dosyalar: ['dagit1', 'dagit2', 'dagit3', 'dagit4', 'dagit5', 'dagit6', 'dagit7', 'dagit8'], ses: 0.5 },
 }
 export type SesTuru = keyof typeof TURLER
 

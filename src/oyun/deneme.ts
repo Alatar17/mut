@@ -292,3 +292,15 @@ export const bakisDenemesi = (d: Durum) => {
   return denemeKur(d, { avucum: [], orta: sirali.slice(30, 36), cezalar: [sirali.slice(26, 30), sirali.slice(0, 20), sirali.slice(20, 26)] })
 }
 
+
+// Puan kağıdı denemesi: 11 elli oyunun 10. eli, son tur; herkesin avucunda tek kart, deste boş, puan kağıdında
+// 9 el yazılı. Son kart oynanınca el biter, kağıt 10 satırla açılır (Sonraki el); 11. el bitince oyun sonu (Kaydet).
+export const puanKagidiDenemesi = (d: Durum) => {
+  denemeKur(d, { avucum: [kart(4, 'maca')], digerAvuclar: [[kart(6, 'kupa')], [kart(7, 'karo')]], eksik: true })
+  d.deste = []
+  d.tur = d.toplamTur
+  d.el = 10
+  d.toplamEl = 11
+  d.puanKagidi = Array.from({ length: 9 }, () => d.oyuncular.map(() => Math.floor(Math.random() * 12) * 5))
+  return d
+}

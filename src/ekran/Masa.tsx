@@ -246,6 +246,7 @@ function Rakip({ oyuncu, koltuk, kalkik, blof, birak, sec, sirada, secilebilir, 
             kart={k}
             kapali={kapali}
             transform={rakipKartDuzeni(i, oyuncu.avuc.length, taraf, duz, kalkik === kartKimligi(k))}
+            ustte={kalkik === kartKimligi(k)}
             parmak={blof === i ? (taraf === 'sol' ? '👈' : '👉') : undefined}
             birak={hedef => birak(i, hedef)}
             dokun={() => sec(i)}
@@ -418,11 +419,13 @@ function payliHedef(x: number, y: number, olcek: number, kart: Element) {
 // Kabul edilmezse kart yerine döner. Kaydırmadan bırakmak dokunmadır. tut: sürükleme başlayınca (Kız seçiminde
 // tutulan kart seçilmiş olur).
 type Birak = (hedef: string) => Birakma
-function useSurukle(dokun: () => void, birak: Birak, tut?: () => void) {
+// birakmadi: sürüklenen kart bir yere bırakılmadan avuca döndü (hedef yok, kurala aykırı ya da sürükleme kesildi).
+function useSurukle(dokun: () => void, birak: Birak, tut?: () => void, birakmadi?: () => void) {
   const [kayma, setKayma] = useState<{ x: number; y: number } | null>(null)
   const baslangic = useRef<{ x: number; y: number; olcek: number; surukleniyor: boolean } | null>(null)
   // Sürükleme yarıda kesilirse (sağ tık menüsü vb.) kart yerine döner.
   const vazgec = () => {
+    if (baslangic.current?.surukleniyor) birakmadi?.()
     baslangic.current = null
     setKayma(null)
   }
@@ -457,7 +460,9 @@ function useSurukle(dokun: () => void, birak: Birak, tut?: () => void) {
           .filter(el => !kart.contains(el))
           .map(el => el.closest<HTMLElement>('[data-hedef]'))
           .find(el => el)?.dataset.hedef ?? payliHedef(e.clientX, e.clientY, b.olcek, kart)
-      if (hedef && birak(hedef) === 'kabul') return
+      const sonuc = hedef ? birak(hedef) : 'red'
+      if (sonuc === 'kabul') return
+      if (sonuc === 'red') birakmadi?.()
       setKayma(null)
     },
     onPointerCancel: vazgec,
@@ -470,8 +475,8 @@ function useSurukle(dokun: () => void, birak: Birak, tut?: () => void) {
 }
 
 // Avucumdaki kart: dokununca kalkar, sürüklenip bir yere bırakılır.
-function AvucKart({ kart, sira, adet, kalkik, kapali, blof, dokun, birak, tut }: { kart: KartTipi; sira: number; adet: number; kalkik: boolean; kapali: boolean; blof?: boolean; dokun: () => void; birak: Birak; tut?: () => void }) {
-  const { kayma, olaylar } = useSurukle(dokun, birak, tut)
+function AvucKart({ kart, sira, adet, kalkik, kapali, blof, dokun, birak, tut, birakmadi }: { kart: KartTipi; sira: number; adet: number; kalkik: boolean; kapali: boolean; blof?: boolean; dokun: () => void; birak: Birak; tut?: () => void; birakmadi?: () => void }) {
+  const { kayma, olaylar } = useSurukle(dokun, birak, tut, birakmadi)
   const transform = kayma
     ? `translate(${kayma.x}px, ${kayma.y}px)`
     : yelpaze(sira, adet) + (kalkik ? ' translateY(-14px)' : '')
@@ -485,11 +490,11 @@ function AvucKart({ kart, sira, adet, kalkik, kapali, blof, dokun, birak, tut }:
 
 // Botun avucundaki kart. "Botlar kendi oynasın" kapalıyken sürüklenip oynanabilir.
 // dokun: Kız seçiminde kartı kaldırır (seçim yokken bir şey yapmaz); sürüklemeye başlamak da kaldırır.
-function RakipKart({ kart, transform, parmak, kapali, birak, dokun }: { kart: KartTipi; transform?: string; parmak?: string; kapali: boolean; birak: Birak; dokun: () => void }) {
+function RakipKart({ kart, transform, ustte, parmak, kapali, birak, dokun }: { kart: KartTipi; transform?: string; ustte?: boolean; parmak?: string; kapali: boolean; birak: Birak; dokun: () => void }) {
   const { kayma, olaylar } = useSurukle(dokun, birak, dokun)
   return (
     <div
-      className={'yan-kart' + (kayma ? ' surukleniyor' : '')}
+      className={'yan-kart' + (kayma ? ' surukleniyor' : '') + (ustte ? ' kalkik' : '')}
       style={{ width: kartBoyu(kartEni(RAKIP_KART_EN)), height: kartEni(RAKIP_KART_EN), transform: kayma ? `translate(${kayma.x}px, ${kayma.y}px)` : transform }}
       {...olaylar}
     >
@@ -711,7 +716,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   // Varsayılanda yapışık kartlar sıradan kart gibi çizilir.
   const yapisikCiz = yapisikGorunusu === 'Varsayılan' ? [] : gorunen.yapisik
   const [duyuru, setDuyuru] = useState<string[] | null>(null)
-  const [turYazisi, setTurYazisi] = useKayitli<TurYazisi>('turYazisi3', 'Düz yazı')
+  const [turYazisi, setTurYazisi] = useKayitli<TurYazisi>('turYazisi4', 'Şerit')
   // Tur yazısı oyunu bekletmez: belirip kendi söner. Son turda deste boştur.
   const [turDuyurusu, setTurDuyurusu] = useState<{ yazi: string; son: boolean; no: number } | null>(null)
   const turNo = useRef(0)
@@ -755,6 +760,12 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const [jqkGorunusu, setJqkGorunusu] = useKayitli<JqkGorunusu>('jqkGorunusu2', 'Sade')
   const sure = HAMLE_SURELERI[hamleSuresi] ?? 0
   const [kalkikKart, setKalkikKart] = useState<number | null>(null)
+  // Avucumdan kart sürüklenince kart kalkar (herkes görür); bırakmadan avuca dönerse önceki hâline döner (kullanıcı 2026-11-07).
+  const tutmadanOnce = useRef<number | null>(null)
+  const kartiTut = (i: number) => {
+    tutmadanOnce.current = kalkikKart
+    setKalkikKart(i)
+  }
   // Önceden kurulmuş kalkan (otomatik blok). Sadece benim ekranımda görünür.
   const [kalkanKurulu, setKalkanKurulu] = useState(false)
   // Kral seçim penceresi (6.9.1): açılan yığın; kart = henüz oynanmamış Papaz (avuçtaki sırası; pencere kapanırsa hamle
@@ -1663,8 +1674,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
             kapali={false}
             blof={blofGor(0) === i}
             dokun={() => (ters === 0 ? (canliKiz.current ? blofYap(i) : sec(0, i)) : setKalkikKart(kalkikKart === i ? null : i))}
-            tut={() => sec(0, i)}
+            tut={() => (ters === 0 ? sec(0, i) : kartiTut(i))}
             birak={hedef => kartBirak(0, i, hedef)}
+            birakmadi={() => ters !== 0 && setKalkikKart(tutmadanOnce.current)}
           />
         ))}
         {elimdeIkiVar && (

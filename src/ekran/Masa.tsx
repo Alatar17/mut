@@ -27,6 +27,8 @@ const UYARI_SURESI = 10000
 const KIZ_SURESI = 10000
 // Arkadaşlarla oynarken el bitince "Sonraki el" düğmesi bu kadar saniye basılmaz.
 const SONRAKI_EL_BEKLEMESI = 3
+// Bağlantısı kopan oyuncunun sırası gelince yerine bot bu kadar bekleyip oynar (ms).
+const KOPUK_BEKLEMESI = 15000
 // Üst üste bu kadar süre biterse oyuncu "uzakta" sayılır, ekrana dokunana kadar yerine bot oynar.
 const UZAKTA_SAYISI = 2
 
@@ -1153,7 +1155,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const botOynar = (i: number) => (i === 0 ? uzakta : uzak.includes(i) ? kurucu && kopuk.includes(i) : botlarOtomatik)
   useEffect(() => {
     if (mesgul || duraklatildi || d.asama !== 'oyun' || !botOynar(d.sira)) return
-    const zamanlayici = setTimeout(() => hamleOyna(akilliBotHamlesi(d), false), BOT_HIZLARI[botHizi])
+    // Kopan oyuncunun yerine bot hemen oynamaz: geri bağlanırsa (kurucunun telefonu arka plandan dönerken vb.) kendi oynar.
+    const bekleme = uzak.includes(d.sira) ? KOPUK_BEKLEMESI : BOT_HIZLARI[botHizi]
+    const zamanlayici = setTimeout(() => hamleOyna(akilliBotHamlesi(d), false), bekleme)
     return () => clearTimeout(zamanlayici)
   }, [d, mesgul, botlarOtomatik, botHizi, uzakta, duraklatildi, kopuk])
 

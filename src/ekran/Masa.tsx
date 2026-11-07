@@ -764,6 +764,9 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const secimRef = useRef<{ ceken: number; kaldir: (kart: number) => void; al: (kart: number) => void } | null>(null)
   // Kız blöfü: kartı çekilenin gösterdiği kart (karılmış avuçtaki sırası). Çekme bitince kalkar.
   const [kizBlof, setKizBlof] = useState<number | null>(null)
+  // Canlı Kral: başkası Papaz'la seçerken penceresini izlerim (hedef gösterilmez).
+  const [kralIzle, setKralIzle] = useState<{ oyuncu: number; yigin: string; secili: { bas: number; adet: number } | null } | null>(null)
+  const kralYayilan = useRef('')
   useEffect(() => {
     if (ters === null) setKizBlof(null)
   }, [ters])
@@ -1340,6 +1343,11 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   }, [kalkikKart])
   // Sözler sıra beklemez; kurucu gelen sözü gönderen dışındaki misafirlere iletir.
   useEffect(() => (ag ? oyunuDinle((m, kimden) => {
+    if (m.tip === 'kralGoster') {
+      setKralIzle(m.yigin ? { oyuncu: m.oyuncu, yigin: m.yigin, secili: m.secili } : null)
+      if (kurucu) [1, 2].forEach(k => k !== kimden && oyunGonder(m, k))
+      return
+    }
     // Canlı Kız: başlangıç sıraya girer (önceki hamleler bitince gösterilir), kaldırma ve sonuç beklemeden işlenir.
     if (m.tip === 'kizBasla' || m.tip === 'kizKaldir' || m.tip === 'kizGoster') {
       if (kurucu) [1, 2].forEach(k => k !== kimden && oyunGonder(m, k))
@@ -1386,6 +1394,7 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
     if (!ilk || (mesgul && !onayBekleniyor.current)) return
     setGelenler(g => g.slice(1))
     const [m, kimden] = ilk
+    if (m.tip === 'hamle' || m.tip === 'dagit' || m.tip === 'durum') setKralIzle(null)
     if (m.tip === 'oyna') {
       // Kurucu: misafirin hamlesi. Sırası değilse ya da geçersizse (uyuşmazlık) herkes kurucunun durumuna döner.
       const t = kabulSonrasi(d, m.hamle)
@@ -1548,6 +1557,14 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
   const kralDokun = (i: number) => setKralPencere(p => p && { ...p, dokunulan: i, sira: p.dokunulan === i ? p.sira + 1 : 0 })
   const papazOrtayaAt = kralPencere?.kart !== undefined && kralPencere.yigin === 'orta' && ayniHamleler(kabulSonrasi(d, { tip: 'ortayaAt', kart: kralPencere.kart }), { tip: 'ortayaAt', kart: kralPencere.kart }).length > 0
   const kralBitirHedefleri = d.kral ? gecerliHamleler(d).filter(h => h.tip === 'kralBitir').map(h => h.gonder!) : []
+  // Penceremi (açılış, yığın, seçilen grup) ağdaki herkese bildiririm; kapanınca null.
+  useEffect(() => {
+    if (!ag) return
+    const anahtar = kralPencere ? `${kralPencere.yigin}|${kralSecili?.bas}|${kralSecili?.adet}` : ''
+    if (anahtar === kralYayilan.current) return
+    kralYayilan.current = anahtar
+    oyunGonder({ tip: 'kralGoster', oyuncu: 0, yigin: kralPencere?.yigin ?? null, secili: kralSecili ? { bas: kralSecili.bas, adet: kralSecili.adet } : null })
+  }, [kralPencere?.yigin, kralSecili?.bas, kralSecili?.adet])
   const hedefAdi = (i: number) => (i === (kralTaban.kral?.oyuncu ?? d.sira) ? 'Al' : `→ ${d.oyuncular[i].ad}`)
 
   return (
@@ -1751,6 +1768,11 @@ export function Masa({ isimler, ag, cikis }: { isimler: string[]; ag?: AgOyunu; 
             <button onClick={kralKapat}>Vazgeç</button>
           </KralPenceresi>
         </>
+      )}
+      {!kralPencere && kralIzle && (
+        <KralPenceresi kartlar={bakilanKartlar(kralIzle.yigin)} secili={kralIzle.secili ?? undefined} dokun={() => {}}>
+          <span className="kral-ipucu">{d.oyuncular[kralIzle.oyuncu]?.ad} Papaz'la seçiyor</span>
+        </KralPenceresi>
       )}
 
       {cezaSecimi !== null && (

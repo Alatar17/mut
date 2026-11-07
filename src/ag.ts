@@ -50,6 +50,8 @@ export type OyunMesaji =
   | { tip: 'kizKaldir'; sira: number }
   // Kız blöfü: kartı çekilen kendi kartını gösterir (karılmış sırası; null = bıraktı).
   | { tip: 'kizGoster'; sira: number | null }
+  // Canlı Kral: Papaz'la seçen oyuncunun penceresi (yigin: 'orta' / 'ceza:N', null = kapandı) ve seçtiği grup. Hedef gönderilmez.
+  | { tip: 'kralGoster'; oyuncu: number; yigin: string | null; secili: { bas: number; adet: number } | null }
 
 type Mesaj =
   | { tip: 'merhaba'; isim: string; kimlik: string }
@@ -118,6 +120,7 @@ function mesajCevir(m: OyunMesaji, k: number): OyunMesaji {
     case 'hediye': return { ...m, kimden: koltukCevir(m.kimden, k), kime: koltukCevir(m.kime, k) }
     case 'kaldir': return { ...m, oyuncu: koltukCevir(m.oyuncu, k) }
     case 'kizBasla': return { ...m, hamle: hamleCevir(m.hamle, k, KOLTUK) }
+    case 'kralGoster': return { ...m, oyuncu: koltukCevir(m.oyuncu, k), yigin: m.yigin?.startsWith('ceza:') ? `ceza:${koltukCevir(Number(m.yigin.slice(5)), k)}` : m.yigin }
     case 'kizKaldir':
     case 'kizGoster': return m
     default: return { ...m, durum: durumCevir(m.durum, k) }
